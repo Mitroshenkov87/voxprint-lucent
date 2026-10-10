@@ -32,7 +32,7 @@ The answer is cached against that version. The Enlarge action is available when 
 A job is handed off on the command line, for example:
 
 ```text
-voxprint-enlarge --input FILE --scale 2 --preset photo --format avif --json-progress
+voxprint-enlarge --input FILE --scale 2 --preset photo --quality-tier fast --format avif --json-progress
 ```
 
 Lucent reads the JSON lines Enlarge prints. `--dry-run` on Lucent checks this path and prints one JSON object. It does not open a window. The tools process can also open the Enlarge window for the current file.

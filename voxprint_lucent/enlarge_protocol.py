@@ -37,10 +37,31 @@ class ProtocolError(ValueError):
     """A line was not a protocol 1 object."""
 
 
+# Exit status of the headless CLI. ``done`` is 0.
+EXIT_FOR_CODE = {
+    "internal": 1,
+    "bad_input": 2,
+    "unsupported_format": 3,
+    "gpu_unsupported": 4,
+    "gpu_busy": 5,
+    "oom": 6,
+    "model_missing": 7,
+    "io_error": 8,
+    "cancelled": 130,
+}
+
+
+def exit_for_code(code: str) -> int:
+    """Process status for an Enlarge error code. Unknown codes are internal."""
+    return EXIT_FOR_CODE.get(code, 1)
+
+
 def dumps(message: dict[str, Any]) -> bytes:
-    """One UTF-8 JSON line. ``protocol`` is always 1, even if the caller set it."""
+    """One UTF-8 JSON line. ``protocol`` is 1. ``op`` repeats ``type``."""
     body = dict(message)
     body["protocol"] = PROTOCOL
+    if "type" in body:
+        body.setdefault("op", body["type"])
     return (json.dumps(body, separators=(",", ":")) + "\n").encode("utf-8")
 
 
@@ -78,17 +99,12 @@ def socket_name() -> str:
 
 
 def place_without_overwrite(path: Path, source: Path) -> Path:
-    """First free path. A collision becomes ``name-1.ext``, then ``-2``, and so on."""
+    """First free path. A collision becomes ``name-2.ext``, then ``-3``."""
     number = 0
     while True:
-        if number == 0:
-            candidate = path
-        else:
-            candidate = path.with_name(f"{path.stem}-{number}{path.suffix}")
-        number += 1
-        if candidate.exists():
-            continue
-        if candidate.resolve() == source.resolve():
+        candidate = path if number == 0 else path.with_name(f"{path.stem}-{number}{path.suffix}")
+        number = 2 if number == 0 else number + 1
+        if candidate.exists() or candidate.resolve() == source.resolve():
             continue
         return candidate
 
@@ -99,7 +115,7 @@ def enlarged_destination(
     fmt: OutputFormat | None = None,
     directory: Path | None = None,
 ) -> Path:
-    """``<name>.enlarged-<scale>x.avif`` beside the source. Never the source, never PNG."""
+    """``<name>.enlarged-<scale>x.<ext>`` beside the source. A collision starts at ``-2``."""
     chosen = OutputFormat.AVIF if fmt is None else fmt
     folder = source.parent if directory is None else directory
     ext = _OUTPUT_EXT[chosen]

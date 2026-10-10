@@ -26,6 +26,7 @@ from voxprint_lucent.enlarge_protocol import (
     ProtocolError,
     dumps,
     enlarged_destination,
+    exit_for_code,
     loads,
     output_format_name,
     place_without_overwrite,
@@ -35,10 +36,10 @@ from voxprint_lucent.formats import CodecMissing, OutputFormat, PngRejected, wri
 
 MOCK_VERSION = "0.0.0"
 
-# Illustrative registry from the agreed spec. photo/max is not installed.
+# Stand-in registry. photo/max is not on disk, so that tier returns model_missing.
 _MODELS: tuple[dict[str, Any], ...] = (
     {
-        "id": "nomos2-realplksr",
+        "id": "4x-nomos2-realplksr-dysample",
         "preset": "photo",
         "quality": "fast",
         "scales": [2, 4],
@@ -54,6 +55,7 @@ _MODELS: tuple[dict[str, Any], ...] = (
     {
         "id": "realesrgan-anime6b",
         "preset": "art",
+        "quality": "fast",
         "scales": [4],
         "installed": True,
     },
@@ -66,7 +68,7 @@ def gpu_block() -> dict[str, Any]:
     if status == "ok":
         return {"name": "mock", "cc": "8.9", "status": "ok", "reason": None}
     if status == "warn":
-        return {"name": "mock", "cc": "8.6", "status": "warn", "reason": "below_rtx_40"}
+        return {"name": "mock", "cc": "8.6", "status": "warn", "reason": None}
     if status == "driver_too_old":
         return {"name": "mock", "cc": "8.9", "status": "none", "reason": "driver_too_old"}
     return {"name": None, "cc": None, "status": "none", "reason": "no_nvidia"}
@@ -82,8 +84,8 @@ def capabilities() -> dict[str, Any]:
         "models": [dict(model) for model in _MODELS],
         "presets": ["photo", "art"],
         "max_scale": 4,
-        "input_formats": ["avif", "jxl", "webp", "png", "jpeg", "heic", "tiff"],
-        "output_formats": ["avif", "jxl", "webp", "jpeg", "heic"],
+        "input_formats": ["avif", "bmp", "jpeg", "jxl", "png", "tiff", "webp"],
+        "output_formats": ["avif", "jxl", "webp", "jpeg"],
         "default_output_format": "avif",
     }
 
@@ -93,9 +95,9 @@ def build_job(
 ) -> tuple[list[dict[str, Any]], bool]:
     """Messages to send now, and whether the socket should wait for ``cancel``.
 
-    ``dry_run`` skips the GPU refusal and does not write the output file. Input,
-    model, scale, and format checks still apply. ``done.output`` is the path
-    that would have been written.
+    A missing GPU is ``gpu_unsupported`` even when ``dry_run`` is set.
+    ``dry_run`` then returns ``accepted`` and ``done`` with ``ms`` 0 and does
+    not write the file. ``done.output`` is the path a real run would use.
     """
     job_id = request.get("id")
     ident = job_id if isinstance(job_id, str) else ""
@@ -104,7 +106,7 @@ def build_job(
         return {"id": ident, **body}
 
     gpu = gpu_block()
-    if gpu["status"] == "none" and not dry_run:
+    if gpu["status"] == "none":
         reason = gpu["reason"] or "no_nvidia"
         return [_error(message, "gpu_unsupported", f"No usable GPU ({reason}).", False)], False
     raw_input = request.get("input")
@@ -132,11 +134,6 @@ def build_job(
     if isinstance(chosen, str):
         code, text, retryable = _model_error(chosen)
         return [_error(message, code, text, retryable)], False
-    scale = request.get("scale", 2)
-    if not isinstance(scale, int) or isinstance(scale, bool) or scale not in chosen["scales"]:
-        return [
-            _error(message, "bad_input", "scale is not available for this model.", False)
-        ], False
     format_name = request.get("format") or "avif"
     if not isinstance(format_name, str):
         return [_error(message, "unsupported_format", "format must be a name.", False)], False
@@ -149,14 +146,20 @@ def build_job(
     try:
         started = time.perf_counter()
         array = _load_rgb(source)
+        scale, size_error = _resolve_scale(request, array_shape=array.shape)
+        if size_error is not None:
+            return [_error(message, "bad_input", size_error, False)], False
+        if scale not in chosen["scales"]:
+            return [
+                _error(message, "bad_input", "scale is not available for this model.", False)
+            ], False
+        if request.get("lossless") and fmt is not OutputFormat.JXL:
+            return [_error(message, "bad_input", "--lossless is JPEG XL only.", False)], False
+        width, height = _planned_size(array.shape, scale, request.get("long_side"))
         dest = _destination(request, source, scale, fmt)
         if dry_run:
-            height, width = int(array.shape[0]) * scale, int(array.shape[1]) * scale
-            elapsed = max(0, int((time.perf_counter() - started) * 1000))
             return [
                 message({"type": "accepted", "queue_pos": 0}),
-                message({"type": "progress", "pct": 40, "stage": "loading"}),
-                message({"type": "progress", "pct": 90, "stage": "tiles", "eta_s": 0}),
                 message(
                     {
                         "type": "done",
@@ -164,13 +167,13 @@ def build_job(
                         "width": width,
                         "height": height,
                         "format": fmt.value,
-                        "ms": elapsed,
+                        "ms": 0,
                     }
                 ),
             ], False
         scaled = np.repeat(np.repeat(array, scale, axis=0), scale, axis=1)
-        scaled = np.ascontiguousarray(scaled)
-        write_raster(scaled, dest, fmt, lossless=fmt is not OutputFormat.AVIF)
+        scaled = _fit_long_side(np.ascontiguousarray(scaled), width, height)
+        write_raster(scaled, dest, fmt, lossless=bool(request.get("lossless")))
     except PngRejected as exc:
         return [_error(message, "unsupported_format", str(exc), False)], False
     except CodecMissing as exc:
@@ -213,8 +216,22 @@ def serve() -> int:
     return int(app.exec())
 
 
+def _emit(messages: list[dict[str, Any]]) -> int:
+    for message in messages:
+        sys.stdout.buffer.write(dumps(message))
+    sys.stdout.flush()
+    failed = next((message for message in messages if message.get("type") == "error"), None)
+    if failed is None:
+        return 0
+    code = failed.get("code")
+    return exit_for_code(code if isinstance(code, str) else "internal")
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Run the stand-in Enlarge server from `argv`."""
+    """Run the stand-in Enlarge CLI. Flags match voxprint-enlarge v0.2.0-rc.1."""
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if raw and raw[0] == "upscale":
+        raw = raw[1:]
     parser = argparse.ArgumentParser(prog="voxprint-enlarge")
     parser.add_argument("--serve", action="store_true")
     parser.add_argument("--hidden", action="store_true")
@@ -222,16 +239,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--json-progress", action="store_true")
     parser.add_argument("--input", default="")
-    parser.add_argument("--scale", type=int, default=2)
-    parser.add_argument("--preset", default="photo")
-    parser.add_argument("--quality", default="fast")
-    parser.add_argument("--model", default="")
+    parser.add_argument("--output", "--out", default="")
+    parser.add_argument("--scale", type=int, default=None)
+    parser.add_argument("--long-side", type=int, default=None)
     parser.add_argument("--format", default="avif")
-    parser.add_argument("--output", default="")
-    parser.add_argument("--output-dir", default="")
+    parser.add_argument("--lossless", action="store_true")
+    parser.add_argument("--quality", default=None)
+    parser.add_argument("--quality-tier", dest="quality_tier", default=None)
+    parser.add_argument("--preset", default=None)
+    parser.add_argument("--model", default="")
+    parser.add_argument("--lock-timeout", type=float, default=None)
+    parser.add_argument("--parent-lock-pid", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--open-ui", action="store_true")
-    args = parser.parse_args(argv)
+    args = parser.parse_args(raw)
     if args.capabilities:
         if not args.json:
             print("usage: voxprint-enlarge --capabilities --json", file=sys.stderr)
@@ -243,29 +263,42 @@ def main(argv: list[str] | None = None) -> int:
         return serve()
     if not args.json_progress:
         print(
-            "usage: voxprint-enlarge --serve --hidden | --capabilities --json | "
-            "--json-progress [--dry-run] [--open-ui]",
+            "usage: voxprint-enlarge --input FILE (--scale 2|4 | --long-side PX) "
+            "--json-progress",
             file=sys.stderr,
         )
         return 2
+    tier, encode_quality, quality_error = _parse_quality(args.quality, args.quality_tier)
+    if quality_error is not None:
+        return _emit(
+            [
+                {
+                    "id": "cli",
+                    "type": "error",
+                    "code": "bad_input",
+                    "message": quality_error,
+                    "retryable": False,
+                }
+            ]
+        )
     request = {
         "id": "cli",
         "input": args.input,
         "scale": args.scale,
+        "long_side": args.long_side,
         "preset": args.preset,
-        "quality": args.quality,
+        "quality": tier,
+        "quality_tier": args.quality_tier,
+        "encode_quality": encode_quality,
         "model": args.model or None,
         "format": args.format,
         "output": args.output,
-        "output_dir": args.output_dir,
-        "open_ui": args.open_ui,
+        "lossless": args.lossless,
+        "lock_timeout": args.lock_timeout,
+        "parent_lock_pid": args.parent_lock_pid,
     }
     messages, _held = build_job(request, hold_cancel=False, dry_run=args.dry_run)
-    for message in messages:
-        sys.stdout.buffer.write(dumps(message))
-    sys.stdout.flush()
-    failed = any(message.get("type") == "error" for message in messages)
-    return 1 if failed else 0
+    return _emit(messages)
 
 
 class _Server(QObject):
@@ -385,6 +418,75 @@ class _Session(QObject):
         self._sock.waitForBytesWritten(1000)
 
 
+def _parse_quality(
+    quality: str | None, quality_tier: str | None
+) -> tuple[str, int, str | None]:
+    tier = "fast"
+    if quality_tier is not None:
+        if quality_tier not in {"fast", "max"}:
+            return tier, 60, "--quality-tier must be fast or max."
+        tier = quality_tier
+    if quality is None:
+        return tier, 60, None
+    if quality in {"fast", "max"}:
+        if quality_tier is None:
+            tier = quality
+        return tier, 60, None
+    try:
+        encode = int(quality)
+    except ValueError:
+        return tier, 60, "--quality must be 1-100, fast, or max."
+    if encode < 1 or encode > 100:
+        return tier, 60, "--quality must be 1-100, fast, or max."
+    return tier, encode, None
+
+
+def _resolve_scale(
+    request: dict[str, Any], array_shape: tuple[int, ...] | None
+) -> tuple[int, str | None]:
+    scale = request.get("scale", None)
+    long_side = request.get("long_side", None)
+    if scale is not None and long_side is not None:
+        return 0, "--scale and --long-side cannot be combined."
+    if long_side is not None:
+        if not isinstance(long_side, int) or isinstance(long_side, bool) or long_side < 1:
+            return 0, "--long-side must be a positive pixel count."
+        if array_shape is None:
+            return 4, None
+        height, width = int(array_shape[0]), int(array_shape[1])
+        long = max(width, height)
+        if 4 * long < long_side:
+            return 0, "The long side is beyond 4x."
+        return (4 if 2 * long < long_side else 2), None
+    if scale is None:
+        return 4, None
+    if not isinstance(scale, int) or isinstance(scale, bool) or scale not in (2, 4):
+        return 0, "scale must be 2 or 4."
+    return scale, None
+
+
+def _planned_size(
+    shape: tuple[int, ...], scale: int, long_side: object
+) -> tuple[int, int]:
+    height, width = int(shape[0]), int(shape[1])
+    if not isinstance(long_side, int) or isinstance(long_side, bool):
+        return width * scale, height * scale
+    long = max(width, height)
+    short = min(width, height)
+    target_short = max(1, round(short * long_side / long))
+    if width >= height:
+        return long_side, target_short
+    return target_short, long_side
+
+
+def _fit_long_side(array: np.ndarray[Any, np.dtype[np.uint8]], width: int, height: int):
+    if array.shape[0] == height and array.shape[1] == width:
+        return array
+    ys = np.linspace(0, array.shape[0] - 1, height).round().astype(np.intp)
+    xs = np.linspace(0, array.shape[1] - 1, width).round().astype(np.intp)
+    return np.ascontiguousarray(array[ys][:, xs])
+
+
 def _select_model(request: dict[str, Any]) -> dict[str, Any] | str:
     model_id = request.get("model")
     if isinstance(model_id, str) and model_id.strip():
@@ -394,18 +496,19 @@ def _select_model(request: dict[str, Any]) -> dict[str, Any] | str:
         if not found["installed"]:
             return "model_missing"
         return found
-    preset = request.get("preset") or "photo"
-    quality = request.get("quality") or "fast"
+    preset = request.get("preset")
+    quality = request.get("quality") if request.get("quality") in {"fast", "max"} else "fast"
+    tier = request.get("quality_tier")
+    if tier in {"fast", "max"}:
+        quality = tier
     if not isinstance(preset, str) or preset not in {"photo", "art"}:
         return "bad_preset"
-    if not isinstance(quality, str) or quality not in {"fast", "max"}:
-        return "bad_quality"
     if preset == "art":
-        found = next(model for model in _MODELS if model["id"] == "realesrgan-anime6b")
+        found = next(model for model in _MODELS if model["preset"] == "art")
     elif quality == "max":
         found = next(model for model in _MODELS if model["id"] == "nomos2-dat2")
     else:
-        found = next(model for model in _MODELS if model["id"] == "nomos2-realplksr")
+        found = next(model for model in _MODELS if model["id"] == "4x-nomos2-realplksr-dysample")
     if not found["installed"]:
         return "model_missing"
     return found
@@ -417,7 +520,7 @@ def _model_error(token: str) -> tuple[str, str, bool]:
     if token == "unknown_model":
         return "bad_input", "Unknown model id.", False
     if token == "bad_quality":
-        return "bad_input", "quality must be fast or max.", False
+        return "bad_input", "--quality-tier must be fast or max.", False
     return "bad_input", "preset must be photo or art.", False
 
 
@@ -439,9 +542,7 @@ def _destination(request: dict[str, Any], source: Path, scale: int, fmt: OutputF
         if dest.suffix.lower() == ".png":
             raise PngRejected("PNG is not an output format")
         return place_without_overwrite(dest, source)
-    raw_dir = request.get("output_dir")
-    directory = Path(raw_dir) if isinstance(raw_dir, str) and raw_dir else None
-    return enlarged_destination(source, scale, fmt, directory)
+    return enlarged_destination(source, scale, fmt, None)
 
 
 def _load_rgb(path: Path) -> np.ndarray[Any, np.dtype[np.uint8]]:

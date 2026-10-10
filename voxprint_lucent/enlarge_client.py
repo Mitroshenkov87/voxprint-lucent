@@ -24,7 +24,6 @@ from voxprint_lucent.enlarge_protocol import (
     ProtocolError,
     action_enabled,
     action_tooltip,
-    enlarged_destination,
     install_offered,
     loads,
     output_format_name,
@@ -92,49 +91,55 @@ class EnlargeClient:
         self,
         source: Path,
         *,
-        scale: int = 2,
+        scale: int | None = 2,
+        long_side: int | None = None,
         preset: str = "photo",
-        quality: str = "fast",
+        quality: int | None = None,
+        quality_tier: str = "fast",
         model: str | None = None,
         format_name: str = "avif",
         output: Path | None = None,
-        output_dir: Path | None = None,
-        open_ui: bool = False,
+        lossless: bool = False,
+        lock_timeout: float | None = None,
+        parent_lock_pid: int | None = None,
         dry_run: bool = False,
         on_event: Any = None,
     ) -> EnlargeResult:
-        """Quick enlarge, or Open in Enlarge when ``open_ui`` is true.
+        """Hand the file to ``voxprint-enlarge`` and read its JSON lines.
 
-        The hand-off is ``voxprint-enlarge --json-progress``. ``--dry-run`` asks
-        Enlarge not to require a GPU and not to write the output file.
+        The process never opens a window. ``--dry-run`` plans the file and
+        does not write it. GPU, format, and missing-model failures still apply.
         """
         self._reject_png(format_name)
         if not self.command:
             raise EnlargeError("io_error", "Enlarge is not installed.", False)
         chosen = output_format_name(format_name)
-        dest = output or enlarged_destination(source, scale, chosen, output_dir)
         command = [
             *self.command,
             "--input",
             str(source.resolve()),
-            "--scale",
-            str(scale),
-            "--preset",
-            preset,
-            "--quality",
-            quality,
             "--format",
             chosen.value,
-            "--output",
-            str(dest),
             "--json-progress",
         ]
-        if output_dir is not None:
-            command.extend(["--output-dir", str(output_dir)])
+        if long_side is not None:
+            command.extend(["--long-side", str(long_side)])
+        elif scale is not None:
+            command.extend(["--scale", str(scale)])
         if model:
             command.extend(["--model", model])
-        if open_ui:
-            command.append("--open-ui")
+        else:
+            command.extend(["--preset", preset, "--quality-tier", quality_tier])
+        if quality is not None:
+            command.extend(["--quality", str(quality)])
+        if output is not None:
+            command.extend(["--output", str(output)])
+        if lossless:
+            command.append("--lossless")
+        if lock_timeout is not None:
+            command.extend(["--lock-timeout", str(lock_timeout)])
+        if parent_lock_pid is not None:
+            command.extend(["--parent-lock-pid", str(parent_lock_pid)])
         if dry_run:
             command.append("--dry-run")
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)

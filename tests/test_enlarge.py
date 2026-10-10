@@ -96,7 +96,7 @@ def test_destination_never_overwrites(tmp_path: Path) -> None:
     taken = tmp_path / "shot.enlarged-2x.avif"
     taken.write_bytes(b"old")
     dest = enlarged_destination(source, 2)
-    assert dest.name == "shot.enlarged-2x-1.avif"
+    assert dest.name == "shot.enlarged-2x-2.avif"
     assert dest != source
     assert dest != taken
     assert not dest.exists()
@@ -237,7 +237,7 @@ def test_cli_model_missing_is_an_error(tmp_path: Path, monkeypatch: pytest.Monke
         text=True,
         check=False,
     )
-    assert proc.returncode != 0
+    assert proc.returncode == 7
     messages = [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
     assert messages[-1]["code"] == "model_missing"
     assert messages[-1]["retryable"] is True
@@ -265,7 +265,7 @@ def test_existing_output_is_not_overwritten(
     )
     assert hold is False
     written = Path(str(messages[-1]["output"]))
-    assert written.name == "out-1.avif"
+    assert written.name == "out-2.avif"
     assert written != taken
     assert written.is_file()
     assert taken.read_bytes() == b"keep"
@@ -315,6 +315,10 @@ def test_enlarge_uses_the_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         client.shutdown()
     assert launched
     assert "--json-progress" in launched[0]
+    assert "--quality-tier" in launched[0]
+    assert "--scale" in launched[0]
+    assert "--open-ui" not in launched[0]
+    assert "--output-dir" not in launched[0]
     assert "--serve" not in launched[0]
     assert "--dry-run" not in launched[0]
     assert seen[0] == "accepted"
@@ -356,7 +360,7 @@ def test_cli_cancel_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     assert "progress" in seen
 
 
-def test_open_in_enlarge_passes_open_ui(
+def test_hand_off_uses_the_published_cli(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _app()
@@ -374,16 +378,20 @@ def test_open_in_enlarge_passes_open_ui(
 
     monkeypatch.setattr(subprocess, "Popen", spy)
     try:
-        result = client.enlarge(source, open_ui=True)
+        result = client.enlarge(source, scale=None)
     finally:
         client.shutdown()
-    assert "--open-ui" in launched[0]
-    assert "--serve" not in launched[0]
+    command = launched[0]
+    assert "--open-ui" not in command
+    assert "--scale" not in command
+    assert "--long-side" not in command
+    assert "--json-progress" in command
+    assert result.output.name.startswith("dot.enlarged-4x.")
     assert result.output.is_file()
 
 
 def test_dry_run_does_not_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("LUCENT_ENLARGE_GPU", raising=False)
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
     source = tmp_path / "dot.png"
     _png(source)
     dest = tmp_path / "would.avif"
@@ -411,7 +419,9 @@ def test_dry_run_does_not_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     )
     assert proc.returncode == 0, proc.stderr
     messages = [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
-    assert messages[-1]["type"] == "done"
+    assert [item["type"] for item in messages] == ["accepted", "done"]
+    assert messages[-1]["ms"] == 0
+    assert messages[-1]["op"] == "done"
     assert messages[-1]["output"] == str(dest)
     assert not dest.exists()
 
@@ -558,7 +568,7 @@ def test_warn_keeps_the_button(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     try:
         button = window.findChild(QPushButton, "quick-enlarge")
         assert button is not None
-        assert button.toolTip() == "below_rtx_40"
+        assert button.toolTip() == "warn"
     finally:
         window.shutdown()
 
@@ -660,7 +670,96 @@ def test_capabilities_cache_follows_version(
     assert fresh is not None
     assert fresh.get("cached") is not True
     assert fresh["gpu"]["status"] == "warn"
-    assert fresh["gpu"]["reason"] == "below_rtx_40"
+    assert fresh["gpu"]["reason"] is None
+
+
+def test_published_exit_codes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
+    source = tmp_path / "dot.png"
+    _png(source)
+    both = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "voxprint_lucent.enlarge_mock",
+            "--input",
+            str(source),
+            "--scale",
+            "2",
+            "--long-side",
+            "20",
+            "--preset",
+            "photo",
+            "--json-progress",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert both.returncode == 2
+    assert json.loads(both.stdout.splitlines()[-1])["code"] == "bad_input"
+    missing_json = subprocess.run(
+        [sys.executable, "-m", "voxprint_lucent.enlarge_mock", "--capabilities"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert missing_json.returncode == 2
+    monkeypatch.delenv("LUCENT_ENLARGE_GPU", raising=False)
+    dry = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "voxprint_lucent.enlarge_mock",
+            "--input",
+            str(source),
+            "--scale",
+            "2",
+            "--preset",
+            "photo",
+            "--json-progress",
+            "--dry-run",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert dry.returncode == 4
+    assert json.loads(dry.stdout.splitlines()[-1])["code"] == "gpu_unsupported"
+
+
+def test_long_side_uses_the_model_scale(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
+    _app()
+    source = tmp_path / "dot.png"
+    _png(source)
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "voxprint_lucent.enlarge_mock",
+            "upscale",
+            "--input",
+            str(source),
+            "--long-side",
+            "6",
+            "--preset",
+            "photo",
+            "--quality-tier",
+            "fast",
+            "--quality",
+            "fast",
+            "--json-progress",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    done = json.loads(proc.stdout.splitlines()[-1])
+    assert done["width"] == 6
+    assert done["height"] == 6
+    assert Path(done["output"]).name == "dot.enlarged-4x.avif"
 
 
 def test_tools_host_enlarge_needs_an_image(capsys: pytest.CaptureFixture[str]) -> None:
