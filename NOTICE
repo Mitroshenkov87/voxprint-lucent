@@ -8,8 +8,10 @@ vendored in this repository. Those components keep their own licences:
   The tools process loads them from the PySide6-Essentials wheel. The
   voxprint-lucent executable links Qt 6 dynamically. Qt source is not copied
   into this repository. The Windows measurement harness also ships
-  KImageFormats plugins built against that Qt (LGPL, KDE) and the libavif and
-  libjxl DLLs those plugins need. Those libraries are not vendored here.
+  KImageFormats plugins built against that Qt (LGPL, KDE) and the libavif,
+  dav1d, and libjxl DLLs those plugins need. libavif is built with the dav1d
+  decoder; the vcpkg port's default build has no AV1 codec. Those libraries
+  are not vendored here.
 - Shiboken6 (LGPL-3.0), Riverbank Computing.
 - imagecodecs (BSD-3-Clause), Christoph Gohlke. Used for AVIF and JPEG XL
   decoding when Qt has no plugin, and for AVIF, JPEG XL, WebP, and legacy

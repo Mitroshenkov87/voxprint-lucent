@@ -5,6 +5,8 @@
 
 #include <QImageReader>
 
+#include <cstdio>
+
 namespace lucent {
 
 QImage decodeForView(const QString &path, const QSize &box) {
@@ -18,6 +20,11 @@ QImage decodeForView(const QString &path, const QSize &box) {
     }
     QImage image = reader.read();
     if (image.isNull()) {
+        std::fprintf(stderr,
+                     "decode failed: format=%s error=%s\n",
+                     reader.format().constData(),
+                     qPrintable(reader.errorString()));
+        std::fflush(stderr);
         return image;
     }
     if (box.isValid() && (image.width() > box.width() || image.height() > box.height())) {

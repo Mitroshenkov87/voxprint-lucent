@@ -105,10 +105,16 @@ if (-not (Test-Path (Join-Path $QtPrefix 'bin\windeployqt.exe'))) {
     throw "Qt was not installed at $QtPrefix"
 }
 
-Write-Host 'Installing libavif, libjxl, and pkgconf'
+Write-Host 'Installing libavif (dav1d decoder), libjxl, and pkgconf'
+# The vcpkg libavif port has no default codec. Without dav1d, kimg_avif loads
+# and then refuses every file because avifCodecName(CAN_DECODE) is null.
 $env:VCPKG_DEFAULT_TRIPLET = 'x64-windows'
-Invoke-Native { & (Join-Path $env:VCPKG_ROOT 'vcpkg.exe') install libavif libjxl pkgconf --triplet x64-windows }
+Invoke-Native { & (Join-Path $env:VCPKG_ROOT 'vcpkg.exe') install 'libavif[dav1d]' libjxl pkgconf --triplet x64-windows }
 $VcpkgInstalled = Join-Path $env:VCPKG_ROOT 'installed\x64-windows'
+$dav1d = @(Get-ChildItem (Join-Path $VcpkgInstalled 'bin') -Filter '*dav1d*.dll' -ErrorAction SilentlyContinue)
+if (-not $dav1d) {
+    throw "dav1d.dll is missing from $VcpkgInstalled\bin. libavif would ship with no AV1 decoder."
+}
 $PkgConfig = Get-ChildItem -Path $VcpkgInstalled -Recurse -Filter pkgconf.exe | Select-Object -First 1
 if (-not $PkgConfig) { throw 'pkgconf.exe was not installed by vcpkg' }
 
