@@ -15,8 +15,9 @@
 - PySide6 missed 250 ms cold. The C++ raster path passed the plan formats on the Linux spike except 12 MP AVIF 4:4:4, which is decode-bound. Details and the independent check are in [M0-RESULTS.md](M0-RESULTS.md).
 - The owner's confirmation run is `bench/Run-M0.ps1` against the Windows harness zip from CI. It does not block M1.
 - M1 core viewer is in the tree. Details and the remaining gaps are in [M1.md](M1.md). `--benchmark` is still the M0 raster path.
+- M2 tools and the info panel are in the tools process. Details are in [M2.md](M2.md). `--benchmark` does not start that process.
 
 ## Next
 1. Owner runs `bench/Run-M0.ps1` on the reference machine when that session exists. CI's 250 ms check is a warm in-process guard, not that cold sample.
-2. M2: info panel, tools, and the Enlarge hand-off once Enlarge replies.
+2. M3: Enlarge hand-off once the shared protocol is the one Lucent codes against.
 3. Settle the Enlarge hand-off with Voxprint AI Enlarge (PLAN-v1 section 4), then move it to a shared spec.
