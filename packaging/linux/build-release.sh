@@ -7,7 +7,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/pyproject.toml" | head -n 1)
 DEB_VERSION=$(printf '%s' "$VERSION" | sed 's/rc/~rc/; s/\([0-9]\)a/\1~a/; s/\([0-9]\)b/\1~b/')
-TAG=${LUCENT_RELEASE_TAG:-v0.1.0-rc3}
+TAG=${LUCENT_RELEASE_TAG:-v0.1.0-rc4}
 
 QT_VERSION=6.12.0
 QT_ROOT=${RUNNER_TEMP:-/tmp}/lucent-qt

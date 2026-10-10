@@ -16,16 +16,16 @@ Lucent is a clean-room project. No ImageGlass code, assets, themes, icons, or co
 
 ## Install
 
-Release files are on this repository's GitHub releases. `v0.1.0-rc3` is a pre-release. The release title is `0.1.0 RC · build N "Zohar"`. Check `SHA256SUMS` against the download.
+Release files are on this repository's GitHub releases. `v0.1.0-rc4` is a pre-release. The release title is `0.1.0 RC · build N "Ner"`. Check `SHA256SUMS` against the download.
 
-**Windows.** Run `VoxprintAILucent-0.1.0-rc3-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
+**Windows.** Run `VoxprintAILucent-0.1.0-rc4-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
 
-The zip `lucent-0.1.0-rc3-windows.zip` is the measurement bundle (the viewer plus `Run-M0.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
+The zip `lucent-0.1.0-rc4-windows.zip` is the measurement bundle (the viewer, `Run-M0.ps1`, and `Run-Checks.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
 
 **Linux.**
 
 ```bash
-sudo apt install ./voxprint-lucent_0.1.0~rc3_amd64.deb
+sudo apt install ./voxprint-lucent_0.1.0~rc4_amd64.deb
 ```
 
 ## First run

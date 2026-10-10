@@ -10,7 +10,7 @@ if (-not (Test-Path -LiteralPath $Exe)) {
 }
 
 $Tag = $env:LUCENT_RELEASE_TAG
-if (-not $Tag) { $Tag = 'v0.1.0-rc3' }
+if (-not $Tag) { $Tag = 'v0.1.0-rc4' }
 $VersionName = $Tag -replace '^v', ''
 
 $Out = Join-Path $Root 'dist'
@@ -24,7 +24,7 @@ $PSNativeCommandUseErrorActionPreference = $false
 if ($LASTEXITCODE -ge 8) { throw "robocopy payload failed ($LASTEXITCODE)" }
 $PSNativeCommandUseErrorActionPreference = $nativePref
 
-foreach ($relative in @('Run-M0.ps1', 'app\bench')) {
+foreach ($relative in @('Run-M0.ps1', 'Run-Checks.ps1', 'app\bench')) {
     $path = Join-Path $Payload $relative
     if (Test-Path $path) { Remove-Item -Recurse -Force $path }
 }

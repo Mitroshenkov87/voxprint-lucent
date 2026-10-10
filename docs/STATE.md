@@ -23,3 +23,4 @@
 2. Point the Enlarge client at the real server when that process exists. The mock remains the CI stand-in.
 3. `v0.1.0-rc1` is the keyboard-only build. `v0.1.0-rc2` adds the viewer chrome. Notes are in [release-notes/v0.1.0-rc2.md](release-notes/v0.1.0-rc2.md).
 4. `v0.1.0-rc3` ("Zohar") replaces the save icons, reads the build label from `BUILD.json`, calls Enlarge through its CLI, and adds `--dry-run`. Notes are in [release-notes/v0.1.0-rc3.md](release-notes/v0.1.0-rc3.md).
+5. `v0.1.0-rc4` ("Ner") is the docs site, the Enlarge v0.2.0-rc.1 hand-off, and the measurement zip's hard images. Notes are in [release-notes/v0.1.0-rc4.md](release-notes/v0.1.0-rc4.md).
