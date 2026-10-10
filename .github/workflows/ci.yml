@@ -95,6 +95,17 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: sh packaging/linux/build-cpp-smoke.sh
 
+  qt68:
+    name: Qt 6.8 build (Debian 13)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build in a Debian 13 container
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE":/src -w /src debian:trixie \
+            bash -eux -c 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config qt6-base-dev libgl1-mesa-dev libvulkan-dev libxkbcommon-dev && cmake -S cpp -B /tmp/build-qt68 -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build /tmp/build-qt68'
+
   benchmark:
     name: benchmark (${{ matrix.os }})
     if: >-
