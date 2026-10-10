@@ -14,19 +14,30 @@ c++ -std=c++20 -I "$ROOT/cpp/src" \
 
 QT_VERSION=6.12.0
 QT_ROOT=${RUNNER_TEMP:-/tmp}/lucent-qt
-python -m pip install --upgrade aqtinstall
-# Linux desktop Qt 6.12 is still at qt6_6120/qt6_6120, which aqtinstall 3.3.0 understands.
-# --archives qtbase is enough for the Widgets smoke binary.
-# icu-linux-*.7z is a separate archive in the same package. QtCore links ICU 73.
-python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 --outputdir "$QT_ROOT" --archives qtbase icu
-QT_PREFIX=$(find "$QT_ROOT/$QT_VERSION" -maxdepth 2 -type d -name gcc_64 | head -n 1)
+QT_PREFIX="$QT_ROOT/$QT_VERSION/gcc_64"
+# A restored actions/cache tree already has this prefix. Skip the Qt download.
+if [ ! -e "$QT_PREFIX/lib/libQt6Core.so" ] && [ ! -e "$QT_PREFIX/lib/libQt6Core.so.6" ]; then
+  python -m pip install --upgrade aqtinstall
+  # Linux desktop Qt 6.12 is still at qt6_6120/qt6_6120, which aqtinstall 3.3.0 understands.
+  # --archives qtbase is enough for the Widgets smoke binary.
+  # icu-linux-*.7z is a separate archive in the same package. QtCore links ICU 73.
+  python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 --outputdir "$QT_ROOT" --archives qtbase icu
+fi
+if [ ! -d "$QT_PREFIX" ]; then
+  QT_PREFIX=$(find "$QT_ROOT/$QT_VERSION" -maxdepth 2 -type d -name gcc_64 | head -n 1)
+fi
 if [ -z "$QT_PREFIX" ]; then
     echo "Qt prefix not found under $QT_ROOT" >&2
     exit 1
 fi
 
-cmake -S "$ROOT/cpp" -B "$ROOT/cpp/build-ci" -G Ninja -DCMAKE_BUILD_TYPE=Release \
+set -- -S "$ROOT/cpp" -B "$ROOT/cpp/build-ci" -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_PREFIX_PATH="$QT_PREFIX"
+# ccache does not apply to the MSVC harness. This smoke job is gcc/g++.
+if command -v ccache >/dev/null 2>&1; then
+  set -- "$@" -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+fi
+cmake "$@"
 cmake --build "$ROOT/cpp/build-ci"
 
 python - <<'PY'

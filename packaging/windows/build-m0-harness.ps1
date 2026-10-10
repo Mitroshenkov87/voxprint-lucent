@@ -97,11 +97,16 @@ New-Item -ItemType Directory -Force -Path $Work, (Split-Path $Stage) | Out-Null
 if (Test-Path $Stage) { Remove-Item -Recurse -Force $Stage }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 
-Write-Host 'Installing Qt 6.12.0 (aqtinstall 3.3.0 misses the Windows feed folder)'
-python -m pip install --upgrade py7zr
 $QtPrefix = Join-Path $QtRoot "$QtVersion\msvc2022_64"
-Invoke-Native { python (Join-Path $Repo 'packaging\windows\fetch_qt.py') $QtPrefix }
-if (-not (Test-Path (Join-Path $QtPrefix 'bin\windeployqt.exe'))) {
+$Windeploy = Join-Path $QtPrefix 'bin\windeployqt.exe'
+if (Test-Path -LiteralPath $Windeploy) {
+    Write-Host "Qt 6.12.0 already present at $QtPrefix"
+} else {
+    Write-Host 'Installing Qt 6.12.0 (aqtinstall 3.3.0 misses the Windows feed folder)'
+    python -m pip install --upgrade py7zr
+    Invoke-Native { python (Join-Path $Repo 'packaging\windows\fetch_qt.py') $QtPrefix }
+}
+if (-not (Test-Path -LiteralPath $Windeploy)) {
     throw "Qt was not installed at $QtPrefix"
 }
 
