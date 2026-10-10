@@ -3,6 +3,7 @@
 
 #include "natural.h"
 #include "placement.h"
+#include "welcome_policy.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -44,6 +45,16 @@ int main() {
     expect(near(zoomed.scale, 2.0), "wheel doubles the scale");
     expect(near(zoomed.originX + 100.0 / zoomed.scale, 100.0), "the image point under the cursor stays put");
     expect(near(zoomed.originY + 100.0 / zoomed.scale, 100.0), "the image point under the cursor stays put");
+
+    const lucent::WelcomeDecision first = lucent::decideWelcome(true, 0);
+    expect(first.show && first.storedCount == 1, "the first empty launch shows the welcome image");
+    const lucent::WelcomeDecision third = lucent::decideWelcome(true, 2);
+    expect(third.show && third.storedCount == 3, "the third empty launch still shows it");
+    const lucent::WelcomeDecision fourth = lucent::decideWelcome(true, 3);
+    expect(!fourth.show && fourth.storedCount == 3, "the fourth empty launch stops");
+    const lucent::WelcomeDecision off = lucent::decideWelcome(false, 0);
+    expect(!off.show, "the setting can turn the welcome image off");
+    expect(lucent::welcomeCountAfterReenable() == 0, "turning it back on resets the counter");
 
     const lucent::Placement panned = lucent::panBy(lucent::Placement{2.0, 10.0, 4.0}, 20.0, -8.0);
     expect(near(panned.originX, 0.0), "pan moves the origin by view pixels over scale");

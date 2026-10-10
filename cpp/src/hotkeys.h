@@ -28,6 +28,21 @@ enum class Action {
     Hotkeys,
     Language,
     Quit,
+    Open,
+    RotateLeft,
+    RotateRight,
+    FlipHorizontal,
+    FlipVertical,
+    Crop,
+    SaveCopy,
+    SaveAs,
+    Trash,
+    Enlarge,
+    Settings,
+    CopyImage,
+    CopyPath,
+    Reveal,
+    Gallery,
 };
 
 void loadHotkeys();

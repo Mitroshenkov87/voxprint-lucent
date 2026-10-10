@@ -1,4 +1,4 @@
-Voxprint AI Lucent 0.1.0-rc1
+Voxprint AI Lucent 0.1.0-rc2
 Copyright 2026 Aleksandr Mitroshenkov
 
 Per-user install under %LOCALAPPDATA%\Voxprint\Lucent. No administrator.

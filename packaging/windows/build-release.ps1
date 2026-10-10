@@ -10,7 +10,7 @@ if (-not (Test-Path -LiteralPath $Exe)) {
 }
 
 $Tag = $env:LUCENT_RELEASE_TAG
-if (-not $Tag) { $Tag = 'v0.1.0-rc1' }
+if (-not $Tag) { $Tag = 'v0.1.0-rc2' }
 $VersionName = $Tag -replace '^v', ''
 
 $Out = Join-Path $Root 'dist'
@@ -46,7 +46,7 @@ $Msi = Join-Path $Out "VoxprintAILucent-$VersionName-win64.msi"
 $PayloadArg = ((Resolve-Path $Payload).Path) -replace '\\', '/'
 Push-Location $PSScriptRoot
 try {
-    & wix build -acceptEula -d "Payload=$PayloadArg" .\Package.release.wxs -o $Msi
+    & wix build -acceptEula wix7 -d "Payload=$PayloadArg" .\Package.release.wxs -o $Msi
 } finally {
     Pop-Location
 }

@@ -16,16 +16,16 @@ Lucent is a clean-room project. No ImageGlass code, assets, themes, icons, or co
 
 ## Install
 
-Release files are on this repository's GitHub releases. `v0.1.0-rc1` is a pre-release. Check `SHA256SUMS` against the download.
+Release files are on this repository's GitHub releases. `v0.1.0-rc2` is a pre-release. Check `SHA256SUMS` against the download.
 
-**Windows.** Run `VoxprintAILucent-0.1.0-rc1-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
+**Windows.** Run `VoxprintAILucent-0.1.0-rc2-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
 
-The zip `lucent-0.1.0-rc1-windows.zip` is the measurement bundle (the viewer plus `Run-M0.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
+The zip `lucent-0.1.0-rc2-windows.zip` is the measurement bundle (the viewer plus `Run-M0.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
 
 **Linux.**
 
 ```bash
-sudo apt install ./voxprint-lucent_0.1.0~rc1_amd64.deb
+sudo apt install ./voxprint-lucent_0.1.0~rc2_amd64.deb
 ```
 
 ## First run
@@ -36,7 +36,7 @@ Open an image from the Start menu shortcut, from a file association, or from a t
 voxprint-lucent photo.jpg
 ```
 
-The picture is drawn by the C++ program. Left and Right move through the same folder. The tools window stays closed until you ask for it.
+The picture is drawn by the C++ program. A slim toolbar hides itself until the pointer is near the top: open, previous and next, zoom, rotate and flip, crop, save a copy or save as (AVIF, JPEG XL, WebP), trash, slideshow, fullscreen, thumbnails, Enlarge, and settings. Right-click the picture for the same actions plus copy and reveal. With no file, the welcome picture opens on the first three such launches. Left and Right move through the same folder. The tools window stays closed until you ask for it.
 
 Press `I`, or run:
 
@@ -55,7 +55,9 @@ All of these can be remapped with Ctrl+K.
 - Left and Right move to the previous and next image
 - `S` slideshow, `F11` fullscreen, Ctrl+Shift+F frameless, Ctrl+Shift+W fit the window to the image
 - `.` and `,` step frames of a multi-page or animated file
-- `I` opens the tools window. Ctrl+L cycles English, Russian, and German
+- `I` opens the tools window. Ctrl+E hands the file to Enlarge. Ctrl+O opens a file. Delete moves it to the trash
+- Ctrl+S saves an AVIF copy. Ctrl+Shift+S saves as AVIF, JPEG XL, or WebP. `G` toggles thumbnails. Ctrl+, opens settings
+- Ctrl+L cycles English, Russian, and German
 - `Q` or Esc quits. Esc leaves fullscreen, then stops a slideshow, before it quits
 
 ## Formats

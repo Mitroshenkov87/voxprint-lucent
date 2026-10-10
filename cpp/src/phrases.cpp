@@ -63,7 +63,50 @@ Row rowFor(Text id) {
         return {"Window fit", "Окно по картинке", "Fenster anpassen"};
     case Text::Quit:
         return {"Quit", "Выход", "Beenden"};
+    case Text::Open:
+        return {"Open", "Открыть", "Öffnen"};
+    case Text::RotateLeft:
+        return {"Rotate left", "Повернуть влево", "Links drehen"};
+    case Text::RotateRight:
+        return {"Rotate right", "Повернуть вправо", "Rechts drehen"};
+    case Text::FlipHorizontal:
+        return {"Flip horizontal", "Отразить по горизонтали", "Horizontal spiegeln"};
+    case Text::FlipVertical:
+        return {"Flip vertical", "Отразить по вертикали", "Vertikal spiegeln"};
+    case Text::Crop:
+        return {"Crop", "Обрезать", "Zuschneiden"};
+    case Text::SaveCopy:
+        return {"Save a copy", "Сохранить копию", "Kopie speichern"};
+    case Text::SaveAs:
+        return {"Save as", "Сохранить как", "Speichern unter"};
+    case Text::MoveToTrash:
+        return {"Move to trash", "В корзину", "In den Papierkorb"};
+    case Text::Enlarge:
+        return {"Enlarge", "Enlarge", "Enlarge"};
+    case Text::Settings:
+        return {"Settings", "Настройки", "Einstellungen"};
+    case Text::About:
+        return {"About", "О программе", "Info"};
+    case Text::CopyImage:
+        return {"Copy image", "Копировать изображение", "Bild kopieren"};
+    case Text::CopyPath:
+        return {"Copy path", "Копировать путь", "Pfad kopieren"};
+    case Text::RevealInFolder:
+        return {"Reveal in folder", "Показать в папке", "Im Ordner zeigen"};
+    case Text::Gallery:
+        return {"Thumbnails", "Миниатюры", "Miniaturen"};
+    case Text::WelcomeImage:
+        return {"Welcome image", "Приветственное изображение", "Willkommensbild"};
+    case Text::AppMenu:
+        return {"Menu", "Меню", "Menü"};
+    case Text::SaveFailed:
+        return {"Could not save that file.", "Не удалось сохранить файл.", "Die Datei konnte nicht gespeichert werden."};
+    case Text::TrashFailed:
+        return {"Could not move that file to the trash.", "Не удалось переместить файл в корзину.",
+                "Die Datei konnte nicht in den Papierkorb verschoben werden."};
     }
+    const Text missed = id;
+    Q_UNUSED(missed);
     return {"", "", ""};
 }
 

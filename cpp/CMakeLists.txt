@@ -22,7 +22,13 @@ qt_add_executable(voxprint-lucent
     src/hotkeys.cpp
     src/rhi_view.cpp
     src/browser.cpp
+    src/icons.cpp
+    src/gallery.cpp
+    src/splash.cpp
+    src/chrome.cpp
 )
+
+target_compile_definitions(voxprint-lucent PRIVATE LUCENT_VERSION="0.1.0-rc2")
 
 target_link_libraries(voxprint-lucent PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
 target_include_directories(voxprint-lucent PRIVATE src)
@@ -60,6 +66,16 @@ endif()
 
 if(WIN32)
     target_link_libraries(voxprint-lucent PRIVATE shlwapi)
+endif()
+
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(LIBAVIF libavif)
+endif()
+if(LIBAVIF_FOUND)
+    target_include_directories(voxprint-lucent PRIVATE ${LIBAVIF_INCLUDE_DIRS})
+    target_link_libraries(voxprint-lucent PRIVATE ${LIBAVIF_LINK_LIBRARIES})
+    target_compile_definitions(voxprint-lucent PRIVATE LUCENT_HAS_LIBAVIF=1)
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")

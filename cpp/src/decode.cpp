@@ -3,6 +3,8 @@
 
 #include "decode.h"
 
+#include "splash.h"
+
 #include <QColorSpace>
 #include <QImageIOHandler>
 #include <QImageReader>
@@ -47,8 +49,11 @@ void applyPreviewScale(QImageReader &reader, const QSize &box) {
     }
 }
 
-QImage finishRead(QImageReader &reader, const QSize &box) {
+QImage finishRead(QImageReader &reader, const QString &path, const QSize &box) {
     QImage image = reader.read();
+    if (image.isNull()) {
+        image = decodeAvifFile(path);
+    }
     if (image.isNull()) {
         std::fprintf(stderr,
                      "decode failed: format=%s error=%s\n",
@@ -69,7 +74,7 @@ QImage decodeForView(const QString &path, const QSize &box) {
     QImageReader reader(path);
     reader.setAutoTransform(true);
     applyPreviewScale(reader, box);
-    return finishRead(reader, box);
+    return finishRead(reader, path, box);
 }
 
 QImage decodePreview(const QString &path, const QSize &box) {
@@ -101,7 +106,7 @@ QImage decodeFrame(const QString &path, int frame, const QSize &box) {
         return {};
     }
     applyPreviewScale(reader, box);
-    return toSdr(finishRead(reader, box));
+    return toSdr(finishRead(reader, path, box));
 }
 
 }  // namespace lucent
