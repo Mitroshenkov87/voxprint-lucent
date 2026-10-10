@@ -258,11 +258,23 @@ Copy-Item (Join-Path $QtPrefix 'plugins\platforms\qoffscreen.dll') (Join-Path $p
 $env:QT_QPA_PLATFORM = 'offscreen'
 foreach ($name in @('smoke.jpg', 'smoke.webp', 'smoke.avif', 'smoke.jxl')) {
     Invoke-CppSmoke (Join-Path $ImageDir $name)
+    Write-Host "smoke $name ok"
 }
 $env:LUCENT_SHARE = Join-Path $App 'share'
 Invoke-Native { & (Join-Path $PyDir 'python.exe') -m voxprint_lucent.tools_host --ping }
 
-$vcpkgRev = (git -C $env:VCPKG_ROOT rev-parse HEAD).Trim()
+# windows-latest ships vcpkg without a .git directory, so rev-parse fails.
+$vcpkgRev = 'unknown'
+$nativePref = $PSNativeCommandUseErrorActionPreference
+$PSNativeCommandUseErrorActionPreference = $false
+try {
+    $versionText = & (Join-Path $env:VCPKG_ROOT 'vcpkg.exe') version 2>&1 | Out-String
+    if ($LASTEXITCODE -eq 0 -and $versionText) {
+        $vcpkgRev = (($versionText -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -First 1).Trim()
+    }
+} finally {
+    $PSNativeCommandUseErrorActionPreference = $nativePref
+}
 @(
     "qt=$QtVersion",
     "kimageformats=v6.31.0",
