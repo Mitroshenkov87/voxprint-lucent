@@ -37,7 +37,7 @@ The tools window lists dimensions, format, bit depth, colour profile, and an EXI
 
 ## Enlarge
 
-`voxprint-lucent-tools --enlarge --path photo.jpg` asks Voxprint AI Enlarge to scale that file and then shows a before/after split. The viewer does not start this for a normal open, and `--benchmark` never does. The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). The Enlarge server is not shipped here; tests run the same client against `python -m voxprint_lucent.enlarge_mock`.
+`voxprint-lucent-tools --enlarge --path photo.jpg` asks Voxprint AI Enlarge to scale that file and then shows a before/after split. The viewer does not start this for a normal open, and `--benchmark` never does. The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). Discovery is [docs/APP-DISCOVERY.md](docs/APP-DISCOVERY.md). The Enlarge server is not shipped here; tests run the same client against `python -m voxprint_lucent.enlarge_mock`.
 
 ## Network
 

@@ -28,39 +28,63 @@ from voxprint_lucent.enlarge_protocol import (
     enlarged_destination,
     loads,
     output_format_name,
+    place_without_overwrite,
     socket_name,
 )
-from voxprint_lucent.formats import (
-    MODERN_OUTPUT_FORMATS,
-    CodecMissing,
-    OutputFormat,
-    PngRejected,
-    unique_path,
-    write_raster,
+from voxprint_lucent.formats import CodecMissing, OutputFormat, PngRejected, write_raster
+
+MOCK_VERSION = "0.0.0"
+
+# Illustrative registry from the agreed spec. photo/max is not installed.
+_MODELS: tuple[dict[str, Any], ...] = (
+    {
+        "id": "nomos2-realplksr",
+        "preset": "photo",
+        "quality": "fast",
+        "scales": [2, 4],
+        "installed": True,
+    },
+    {
+        "id": "nomos2-dat2",
+        "preset": "photo",
+        "quality": "max",
+        "scales": [2, 4],
+        "installed": False,
+    },
+    {
+        "id": "realesrgan-anime6b",
+        "preset": "art",
+        "scales": [4],
+        "installed": True,
+    },
 )
 
-_GPU_REASONS = {
-    "none": "No usable GPU is available.",
-    "ok": "",
-    "warn": "Below RTX 40. Enlarge can run, with a warning.",
-}
+
+def gpu_block() -> dict[str, Any]:
+    """``ok``, ``warn``, or ``none``. ``none`` uses ``no_nvidia`` or ``driver_too_old``."""
+    status = os.environ.get("LUCENT_ENLARGE_GPU", "none").strip() or "none"
+    if status == "ok":
+        return {"name": "mock", "cc": "8.9", "status": "ok", "reason": None}
+    if status == "warn":
+        return {"name": "mock", "cc": "8.6", "status": "warn", "reason": "below_rtx_40"}
+    if status == "driver_too_old":
+        return {"name": "mock", "cc": "8.9", "status": "none", "reason": "driver_too_old"}
+    return {"name": None, "cc": None, "status": "none", "reason": "no_nvidia"}
 
 
 def capabilities() -> dict[str, Any]:
-    """One capabilities object. The default GPU status is ``none`` with a reason."""
-    status = os.environ.get("LUCENT_ENLARGE_GPU", "none").strip() or "none"
-    if status not in _GPU_REASONS:
-        status = "none"
+    """One capabilities object. It exits 0 with or without a GPU."""
     return {
         "protocol": PROTOCOL,
-        "name": "voxprint-enlarge",
-        "version": "0.0.0-mock",
-        "protocol_min": PROTOCOL,
-        "protocol_max": PROTOCOL,
-        "gpu": {"status": status, "reason": _GPU_REASONS[status]},
-        "formats": ["avif", "jxl", "webp"],
-        "scales": [2, 4],
-        "presets": ["photo"],
+        "app": "enlarge",
+        "version": MOCK_VERSION,
+        "gpu": gpu_block(),
+        "models": [dict(model) for model in _MODELS],
+        "presets": ["photo", "art"],
+        "max_scale": 4,
+        "input_formats": ["avif", "jxl", "webp", "png", "jpeg", "heic", "tiff"],
+        "output_formats": ["avif", "jxl", "webp", "jpeg", "heic"],
+        "default_output_format": "avif",
     }
 
 
@@ -72,32 +96,41 @@ def build_job(request: dict[str, Any], *, hold_cancel: bool) -> tuple[list[dict[
     def message(body: dict[str, Any]) -> dict[str, Any]:
         return {"id": ident, **body}
 
+    gpu = gpu_block()
+    if gpu["status"] == "none":
+        reason = gpu["reason"] or "no_nvidia"
+        return [_error(message, "gpu_unsupported", f"No usable GPU ({reason}).", False)], False
     raw_input = request.get("input")
     if not isinstance(raw_input, str) or not raw_input:
         return [_error(message, "bad_input", "enlarge.request needs an input path.", False)], False
     source = Path(raw_input)
+    if not source.is_absolute():
+        return [_error(message, "bad_input", "input must be an absolute path.", False)], False
     if not source.is_file():
         return [_error(message, "bad_input", f"No such image: {source.name}", False)], False
     if "missing-model" in source.name:
         return [
             message({"type": "accepted", "queue_pos": 0}),
-            _error(message, "model_missing", "The enlarge model is not installed.", False),
+            _error(message, "model_missing", "The enlarge model is not installed.", True),
         ], False
     if "cancel-me" in source.name:
         waiting = [
             message({"type": "accepted", "queue_pos": 0}),
-            message({"type": "progress", "pct": 10, "stage": "load", "eta_s": 1}),
+            message({"type": "progress", "pct": 10, "stage": "loading", "eta_s": 1}),
         ]
         if hold_cancel:
             return waiting, True
         return [*waiting, _error(message, "cancelled", "Cancelled.", False)], False
+    chosen = _select_model(request)
+    if isinstance(chosen, str):
+        code, text, retryable = _model_error(chosen)
+        return [_error(message, code, text, retryable)], False
     scale = request.get("scale", 2)
-    if not isinstance(scale, int) or isinstance(scale, bool) or scale not in {2, 4}:
-        return [_error(message, "bad_input", "scale must be 2 or 4.", False)], False
-    preset = request.get("preset", "photo")
-    if not isinstance(preset, str) or not preset.strip():
-        return [_error(message, "bad_input", "preset must be a name.", False)], False
-    format_name = request.get("format", "avif")
+    if not isinstance(scale, int) or isinstance(scale, bool) or scale not in chosen["scales"]:
+        return [
+            _error(message, "bad_input", "scale is not available for this model.", False)
+        ], False
+    format_name = request.get("format") or "avif"
     if not isinstance(format_name, str):
         return [_error(message, "unsupported_format", "format must be a name.", False)], False
     try:
@@ -106,10 +139,6 @@ def build_job(request: dict[str, Any], *, hold_cancel: bool) -> tuple[list[dict[
         return [_error(message, "unsupported_format", str(exc), False)], False
     except ValueError as exc:
         return [_error(message, "unsupported_format", str(exc), False)], False
-    if fmt not in MODERN_OUTPUT_FORMATS:
-        return [
-            _error(message, "unsupported_format", "Enlarge writes AVIF, JPEG XL, or WebP.", False)
-        ], False
     try:
         started = time.perf_counter()
         array = _load_rgb(source)
@@ -119,14 +148,16 @@ def build_job(request: dict[str, Any], *, hold_cancel: bool) -> tuple[list[dict[
         write_raster(scaled, dest, fmt, lossless=fmt is not OutputFormat.AVIF)
     except PngRejected as exc:
         return [_error(message, "unsupported_format", str(exc), False)], False
-    except (OSError, CodecMissing, ValueError) as exc:
-        return [_error(message, "io_error", str(exc), True)], False
+    except CodecMissing as exc:
+        return [_error(message, "unsupported_format", str(exc), False)], False
+    except (OSError, ValueError) as exc:
+        return [_error(message, "io_error", str(exc), False)], False
     height, width = int(scaled.shape[0]), int(scaled.shape[1])
     elapsed = max(0, int((time.perf_counter() - started) * 1000))
     return [
         message({"type": "accepted", "queue_pos": 0}),
-        message({"type": "progress", "pct": 40, "stage": "load"}),
-        message({"type": "progress", "pct": 90, "stage": "upscale", "eta_s": 0}),
+        message({"type": "progress", "pct": 40, "stage": "loading"}),
+        message({"type": "progress", "pct": 90, "stage": "tiles", "eta_s": 0}),
         message(
             {
                 "type": "done",
@@ -141,9 +172,9 @@ def build_job(request: dict[str, Any], *, hold_cancel: bool) -> tuple[list[dict[
 
 
 def serve() -> int:
-    """Listen on the protocol socket until the process is stopped."""
-    if os.environ.get("LUCENT_ENLARGE_MOCK_SERVE_FAIL") == "1":
-        print("mock serve disabled", file=sys.stderr)
+    """Listen on the protocol socket. ``--serve`` refuses to run without a usable GPU."""
+    if gpu_block()["status"] == "none" or os.environ.get("LUCENT_ENLARGE_MOCK_SERVE_FAIL") == "1":
+        print("voxprint-enlarge --serve needs a usable GPU.", file=sys.stderr)
         return 1
     name = socket_name()
     app = QCoreApplication.instance() or QCoreApplication([])
@@ -167,6 +198,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--input", default="")
     parser.add_argument("--scale", type=int, default=2)
     parser.add_argument("--preset", default="photo")
+    parser.add_argument("--quality", default="fast")
+    parser.add_argument("--model", default="")
     parser.add_argument("--format", default="avif")
     parser.add_argument("--output", default="")
     parser.add_argument("--output-dir", default="")
@@ -191,6 +224,8 @@ def main(argv: list[str] | None = None) -> int:
         "input": args.input,
         "scale": args.scale,
         "preset": args.preset,
+        "quality": args.quality,
+        "model": args.model or None,
         "format": args.format,
         "output": args.output,
         "output_dir": args.output_dir,
@@ -209,6 +244,7 @@ class _Server(QObject):
         super().__init__()
         self._server = QLocalServer(self)
         QLocalServer.removeServer(name)
+        self._server.setSocketOptions(QLocalServer.SocketOption.UserAccessOption)
         if not self._server.listen(name):
             raise RuntimeError(self._server.errorString())
         _restrict(self._server.fullServerName())
@@ -264,10 +300,9 @@ class _Session(QObject):
             self._send(
                 {
                     "type": "hello",
-                    "server": "voxprint-enlarge-mock",
-                    "version": "0.0.0-mock",
-                    "protocol_min": PROTOCOL,
-                    "protocol_max": PROTOCOL,
+                    "server": "enlarge",
+                    "version": MOCK_VERSION,
+                    "protocols": [PROTOCOL],
                 }
             )
             return
@@ -321,6 +356,42 @@ class _Session(QObject):
         self._sock.waitForBytesWritten(1000)
 
 
+def _select_model(request: dict[str, Any]) -> dict[str, Any] | str:
+    model_id = request.get("model")
+    if isinstance(model_id, str) and model_id.strip():
+        found = next((model for model in _MODELS if model["id"] == model_id), None)
+        if found is None:
+            return "unknown_model"
+        if not found["installed"]:
+            return "model_missing"
+        return found
+    preset = request.get("preset") or "photo"
+    quality = request.get("quality") or "fast"
+    if not isinstance(preset, str) or preset not in {"photo", "art"}:
+        return "bad_preset"
+    if not isinstance(quality, str) or quality not in {"fast", "max"}:
+        return "bad_quality"
+    if preset == "art":
+        found = next(model for model in _MODELS if model["id"] == "realesrgan-anime6b")
+    elif quality == "max":
+        found = next(model for model in _MODELS if model["id"] == "nomos2-dat2")
+    else:
+        found = next(model for model in _MODELS if model["id"] == "nomos2-realplksr")
+    if not found["installed"]:
+        return "model_missing"
+    return found
+
+
+def _model_error(token: str) -> tuple[str, str, bool]:
+    if token == "model_missing":
+        return "model_missing", "The enlarge model is not installed.", True
+    if token == "unknown_model":
+        return "bad_input", "Unknown model id.", False
+    if token == "bad_quality":
+        return "bad_input", "quality must be fast or max.", False
+    return "bad_input", "preset must be photo or art.", False
+
+
 def _error(
     message: Any,
     code: str,
@@ -338,11 +409,7 @@ def _destination(request: dict[str, Any], source: Path, scale: int, fmt: OutputF
         dest = Path(raw_output)
         if dest.suffix.lower() == ".png":
             raise PngRejected("PNG is not an output format")
-        if dest.resolve() == source.resolve():
-            raise OSError("Refusing to overwrite the source.")
-        if dest.exists():
-            dest = unique_path(dest)
-        return dest
+        return place_without_overwrite(dest, source)
     raw_dir = request.get("output_dir")
     directory = Path(raw_dir) if isinstance(raw_dir, str) and raw_dir else None
     return enlarged_destination(source, scale, fmt, directory)

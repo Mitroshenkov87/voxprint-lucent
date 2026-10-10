@@ -11,7 +11,6 @@ import os
 import shlex
 import shutil
 import subprocess
-import sys
 import time
 import uuid
 from dataclasses import dataclass
@@ -21,7 +20,9 @@ from typing import Any
 from PySide6.QtNetwork import QLocalSocket
 
 from voxprint_lucent import __version__
+from voxprint_lucent.discovery import AppInstall, find_app, probe_capabilities
 from voxprint_lucent.enlarge_protocol import (
+    PROTOCOL,
     Capabilities,
     ProtocolError,
     action_tooltip,
@@ -61,35 +62,31 @@ class EnlargeClient:
         command: list[str] | None = None,
         socket: str | None = None,
     ) -> None:
-        self.command = discover_command() if command is None else command
-        self.socket = socket_name() if socket is None else socket
+        if command is None:
+            self.install = discover_install()
+        else:
+            self.install = AppInstall(list(command), "", "voxprint-enlarge")
+        self.command = list(self.install.command) if self.install is not None else []
+        self._socket_name = socket
         self._spawned: subprocess.Popen[bytes] | None = None
         self._cli: subprocess.Popen[str] | None = None
         self._sock: QLocalSocket | None = None
         self._job_id: str | None = None
         self._buf = bytearray()
 
+    @property
+    def socket(self) -> str:
+        """Resolved when a job connects, so discovery can run without a runtime dir."""
+        if self._socket_name is not None:
+            return self._socket_name
+        return socket_name()
+
     def probe(self) -> Capabilities | None:
-        """``--capabilities --json``. None when Enlarge is absent or the probe fails."""
-        if not self.command:
+        """Cached ``--capabilities --json``. None when Enlarge is absent or the probe fails."""
+        if self.install is None:
             return None
-        try:
-            proc = subprocess.run(
-                [*self.command, "--capabilities", "--json"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                check=False,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            return None
-        if proc.returncode != 0 or not proc.stdout.strip():
-            return None
-        try:
-            data = json.loads(proc.stdout)
-        except json.JSONDecodeError:
-            return None
-        if not isinstance(data, dict):
+        data = probe_capabilities(self.install, "enlarge")
+        if data is None:
             return None
         return parse_capabilities(data)
 
@@ -105,6 +102,8 @@ class EnlargeClient:
         *,
         scale: int = 2,
         preset: str = "photo",
+        quality: str = "fast",
+        model: str | None = None,
         format_name: str = "avif",
         output: Path | None = None,
         output_dir: Path | None = None,
@@ -121,6 +120,8 @@ class EnlargeClient:
                 source,
                 scale=scale,
                 preset=preset,
+                quality=quality,
+                model=model,
                 format_name=format_name,
                 output=output,
                 on_event=on_event,
@@ -130,6 +131,8 @@ class EnlargeClient:
                 source,
                 scale=scale,
                 preset=preset,
+                quality=quality,
+                model=model,
                 format_name=format_name,
                 output=output,
                 output_dir=output_dir,
@@ -143,6 +146,8 @@ class EnlargeClient:
                 source,
                 scale=scale,
                 preset=preset,
+                quality=quality,
+                model=model,
                 format_name=format_name,
                 output=output,
                 on_event=on_event,
@@ -178,6 +183,8 @@ class EnlargeClient:
         *,
         scale: int,
         preset: str,
+        quality: str,
+        model: str | None,
         format_name: str,
         output: Path | None,
         output_dir: Path | None,
@@ -190,21 +197,23 @@ class EnlargeClient:
         self._job_id = uuid.uuid4().hex
         self._write(
             sock,
-            {"type": "hello", "client": "voxprint-lucent", "version": __version__},
+            {"type": "hello", "client": "lucent", "version": __version__},
         )
         hello = self._read(sock)
         self._emit(on_event, hello)
-        if hello.get("type") != "hello":
-            raise EnlargeError("internal", "Enlarge did not answer hello.", True)
+        if not hello_supported(hello):
+            raise EnlargeError("internal", "Enlarge did not answer hello.", False)
         request = {
             "type": "enlarge.request",
             "id": self._job_id,
-            "input": str(source),
+            "input": str(source.resolve()),
             "scale": scale,
             "preset": preset,
+            "quality": quality,
+            "model": model,
             "format": format_name,
-            "output": "" if output is None else str(output),
-            "output_dir": "" if output_dir is None else str(output_dir),
+            "output": None if output is None else str(output),
+            "output_dir": None if output_dir is None else str(output_dir),
             "open_ui": open_ui,
         }
         self._write(sock, request)
@@ -217,7 +226,7 @@ class EnlargeClient:
             if kind == "error":
                 raise _error_from(message)
             if kind not in {"accepted", "progress"}:
-                raise EnlargeError("internal", f"Unexpected Enlarge message {kind}.", True)
+                raise EnlargeError("internal", f"Unexpected Enlarge message {kind}.", False)
 
     def _enlarge_cli(
         self,
@@ -225,6 +234,8 @@ class EnlargeClient:
         *,
         scale: int,
         preset: str,
+        quality: str,
+        model: str | None,
         format_name: str,
         output: Path | None,
         on_event: Any,
@@ -236,17 +247,21 @@ class EnlargeClient:
         command = [
             *self.command,
             "--input",
-            str(source),
+            str(source.resolve()),
             "--scale",
             str(scale),
             "--preset",
             preset,
+            "--quality",
+            quality,
             "--format",
             chosen.value,
             "--output",
             str(dest),
             "--json-progress",
         ]
+        if model:
+            command.extend(["--model", model])
         proc = subprocess.Popen(command, stdout=subprocess.PIPE, text=True)
         self._cli = proc
         assert proc.stdout is not None
@@ -258,7 +273,7 @@ class EnlargeClient:
             try:
                 message = loads(line)
             except (ProtocolError, json.JSONDecodeError) as exc:
-                failure = EnlargeError("internal", str(exc), True)
+                failure = EnlargeError("internal", str(exc), False)
                 break
             self._emit(on_event, message)
             kind = message.get("type")
@@ -271,7 +286,7 @@ class EnlargeClient:
         if failure is not None:
             raise failure
         if result is None or code != 0:
-            raise EnlargeError("internal", f"Enlarge CLI exited {code}.", True)
+            raise EnlargeError("internal", f"Enlarge CLI exited {code}.", False)
         return result
 
     def _connect(self) -> QLocalSocket:
@@ -284,7 +299,7 @@ class EnlargeClient:
             try:
                 self._spawned = subprocess.Popen([*self.command, "--serve", "--hidden"])
             except OSError as exc:
-                raise EnlargeError("io_error", str(exc), True) from exc
+                raise EnlargeError("io_error", str(exc), False) from exc
         deadline = time.monotonic() + _SOCKET_WAIT_S
         while time.monotonic() < deadline:
             live = _try_connect(self.socket, 200)
@@ -292,7 +307,7 @@ class EnlargeClient:
                 return live
             if self._spawned.poll() is not None:
                 break
-        raise EnlargeError("io_error", "Enlarge did not open a socket within 3 s.", True)
+        raise EnlargeError("io_error", "Enlarge did not open a socket within 3 s.", False)
 
     def _read(self, sock: QLocalSocket) -> dict[str, Any]:
         deadline = time.monotonic() + _MESSAGE_WAIT_S
@@ -305,20 +320,20 @@ class EnlargeClient:
                 try:
                     return loads(line)
                 except (ProtocolError, json.JSONDecodeError) as exc:
-                    raise EnlargeError("internal", str(exc), True) from exc
+                    raise EnlargeError("internal", str(exc), False) from exc
             remaining = int((deadline - time.monotonic()) * 1000)
             if remaining <= 0:
                 break
             if not sock.waitForReadyRead(min(remaining, 200)):
                 continue
             self._buf.extend(bytes(sock.readAll()))
-        raise EnlargeError("io_error", "Timed out waiting for Enlarge.", True)
+        raise EnlargeError("io_error", "Timed out waiting for Enlarge.", False)
 
     def _write(self, sock: QLocalSocket, message: dict[str, Any]) -> None:
         payload = dumps(message)
         written = sock.write(payload)
         if written < 0 or not sock.waitForBytesWritten(1000):
-            raise EnlargeError("io_error", "Could not write to Enlarge.", True)
+            raise EnlargeError("io_error", "Could not write to Enlarge.", False)
 
     @staticmethod
     def _emit(on_event: Any, message: dict[str, Any]) -> None:
@@ -335,62 +350,40 @@ class EnlargeClient:
             raise EnlargeError("unsupported_format", str(exc), False) from exc
 
 
-def discover_command() -> list[str] | None:
-    """Env override, then PATH, then the desktop file or the HKCU registration."""
+def discover_install() -> AppInstall | None:
+    """``LUCENT_ENLARGE_EXE`` is a test hook. Installed apps follow APP-DISCOVERY.md.
+
+    The executable must exist. Flatpak is not probed.
+    """
     raw = os.environ.get("LUCENT_ENLARGE_EXE", "").strip()
     if raw:
-        return shlex.split(raw)
-    found = shutil.which("voxprint-enlarge")
-    if found:
-        return [found]
-    if sys.platform == "win32":
-        return _command_from_registry()
-    return _command_from_desktop_dirs()
+        parts = shlex.split(raw)
+        if not parts:
+            return None
+        head = parts[0]
+        if not Path(head).is_file() and shutil.which(head) is None:
+            return None
+        version = os.environ.get("LUCENT_ENLARGE_VERSION", "").strip()
+        return AppInstall(parts, version, "voxprint-enlarge")
+    return find_app("Enlarge", "enlarge")
 
 
-def command_from_desktop(text: str) -> list[str] | None:
-    """Exec line from an ``ai.voxprint.Enlarge.desktop`` file at protocol 1."""
-    protocol = ""
-    exec_line = ""
-    for line in text.splitlines():
-        if line.startswith("X-Voxprint-Protocol="):
-            protocol = line.split("=", 1)[1].strip()
-        elif line.startswith("Exec="):
-            exec_line = line.split("=", 1)[1].strip()
-    if protocol != "1" or not exec_line:
+def discover_command() -> list[str] | None:
+    install = discover_install()
+    if install is None:
         return None
-    return [part for part in shlex.split(exec_line) if not part.startswith("%")]
+    return list(install.command)
 
 
-def _command_from_desktop_dirs() -> list[str] | None:
-    roots: list[Path] = []
-    data_home = os.environ.get("XDG_DATA_HOME", "").strip()
-    roots.append(Path(data_home) if data_home else Path.home() / ".local" / "share")
-    data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
-    roots.extend(Path(item) for item in data_dirs.split(":") if item)
-    for root in roots:
-        path = root / "applications" / "ai.voxprint.Enlarge.desktop"
-        if not path.is_file():
-            continue
-        command = command_from_desktop(path.read_text(encoding="utf-8"))
-        if command:
-            return command
-    return None
-
-
-def _command_from_registry() -> list[str] | None:
-    # winreg is Windows-only. A top-level import fails on Linux.
-    import winreg
-
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Voxprint\Enlarge") as key:
-            exe, _ = winreg.QueryValueEx(key, "Exe")
-            protocol, _ = winreg.QueryValueEx(key, "ProtocolVersion")
-    except OSError:
-        return None
-    if str(protocol) != "1" or not exe:
-        return None
-    return [str(exe)]
+def hello_supported(message: dict[str, Any]) -> bool:
+    """Server hello must name Enlarge and list protocol 1."""
+    protocols = message.get("protocols")
+    return (
+        message.get("type") == "hello"
+        and message.get("server") == "enlarge"
+        and isinstance(protocols, list)
+        and PROTOCOL in protocols
+    )
 
 
 def _try_connect(name: str, timeout_ms: int) -> QLocalSocket | None:
@@ -405,7 +398,7 @@ def _try_connect(name: str, timeout_ms: int) -> QLocalSocket | None:
 def _result_from(message: dict[str, Any]) -> EnlargeResult:
     output = message.get("output")
     if not isinstance(output, str) or not output:
-        raise EnlargeError("internal", "Enlarge done message has no output.", True)
+        raise EnlargeError("internal", "Enlarge done message has no output.", False)
     return EnlargeResult(
         Path(output),
         int(message.get("width", 0)),

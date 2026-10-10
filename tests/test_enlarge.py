@@ -14,7 +14,13 @@ import pytest
 from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtWidgets import QApplication, QPushButton
 
-from voxprint_lucent.enlarge_client import EnlargeClient, EnlargeError, command_from_desktop
+from voxprint_lucent.discovery import (
+    AppInstall,
+    command_from_desktop,
+    probe_capabilities,
+    store_cached,
+)
+from voxprint_lucent.enlarge_client import EnlargeClient, EnlargeError, hello_supported
 from voxprint_lucent.enlarge_compare import (
     CompareWindow,
     ViewState,
@@ -26,6 +32,7 @@ from voxprint_lucent.enlarge_compare import (
     zoom_at,
 )
 from voxprint_lucent.enlarge_mock import build_job
+from voxprint_lucent.enlarge_mock import main as enlarge_main
 from voxprint_lucent.enlarge_protocol import (
     action_tooltip,
     action_visible,
@@ -62,6 +69,7 @@ def _client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, gpu: str = "ok") ->
         f"{sys.executable} -m voxprint_lucent.enlarge_mock",
     )
     monkeypatch.setenv("LUCENT_ENLARGE_GPU", gpu)
+    monkeypatch.setenv("LUCENT_CACHE", str(tmp_path / "cache"))
     monkeypatch.delenv("LUCENT_ENLARGE_MOCK_SERVE_FAIL", raising=False)
     return EnlargeClient()
 
@@ -84,22 +92,30 @@ def test_destination_never_overwrites(tmp_path: Path) -> None:
     taken = tmp_path / "shot.enlarged-2x.avif"
     taken.write_bytes(b"old")
     dest = enlarged_destination(source, 2)
-    assert dest.suffix == ".avif"
+    assert dest.name == "shot.enlarged-2x-1.avif"
     assert dest != source
     assert dest != taken
     assert not dest.exists()
 
 
 def test_gpu_none_hides_and_warn_stays() -> None:
-    hidden = parse_capabilities(
-        {"gpu": {"status": "none", "reason": "No usable GPU is available."}}
-    )
+    hidden = parse_capabilities({"gpu": {"status": "none", "reason": "no_nvidia"}})
     assert action_visible(hidden) is False
-    assert "GPU" in action_tooltip(hidden)
-    warned = parse_capabilities({"gpu": {"status": "warn", "reason": "Below RTX 40"}})
+    assert action_tooltip(hidden) == "no_nvidia"
+    old = parse_capabilities({"gpu": {"status": "none", "reason": "driver_too_old"}})
+    assert action_visible(old) is False
+    assert action_tooltip(old) == "driver_too_old"
+    warned = parse_capabilities({"gpu": {"status": "warn", "reason": "below_rtx_40"}})
     assert action_visible(warned) is True
-    assert "RTX" in action_tooltip(warned)
+    assert action_tooltip(warned) == "below_rtx_40"
+    ready = parse_capabilities({"gpu": {"status": "ok", "reason": None}})
+    assert action_visible(ready) is True
+    assert action_tooltip(ready) == "Enlarge"
     assert action_visible(None) is False
+    assert hello_supported(
+        {"type": "hello", "server": "enlarge", "protocols": [1]}
+    )
+    assert hello_supported({"type": "hello", "server": "enlarge", "protocol_min": 1}) is False
 
 
 def test_desktop_exec_requires_protocol_1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -110,9 +126,26 @@ def test_desktop_exec_requires_protocol_1(tmp_path: Path, monkeypatch: pytest.Mo
     applications.mkdir()
     (applications / "ai.voxprint.Enlarge.desktop").write_text(text, encoding="utf-8")
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_DATA_DIRS", str(tmp_path / "no-share"))
     monkeypatch.delenv("LUCENT_ENLARGE_EXE", raising=False)
     monkeypatch.setenv("PATH", str(tmp_path))
-    assert EnlargeClient().command == ["/opt/enlarge/voxprint-enlarge"]
+    assert EnlargeClient().command == []
+    exe = tmp_path / "voxprint-enlarge"
+    exe.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    exe.chmod(stat.S_IRWXU)
+    desktop = (
+        "[Desktop Entry]\n"
+        f"Exec={exe} %f\n"
+        "X-Voxprint-Protocol=1\n"
+        "X-Voxprint-Ipc=voxprint-enlarge\n"
+        "X-Voxprint-Version=0.1.0\n"
+    )
+    (applications / "ai.voxprint.Enlarge.desktop").write_text(desktop, encoding="utf-8")
+    client = EnlargeClient()
+    assert client.command == [str(exe)]
+    assert client.install is not None
+    assert client.install.version == "0.1.0"
+    assert client.install.ipc_base == "voxprint-enlarge"
 
 
 def test_capabilities_json_reports_no_gpu(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -126,11 +159,18 @@ def test_capabilities_json_reports_no_gpu(monkeypatch: pytest.MonkeyPatch) -> No
     assert proc.returncode == 0, proc.stderr
     data = json.loads(proc.stdout)
     assert data["protocol"] == 1
+    assert data["app"] == "enlarge"
     assert data["gpu"]["status"] == "none"
-    assert data["gpu"]["reason"]
+    assert data["gpu"]["reason"] == "no_nvidia"
+    assert data["gpu"]["name"] is None
+    assert data["default_output_format"] == "avif"
+    assert "protocol_min" not in data
+    dat2 = next(item for item in data["models"] if item["id"] == "nomos2-dat2")
+    assert dat2["installed"] is False
 
 
-def test_cli_json_progress_writes_avif(tmp_path: Path) -> None:
+def test_cli_json_progress_writes_avif(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
     _app()
     source = tmp_path / "dot.png"
     _png(source)
@@ -156,6 +196,8 @@ def test_cli_json_progress_writes_avif(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stderr
     messages = [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
     assert [item["type"] for item in messages] == ["accepted", "progress", "progress", "done"]
+    assert messages[1]["stage"] == "loading"
+    assert messages[2]["stage"] == "tiles"
     done = messages[-1]
     assert done["format"] == "avif"
     assert done["width"] == 4
@@ -164,7 +206,8 @@ def test_cli_json_progress_writes_avif(tmp_path: Path) -> None:
     assert Path(done["output"]).suffix == ".avif"
 
 
-def test_cli_model_missing_is_an_error(tmp_path: Path) -> None:
+def test_cli_model_missing_is_an_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
     source = tmp_path / "missing-model.png"
     source.write_bytes(b"pending")
     proc = subprocess.run(
@@ -187,10 +230,13 @@ def test_cli_model_missing_is_an_error(tmp_path: Path) -> None:
     assert proc.returncode != 0
     messages = [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
     assert messages[-1]["code"] == "model_missing"
-    assert messages[-1]["retryable"] is False
+    assert messages[-1]["retryable"] is True
 
 
-def test_existing_output_is_not_overwritten(tmp_path: Path) -> None:
+def test_existing_output_is_not_overwritten(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
     _app()
     source = tmp_path / "dot.png"
     _png(source)
@@ -209,12 +255,16 @@ def test_existing_output_is_not_overwritten(tmp_path: Path) -> None:
     )
     assert hold is False
     written = Path(str(messages[-1]["output"]))
+    assert written.name == "out-1.avif"
     assert written != taken
     assert written.is_file()
     assert taken.read_bytes() == b"keep"
 
 
-def test_unknown_request_field_is_ignored(tmp_path: Path) -> None:
+def test_unknown_request_field_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
     _app()
     source = tmp_path / "dot.png"
     _png(source)
@@ -273,7 +323,7 @@ def test_socket_model_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     finally:
         client.shutdown()
     assert caught.value.code == "model_missing"
-    assert caught.value.retryable is False
+    assert caught.value.retryable is True
 
 
 def test_socket_cancel(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -411,7 +461,7 @@ def test_window_hides_enlarge_without_a_gpu(
     window = EnlargeWindow(source)
     try:
         assert window.findChild(QPushButton, "quick-enlarge") is None
-        assert "GPU" in window.status_text()
+        assert window.status_text() == "no_nvidia"
     finally:
         window.shutdown()
 
@@ -425,7 +475,7 @@ def test_warn_keeps_the_button(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     try:
         button = window.findChild(QPushButton, "quick-enlarge")
         assert button is not None
-        assert "RTX" in button.toolTip()
+        assert button.toolTip() == "below_rtx_40"
     finally:
         window.shutdown()
 
@@ -451,6 +501,83 @@ def test_quick_enlarge_compare_keep_and_discard(
         assert source.is_file()
     finally:
         window.shutdown()
+
+
+def test_scale_preset_and_jpeg_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _app()
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
+    relative, _hold = build_job(
+        {"id": "job", "input": "relative.png", "scale": 2, "preset": "photo"},
+        hold_cancel=False,
+    )
+    assert relative[-1]["code"] == "bad_input"
+    source = tmp_path / "dot.png"
+    _png(source)
+    art, _hold = build_job(
+        {"id": "job", "input": str(source), "scale": 2, "preset": "art", "format": "avif"},
+        hold_cancel=False,
+    )
+    assert art[-1]["code"] == "bad_input"
+    missing, _hold = build_job(
+        {
+            "id": "job",
+            "input": str(source),
+            "scale": 2,
+            "preset": "photo",
+            "quality": "max",
+            "format": "avif",
+            "open_ui": True,
+        },
+        hold_cancel=False,
+    )
+    assert missing[-1]["code"] == "model_missing"
+    assert missing[-1]["retryable"] is True
+    done, _hold = build_job(
+        {
+            "id": "job",
+            "input": str(source),
+            "scale": 2,
+            "preset": "photo",
+            "quality": "fast",
+            "format": "jpeg",
+        },
+        hold_cancel=False,
+    )
+    assert done[-1]["type"] == "done"
+    assert done[-1]["format"] == "jpeg"
+    assert Path(str(done[-1]["output"])).name == "dot.enlarged-2x.jpg"
+
+
+def test_serve_refuses_without_a_gpu(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LUCENT_ENLARGE_GPU", raising=False)
+    monkeypatch.delenv("LUCENT_ENLARGE_MOCK_SERVE_FAIL", raising=False)
+    assert enlarge_main(["--serve", "--hidden"]) == 1
+
+
+def test_capabilities_cache_follows_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("LUCENT_CACHE", str(tmp_path))
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "warn")
+    store_cached(
+        "enlarge",
+        "0.0.0",
+        {
+            "protocol": 1,
+            "version": "0.0.0",
+            "gpu": {"status": "ok", "reason": None},
+            "cached": True,
+        },
+    )
+    command = [sys.executable, "-m", "voxprint_lucent.enlarge_mock"]
+    cached = probe_capabilities(AppInstall(command, "0.0.0", "voxprint-enlarge"), "enlarge")
+    assert cached is not None
+    assert cached.get("cached") is True
+    fresh = probe_capabilities(AppInstall(command, "9.9.9", "voxprint-enlarge"), "enlarge")
+    assert fresh is not None
+    assert fresh.get("cached") is not True
+    assert fresh["gpu"]["status"] == "warn"
+    assert fresh["gpu"]["reason"] == "below_rtx_40"
 
 
 def test_tools_host_enlarge_needs_an_image(capsys: pytest.CaptureFixture[str]) -> None:

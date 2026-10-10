@@ -46,9 +46,11 @@ Double-click any image -> it is on screen in <= 250 ms, browsing a folder feels 
 
 Post-MVP: thumbnail grid/strip, compare two arbitrary images, HDR output on HDR displays, batch convert to AVIF/JXL, sandboxed decoder subprocess, Clarity hand-off, ARM64 builds.
 
-## 4. Enlarge hand-off protocol (PROPOSED, to be agreed with Voxprint AI Enlarge)
+## 4. Enlarge hand-off protocol (superseded by the agreed spec)
 
-Enlarge implements the server; Lucent is the first client. Once agreed, the spec moves to a shared versioned file (proposed `suite/IPC-ENLARGE.md`) so other apps can reuse it.
+Agreed 2026-10-10. The contract is [IPC-ENLARGE.md](IPC-ENLARGE.md) and [APP-DISCOVERY.md](APP-DISCOVERY.md). The paragraphs below are the original proposal. Where they differ, those two files win: hello lists `protocols`, `model_missing` is retryable, capabilities use `gpu.reason` tokens such as `no_nvidia`, output collisions start at `-1`, and Flatpak is not planned.
+
+Enlarge implements the server; Lucent is the first client. The spec lives in the shared suite files so other apps can reuse it.
 
 **Discovery (Enlarge registers on install; Lucent only reads):**
 - Windows: `HKCU\Software\Voxprint\Enlarge` -> `InstallPath`, `Exe`, `Version`, `IpcName`, `ProtocolVersion`; fallback App Paths `voxprint-enlarge.exe`.
