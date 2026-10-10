@@ -16,16 +16,16 @@ Lucent is a clean-room project. No ImageGlass code, assets, themes, icons, or co
 
 ## Install
 
-Release files are on this repository's GitHub releases. `v0.1.0-rc2` is a pre-release. Check `SHA256SUMS` against the download.
+Release files are on this repository's GitHub releases. `v0.1.0-rc3` is a pre-release. The release title is `0.1.0 RC · build N "Zohar"`. Check `SHA256SUMS` against the download.
 
-**Windows.** Run `VoxprintAILucent-0.1.0-rc2-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
+**Windows.** Run `VoxprintAILucent-0.1.0-rc3-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
 
-The zip `lucent-0.1.0-rc2-windows.zip` is the measurement bundle (the viewer plus `Run-M0.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
+The zip `lucent-0.1.0-rc3-windows.zip` is the measurement bundle (the viewer plus `Run-M0.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
 
 **Linux.**
 
 ```bash
-sudo apt install ./voxprint-lucent_0.1.0~rc2_amd64.deb
+sudo apt install ./voxprint-lucent_0.1.0~rc3_amd64.deb
 ```
 
 ## First run
@@ -76,7 +76,9 @@ Enlarge is optional. With Voxprint AI Enlarge installed:
 voxprint-lucent-tools --enlarge --path photo.jpg
 ```
 
-Lucent finds Enlarge from its install registration, sends the file path (not the pixels), and opens a before/after split. Keep leaves the result. Reveal opens the folder. Discard deletes the result and leaves the original. If Enlarge is missing, or it reports no usable GPU, the actions stay hidden. A GPU that is usable but below an RTX 40 stays available and shows Enlarge's warning on the button.
+Lucent finds Enlarge from its install registration and runs `voxprint-enlarge` with `--json-progress`. It sends the file path, not the pixels, and does not open Enlarge's socket. The tools window opens a before/after split. Keep leaves the result. Reveal opens the folder. Discard deletes the result and leaves the original. If Enlarge is not installed, the action stays disabled and Install Enlarge opens the Enlarge releases page. If Enlarge reports no usable GPU, the action stays disabled and that button is not shown. A GPU that is usable but below an RTX 40 stays available and shows Enlarge's warning on the button.
+
+`voxprint-lucent --dry-run` checks startup and this hand-off without a window or a GPU. `voxprint-lucent --version` prints the build label. Both are described in [docs/CLI.md](docs/CLI.md).
 
 The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). Discovery is [docs/APP-DISCOVERY.md](docs/APP-DISCOVERY.md). This repository does not ship the Enlarge server. Tests use `python -m voxprint_lucent.enlarge_mock`.
 

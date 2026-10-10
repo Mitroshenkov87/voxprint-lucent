@@ -3,7 +3,9 @@
 
 #include "chrome.h"
 
+#include "dry_run.h"
 #include "gallery.h"
+#include "lucent_build.h"
 #include "hotkeys.h"
 #include "icons.h"
 #include "phrases.h"
@@ -27,7 +29,9 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QProcess>
+#include <QAction>
 #include <QSettings>
+#include <QSize>
 #include <QSpinBox>
 #include <QTimer>
 #include <QToolButton>
@@ -84,7 +88,21 @@ struct Chrome::Impl {
     QTimer *hideTimer = nullptr;
     bool pinned = false;
     bool galleryOn = true;
+    bool enlargeInstalled = false;
 };
+
+void openEnlargeReleases() {
+    QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
+}
+
+void addEnlargeActions(QMenu &menu, bool installed, const std::function<void()> &enlarge) {
+    QAction *action = menu.addAction(lucentIcon(Icon::Enlarge), text(Text::Enlarge), enlarge);
+    if (!installed) {
+        action->setEnabled(false);
+        action->setToolTip(text(Text::EnlargeMissing));
+        menu.addAction(text(Text::InstallEnlarge), [] { openEnlargeReleases(); });
+    }
+}
 
 void requestAcrylic(QWidget *window) {
 #ifdef Q_OS_WIN
@@ -144,14 +162,32 @@ Chrome::Chrome(QWidget *host, ChromeCallbacks callbacks) : impl_(new Impl) {
     add(Icon::FlipVertical, Text::FlipVertical, [this] { impl_->cb.flip(false); });
     add(Icon::Crop, Text::Crop, [this] { impl_->cb.crop(); });
     addGap(row);
-    add(Icon::Save, Text::SaveCopy, [this] { impl_->cb.saveCopy(); });
+    add(Icon::Save, Text::Save, [this] { impl_->cb.save(); });
     add(Icon::SaveAs, Text::SaveAs, [this] { impl_->cb.saveAs(); });
+    add(Icon::SaveCopy, Text::SaveCopy, [this] { impl_->cb.saveCopy(); });
+    add(Icon::Export, Text::Export, [this] { impl_->cb.exportImage(); });
+    add(Icon::Download, Text::Download, [this] { impl_->cb.download(); });
     add(Icon::Trash, Text::MoveToTrash, [this] { impl_->cb.trash(); });
     addGap(row);
     add(Icon::Slideshow, Text::Slideshow, [this] { impl_->cb.slideshow(); });
     add(Icon::Fullscreen, Text::Fullscreen, [this] { impl_->cb.fullscreen(); });
     add(Icon::Gallery, Text::Gallery, [this] { setGalleryVisible(!impl_->galleryOn); });
-    add(Icon::Enlarge, Text::Enlarge, [this] { impl_->cb.enlarge(); });
+    impl_->enlargeInstalled = !enlargeCliCommand().isEmpty();
+    QToolButton *enlargeButton = toolButton(impl_->bar, Icon::Enlarge, Text::Enlarge, [this] { impl_->cb.enlarge(); });
+    if (!impl_->enlargeInstalled) {
+        enlargeButton->setEnabled(false);
+        enlargeButton->setToolTip(text(Text::EnlargeMissing));
+    }
+    row->addWidget(enlargeButton);
+    if (!impl_->enlargeInstalled) {
+        auto *install = new QToolButton(impl_->bar);
+        install->setObjectName(QStringLiteral("install-enlarge"));
+        install->setText(text(Text::InstallEnlarge));
+        install->setToolTip(text(Text::InstallEnlarge));
+        install->setAutoRaise(true);
+        QObject::connect(install, &QToolButton::clicked, impl_->bar, [] { openEnlargeReleases(); });
+        row->addWidget(install);
+    }
     add(Icon::Settings, Text::Settings, [this] { openSettings(); });
     row->addStretch(1);
 
@@ -263,6 +299,13 @@ void Chrome::openMenu() {
     languages->addAction(QStringLiteral("Русский"), [this] { impl_->cb.language(QStringLiteral("ru")); });
     languages->addAction(QStringLiteral("Deutsch"), [this] { impl_->cb.language(QStringLiteral("de")); });
     menu.addSeparator();
+    menu.addAction(lucentIcon(Icon::Save), text(Text::Save), [this] { impl_->cb.save(); });
+    menu.addAction(lucentIcon(Icon::SaveAs), text(Text::SaveAs), [this] { impl_->cb.saveAs(); });
+    menu.addAction(lucentIcon(Icon::SaveCopy), text(Text::SaveCopy), [this] { impl_->cb.saveCopy(); });
+    menu.addAction(lucentIcon(Icon::Export), text(Text::Export), [this] { impl_->cb.exportImage(); });
+    menu.addAction(lucentIcon(Icon::Download), text(Text::Download), [this] { impl_->cb.download(); });
+    addEnlargeActions(menu, impl_->enlargeInstalled, [this] { impl_->cb.enlarge(); });
+    menu.addSeparator();
     menu.addAction(text(Text::About), [this] { openAbout(); });
     const QByteArray shot = qgetenv("LUCENT_SCREENSHOT");
     if (shot == "menu") {
@@ -305,13 +348,16 @@ void Chrome::contextMenu(const QPoint &globalPos) {
     add(Icon::FlipVertical, Text::FlipVertical, [this] { impl_->cb.flip(false); });
     add(Icon::Crop, Text::Crop, [this] { impl_->cb.crop(); });
     menu.addSeparator();
-    add(Icon::Save, Text::SaveCopy, [this] { impl_->cb.saveCopy(); });
+    add(Icon::Save, Text::Save, [this] { impl_->cb.save(); });
     add(Icon::SaveAs, Text::SaveAs, [this] { impl_->cb.saveAs(); });
+    add(Icon::SaveCopy, Text::SaveCopy, [this] { impl_->cb.saveCopy(); });
+    add(Icon::Export, Text::Export, [this] { impl_->cb.exportImage(); });
+    add(Icon::Download, Text::Download, [this] { impl_->cb.download(); });
     add(Icon::Trash, Text::MoveToTrash, [this] { impl_->cb.trash(); });
     menu.addSeparator();
     add(Icon::Slideshow, Text::Slideshow, [this] { impl_->cb.slideshow(); });
     add(Icon::Fullscreen, Text::Fullscreen, [this] { impl_->cb.fullscreen(); });
-    add(Icon::Enlarge, Text::Enlarge, [this] { impl_->cb.enlarge(); });
+    addEnlargeActions(menu, impl_->enlargeInstalled, [this] { impl_->cb.enlarge(); });
     menu.addSeparator();
     add(Icon::Copy, Text::CopyImage, [this] { copyImage(); });
     add(Icon::Path, Text::CopyPath, [this] { copyPath(); });
@@ -392,8 +438,17 @@ void Chrome::openSettings() {
 void Chrome::openAbout() {
     QMessageBox box(impl_->host);
     box.setWindowTitle(text(Text::About));
-    box.setText(QStringLiteral("Voxprint AI Lucent ") + QStringLiteral(LUCENT_VERSION));
-    box.setInformativeText(QStringLiteral("Apache License 2.0"));
+    box.setText(QStringLiteral("Voxprint AI Lucent"));
+    box.setInformativeText(QString::fromUtf8(LUCENT_BUILD_LABEL) + QStringLiteral("\nApache License 2.0"));
+    if (qgetenv("LUCENT_SCREENSHOT") == "about") {
+        box.show();
+        box.raise();
+        QTimer::singleShot(200, &box, [&box] { saveGrab(&box, QStringLiteral("about")); });
+        QEventLoop loop;
+        QTimer::singleShot(800, &loop, &QEventLoop::quit);
+        loop.exec();
+        return;
+    }
     box.exec();
 }
 
@@ -446,7 +501,9 @@ void Chrome::prepareShots() {
     }
     relayout();
     if (mode == "toolbar") {
-        QTimer::singleShot(200, impl_->host, [this] { saveGrab(impl_->host, QStringLiteral("toolbar")); });
+        QTimer::singleShot(200, impl_->host, [this] { saveGrab(impl_->bar, QStringLiteral("toolbar")); });
+    } else if (mode == "about") {
+        QTimer::singleShot(200, impl_->host, [this] { openAbout(); });
     } else if (mode == "thumbs") {
         setGalleryVisible(true);
         QTimer::singleShot(400, impl_->host, [this] { saveGrab(impl_->host, QStringLiteral("thumbs")); });

@@ -113,8 +113,12 @@ jobs:
             sha256sum ./* | sed 's| \./| |' > SHA256SUMS
           )
           notes="docs/release-notes/${GITHUB_REF_NAME}.md"
+          offset=$(sed -n 's/.*"offset" *: *\([0-9][0-9]*\).*/\1/p' BUILD.json)
+          codename=$(sed -n 's/.*"codename" *: *"\([^"]*\)".*/\1/p' BUILD.json)
+          build_n=$((GITHUB_RUN_NUMBER + offset))
+          title="0.1.0 RC · build ${build_n} \"${codename}\""
           set -- release create "$GITHUB_REF_NAME" \
-            --title "Voxprint AI Lucent ${GITHUB_REF_NAME}" \
+            --title "$title" \
             --repo "${GITHUB_REPOSITORY}"
           if [ -f "$notes" ]; then
             set -- "$@" --notes-file "$notes"

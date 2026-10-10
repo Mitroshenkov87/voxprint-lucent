@@ -26,8 +26,11 @@ struct ChromeCallbacks {
     std::function<void(bool right)> rotate;
     std::function<void(bool horizontal)> flip;
     std::function<void()> crop;
+    std::function<void()> save;
     std::function<void()> saveCopy;
     std::function<void()> saveAs;
+    std::function<void()> exportImage;
+    std::function<void()> download;
     std::function<void()> trash;
     std::function<void()> slideshow;
     std::function<void()> fullscreen;

@@ -3,9 +3,20 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 from pathlib import Path
 
-from voxprint_lucent import __version__
+
+def public_build_label() -> str:
+    """``0.1.0 RC · build N "Codename"``. N is ``GITHUB_RUN_NUMBER`` plus ``BUILD.json`` offset."""
+    root = Path(__file__).resolve().parents[1]
+    payload = json.loads((root / "BUILD.json").read_text(encoding="utf-8"))
+    offset = int(payload["offset"])
+    raw = os.environ.get("GITHUB_RUN_NUMBER", "").strip()
+    run = int(raw) if raw else 0
+    codename = str(payload["codename"])
+    return f'0.1.0 RC · build {run + offset} "{codename}"'
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -42,7 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Lossless JPEG XL or WebP when that format is selected",
     )
-    parser.add_argument("--version", action="version", version=f"voxprint-lucent {__version__}")
+    parser.add_argument("--version", action="version", version=public_build_label())
     return parser
 
 

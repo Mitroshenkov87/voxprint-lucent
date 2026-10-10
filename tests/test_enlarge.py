@@ -7,6 +7,7 @@ import json
 import stat
 import subprocess
 import sys
+import time
 import uuid
 from pathlib import Path
 
@@ -34,10 +35,13 @@ from voxprint_lucent.enlarge_compare import (
 from voxprint_lucent.enlarge_mock import build_job
 from voxprint_lucent.enlarge_mock import main as enlarge_main
 from voxprint_lucent.enlarge_protocol import (
+    ENLARGE_RELEASES_URL,
+    action_enabled,
     action_tooltip,
     action_visible,
     dumps,
     enlarged_destination,
+    install_offered,
     loads,
     parse_capabilities,
     pipe_name_for_sid,
@@ -112,6 +116,12 @@ def test_gpu_none_hides_and_warn_stays() -> None:
     assert action_visible(ready) is True
     assert action_tooltip(ready) == "Enlarge"
     assert action_visible(None) is False
+    assert action_enabled(None) is False
+    assert action_enabled(hidden) is False
+    assert action_enabled(warned) is True
+    assert install_offered(None) is True
+    assert install_offered(hidden) is False
+    assert install_offered(ready) is False
     assert hello_supported(
         {"type": "hello", "server": "enlarge", "protocols": [1]}
     )
@@ -283,27 +293,31 @@ def test_unknown_request_field_is_ignored(
     assert messages[-1]["type"] == "done"
 
 
-def test_socket_hello_and_done(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_enlarge_uses_the_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _app()
     source = tmp_path / "dot.png"
     _png(source)
     client = _client(monkeypatch, tmp_path)
     seen: list[str] = []
+    launched: list[list[str]] = []
+    real_popen = subprocess.Popen
+
+    def spy(*args: object, **kwargs: object) -> subprocess.Popen[str]:
+        command = args[0] if args else kwargs.get("args")
+        assert isinstance(command, list)
+        launched.append([str(part) for part in command])
+        return real_popen(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(subprocess, "Popen", spy)
     try:
-        result = client.enlarge(
-            source,
-            transport="socket",
-            on_event=lambda message: seen.append(str(message["type"])),
-        )
-        if sys.platform != "win32":
-            mode = stat.S_IMODE(Path(client.socket).stat().st_mode)
-            parent = stat.S_IMODE(Path(client.socket).parent.stat().st_mode)
-            assert mode == 0o600
-            assert parent == 0o700
+        result = client.enlarge(source, on_event=lambda message: seen.append(str(message["type"])))
     finally:
         client.shutdown()
-    assert seen[0] == "hello"
-    assert "accepted" in seen
+    assert launched
+    assert "--json-progress" in launched[0]
+    assert "--serve" not in launched[0]
+    assert "--dry-run" not in launched[0]
+    assert seen[0] == "accepted"
     assert "done" in seen
     assert result.format == "avif"
     assert result.width == 4
@@ -312,36 +326,29 @@ def test_socket_hello_and_done(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert result.output.resolve() != source.resolve()
 
 
-def test_socket_model_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_model_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _app()
     source = tmp_path / "missing-model.png"
     source.write_bytes(b"pending")
     client = _client(monkeypatch, tmp_path)
     try:
         with pytest.raises(EnlargeError) as caught:
-            client.enlarge(source, transport="socket")
+            client.enlarge(source)
     finally:
         client.shutdown()
     assert caught.value.code == "model_missing"
     assert caught.value.retryable is True
 
 
-def test_socket_cancel(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_cancel_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _app()
     source = tmp_path / "cancel-me.png"
     source.write_bytes(b"pending")
     client = _client(monkeypatch, tmp_path)
     seen: list[str] = []
-
-    def on_event(message: dict[str, object]) -> None:
-        kind = str(message.get("type"))
-        seen.append(kind)
-        if kind == "progress":
-            client.cancel()
-
     try:
         with pytest.raises(EnlargeError) as caught:
-            client.enlarge(source, transport="socket", on_event=on_event)
+            client.enlarge(source, on_event=lambda message: seen.append(str(message["type"])))
     finally:
         client.shutdown()
     assert caught.value.code == "cancelled"
@@ -349,32 +356,87 @@ def test_socket_cancel(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert "progress" in seen
 
 
-def test_open_in_enlarge_still_returns_a_file(
+def test_open_in_enlarge_passes_open_ui(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _app()
     source = tmp_path / "dot.png"
     _png(source)
     client = _client(monkeypatch, tmp_path)
+    launched: list[list[str]] = []
+    real_popen = subprocess.Popen
+
+    def spy(*args: object, **kwargs: object) -> subprocess.Popen[str]:
+        command = args[0] if args else kwargs.get("args")
+        assert isinstance(command, list)
+        launched.append([str(part) for part in command])
+        return real_popen(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(subprocess, "Popen", spy)
     try:
-        result = client.enlarge(source, open_ui=True, transport="socket")
+        result = client.enlarge(source, open_ui=True)
     finally:
         client.shutdown()
+    assert "--open-ui" in launched[0]
+    assert "--serve" not in launched[0]
     assert result.output.is_file()
 
 
-def test_cli_fallback_when_serve_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _app()
+def test_dry_run_does_not_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("LUCENT_ENLARGE_GPU", raising=False)
     source = tmp_path / "dot.png"
     _png(source)
-    client = _client(monkeypatch, tmp_path)
-    monkeypatch.setenv("LUCENT_ENLARGE_MOCK_SERVE_FAIL", "1")
+    dest = tmp_path / "would.avif"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "voxprint_lucent.enlarge_mock",
+            "--input",
+            str(source),
+            "--scale",
+            "2",
+            "--preset",
+            "photo",
+            "--format",
+            "avif",
+            "--output",
+            str(dest),
+            "--json-progress",
+            "--dry-run",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    messages = [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
+    assert messages[-1]["type"] == "done"
+    assert messages[-1]["output"] == str(dest)
+    assert not dest.exists()
+
+
+def test_serve_socket_is_user_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    if sys.platform == "win32":
+        pytest.skip("unix socket mode")
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
+    name = str(tmp_path / "voxprint" / "enlarge.sock")
+    monkeypatch.setenv("LUCENT_ENLARGE_SOCKET", name)
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "voxprint_lucent.enlarge_mock", "--serve", "--hidden"]
+    )
     try:
-        result = client.enlarge(source, transport="auto")
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline and not Path(name).exists():
+            time.sleep(0.05)
+        assert Path(name).exists()
+        mode = stat.S_IMODE(Path(name).stat().st_mode)
+        parent = stat.S_IMODE(Path(name).parent.stat().st_mode)
+        assert mode == 0o600
+        assert parent == 0o700
     finally:
-        client.shutdown()
-    assert result.output.is_file()
-    assert result.format == "avif"
+        proc.terminate()
+        proc.wait(timeout=2)
 
 
 def test_png_output_is_rejected(tmp_path: Path) -> None:
@@ -383,7 +445,7 @@ def test_png_output_is_rejected(tmp_path: Path) -> None:
     _png(source)
     client = EnlargeClient(command=[sys.executable, "-m", "voxprint_lucent.enlarge_mock"])
     with pytest.raises(PngRejected):
-        client.enlarge(source, format_name="png", transport="cli")
+        client.enlarge(source, format_name="png")
 
 
 def test_split_shows_before_then_after() -> None:
@@ -460,8 +522,29 @@ def test_window_hides_enlarge_without_a_gpu(
     _client(monkeypatch, tmp_path, gpu="none")
     window = EnlargeWindow(source)
     try:
-        assert window.findChild(QPushButton, "quick-enlarge") is None
+        button = window.findChild(QPushButton, "quick-enlarge")
+        assert button is not None
+        assert button.isEnabled() is False
+        assert window.findChild(QPushButton, "install-enlarge") is None
         assert window.status_text() == "no_nvidia"
+    finally:
+        window.shutdown()
+
+
+def test_missing_enlarge_offers_install(tmp_path: Path) -> None:
+    _app()
+    source = tmp_path / "dot.png"
+    _png(source)
+    window = EnlargeWindow(source, EnlargeClient(command=[]))
+    try:
+        button = window.findChild(QPushButton, "quick-enlarge")
+        assert button is not None
+        assert button.isEnabled() is False
+        install = window.findChild(QPushButton, "install-enlarge")
+        assert install is not None
+        assert install.text() == "Install Enlarge"
+        assert window.status_text() == "Enlarge is not installed."
+        assert ENLARGE_RELEASES_URL.endswith("/voxprint-enlarge/releases")
     finally:
         window.shutdown()
 

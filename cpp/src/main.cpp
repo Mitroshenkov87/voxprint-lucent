@@ -5,6 +5,8 @@
 // the Enlarge UI and the updater live in the on-demand PySide6 tools host.
 
 #include "browser.h"
+#include "dry_run.h"
+#include "lucent_build.h"
 #include "viewer.h"
 
 #include <QApplication>
@@ -88,6 +90,14 @@ lucent::LaunchOptions parseArgs(const QStringList &args) {
 
 int main(int argc, char **argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
+    if (lucent::hasFlag(argc, argv, "--version")) {
+        std::fputs(LUCENT_BUILD_LABEL, stdout);
+        std::fputc('\n', stdout);
+        return 0;
+    }
+    if (lucent::hasFlag(argc, argv, "--dry-run")) {
+        return lucent::runDryRun(argc, argv);
+    }
     const auto started = std::chrono::steady_clock::now();
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("Voxprint AI Lucent"));

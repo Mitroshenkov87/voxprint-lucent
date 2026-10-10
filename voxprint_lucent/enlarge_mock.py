@@ -88,8 +88,15 @@ def capabilities() -> dict[str, Any]:
     }
 
 
-def build_job(request: dict[str, Any], *, hold_cancel: bool) -> tuple[list[dict[str, Any]], bool]:
-    """Messages to send now, and whether the socket should wait for ``cancel``."""
+def build_job(
+    request: dict[str, Any], *, hold_cancel: bool, dry_run: bool = False
+) -> tuple[list[dict[str, Any]], bool]:
+    """Messages to send now, and whether the socket should wait for ``cancel``.
+
+    ``dry_run`` skips the GPU refusal and does not write the output file. Input,
+    model, scale, and format checks still apply. ``done.output`` is the path
+    that would have been written.
+    """
     job_id = request.get("id")
     ident = job_id if isinstance(job_id, str) else ""
 
@@ -97,7 +104,7 @@ def build_job(request: dict[str, Any], *, hold_cancel: bool) -> tuple[list[dict[
         return {"id": ident, **body}
 
     gpu = gpu_block()
-    if gpu["status"] == "none":
+    if gpu["status"] == "none" and not dry_run:
         reason = gpu["reason"] or "no_nvidia"
         return [_error(message, "gpu_unsupported", f"No usable GPU ({reason}).", False)], False
     raw_input = request.get("input")
@@ -142,9 +149,27 @@ def build_job(request: dict[str, Any], *, hold_cancel: bool) -> tuple[list[dict[
     try:
         started = time.perf_counter()
         array = _load_rgb(source)
+        dest = _destination(request, source, scale, fmt)
+        if dry_run:
+            height, width = int(array.shape[0]) * scale, int(array.shape[1]) * scale
+            elapsed = max(0, int((time.perf_counter() - started) * 1000))
+            return [
+                message({"type": "accepted", "queue_pos": 0}),
+                message({"type": "progress", "pct": 40, "stage": "loading"}),
+                message({"type": "progress", "pct": 90, "stage": "tiles", "eta_s": 0}),
+                message(
+                    {
+                        "type": "done",
+                        "output": str(dest),
+                        "width": width,
+                        "height": height,
+                        "format": fmt.value,
+                        "ms": elapsed,
+                    }
+                ),
+            ], False
         scaled = np.repeat(np.repeat(array, scale, axis=0), scale, axis=1)
         scaled = np.ascontiguousarray(scaled)
-        dest = _destination(request, source, scale, fmt)
         write_raster(scaled, dest, fmt, lossless=fmt is not OutputFormat.AVIF)
     except PngRejected as exc:
         return [_error(message, "unsupported_format", str(exc), False)], False
@@ -203,6 +228,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--format", default="avif")
     parser.add_argument("--output", default="")
     parser.add_argument("--output-dir", default="")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--open-ui", action="store_true")
     args = parser.parse_args(argv)
     if args.capabilities:
         if not args.json:
@@ -215,7 +242,8 @@ def main(argv: list[str] | None = None) -> int:
         return serve()
     if not args.json_progress:
         print(
-            "usage: voxprint-enlarge --serve --hidden | --capabilities --json | --json-progress",
+            "usage: voxprint-enlarge --serve --hidden | --capabilities --json | "
+            "--json-progress [--dry-run] [--open-ui]",
             file=sys.stderr,
         )
         return 2
@@ -229,9 +257,9 @@ def main(argv: list[str] | None = None) -> int:
         "format": args.format,
         "output": args.output,
         "output_dir": args.output_dir,
-        "open_ui": False,
+        "open_ui": args.open_ui,
     }
-    messages, _held = build_job(request, hold_cancel=False)
+    messages, _held = build_job(request, hold_cancel=False, dry_run=args.dry_run)
     for message in messages:
         sys.stdout.buffer.write(dumps(message))
     sys.stdout.flush()
