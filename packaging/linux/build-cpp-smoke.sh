@@ -5,6 +5,13 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+c++ -std=c++20 -I "$ROOT/cpp/src" \
+    "$ROOT/cpp/src/placement.cpp" \
+    "$ROOT/cpp/src/natural.cpp" \
+    "$ROOT/cpp/tests/m1_logic.cpp" \
+    -o /tmp/m1_logic
+/tmp/m1_logic
+
 QT_VERSION=6.12.0
 QT_ROOT=${RUNNER_TEMP:-/tmp}/lucent-qt
 python -m pip install --upgrade aqtinstall
@@ -32,6 +39,15 @@ PY
 export LD_LIBRARY_PATH="$QT_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_QPA_PLATFORM=xcb
 export LIBGL_ALWAYS_SOFTWARE=1
+# One unmeasured launch warms the loader. The timed launch is the regression gate
+# for the benchmark path: in-process first pixel stays within 250 ms. It is not a
+# cold-boot sample; that still belongs on the reference machine.
+xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark >/dev/null
 out=$(xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark)
 printf '%s\n' "$out"
 printf '%s\n' "$out" | grep -q '^FIRST_PIXEL$'
+phase=$(printf '%s\n' "$out" | awk '/^LUCENT_PHASE first_image_presented_ms /{print $3}')
+if [ -z "$phase" ] || [ "$phase" -gt 250 ]; then
+    echo "first-pixel regression: ${phase:-missing} ms (budget 250)" >&2
+    exit 1
+fi

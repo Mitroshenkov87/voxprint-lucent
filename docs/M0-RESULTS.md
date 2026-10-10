@@ -81,4 +81,4 @@ Outputs: `results\m0-<timestamp>.log` and `results\m0-<timestamp>.json` (or `ben
 
 ## What M1 does next
 
-Folder browsing, look-ahead cache, zoom modes, pan, fullscreen, frameless and window-fit, slideshow, the format list in PLAN-v1, EXIF orientation, ICC, the suite theme, EN+RU+DE, remappable hotkeys, and the WCAG check. The forwarded single-instance path already paints the forwarded file. RHI zoom/pan is M1; it is not on the M0 measurement path. AVIF 4:4:4 remains a known decode-bound miss until a preview (embedded thumbnail or a smaller decode) exists.
+M1 is recorded in [M1.md](M1.md). `--benchmark` is unchanged. AVIF 4:4:4 remains a known decode-bound miss until a smaller preview exists. The reference laptop run is still open.

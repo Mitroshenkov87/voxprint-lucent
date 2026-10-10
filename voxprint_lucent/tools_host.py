@@ -1,12 +1,12 @@
 """On-demand PySide6 process for settings, tools, the info panel, Enlarge, and updates.
 
-The C++ viewer does not launch this module. Cold start stays in the C++ executable.
+The C++ viewer starts this process when the user opens tools. It is not on the
+path that paints the first image.
 """
 
 from __future__ import annotations
 
 import argparse
-import sys
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -19,20 +19,35 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Answer without loading Qt. Used to prove this process is separate.",
     )
+    parser.add_argument("--path", default="", help="Image the viewer had open.")
     args = parser.parse_args(argv)
     if args.ping:
         print("pong")
         return 0
     # Startup-budget exception to the no-inline-import rule: --ping must not
     # load Qt. This process is never on the viewer's cold-start path.
+    from PySide6.QtWidgets import QApplication, QLabel, QVBoxLayout, QWidget
+
     from voxprint_lucent.theme import build_stylesheet
 
-    sheet = build_stylesheet()
-    if "#60a5fa" not in sheet or "#f5d76e" not in sheet:
-        print("Shared theme did not load.", file=sys.stderr)
-        return 1
-    print("tools-host-ready")
-    return 0
+    app = QApplication([])
+    window = QWidget()
+    window.setObjectName("lucent-window")
+    window.setWindowTitle("Voxprint AI Lucent")
+    window.setStyleSheet(build_stylesheet())
+    layout = QVBoxLayout(window)
+    layout.addWidget(QLabel("Tools"))
+    if args.path:
+        layout.addWidget(QLabel(args.path))
+    layout.addWidget(
+        QLabel(
+            "Settings, the info panel, Enlarge, and updates open here. "
+            "They are not loaded to paint the first image."
+        )
+    )
+    window.resize(520, 180)
+    window.show()
+    return app.exec()
 
 
 if __name__ == "__main__":
