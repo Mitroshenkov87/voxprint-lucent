@@ -34,30 +34,78 @@ target_link_libraries(voxprint-lucent PRIVATE Qt6::Widgets Qt6::Network Qt6::Con
 target_include_directories(voxprint-lucent PRIVATE src)
 
 if(Qt6_VERSION VERSION_GREATER_EQUAL 6.7.0)
-    # Qt 6.9+ ships a GuiPrivate package. Debian 13's Qt 6.8 puts the same
-    # private headers inside Gui and has no GuiPrivate config file.
+    # <rhi/qrhi.h> ships with Qt6::GuiPrivate. Debian 13's qt6-base-dev still
+    # defines that imported target, but its versioned include directory does
+    # not exist until qt6-base-private-dev is installed. Linking the broken
+    # target fails at generate time, so use it only when every include
+    # directory is present. Otherwise add the directory that contains the header.
     find_package(Qt6 QUIET COMPONENTS GuiPrivate)
+    set(_lucent_private_target_ok FALSE)
     if(TARGET Qt6::GuiPrivate)
+        get_target_property(_lucent_priv_dirs Qt6::GuiPrivate INTERFACE_INCLUDE_DIRECTORIES)
+        if(_lucent_priv_dirs)
+            set(_lucent_private_target_ok TRUE)
+            set(_lucent_saw_private_include FALSE)
+            foreach(_dir IN LISTS _lucent_priv_dirs)
+                # Official Qt stores these as generator expressions. They are
+                # not paths at configure time; generate resolves them.
+                if(_dir STREQUAL "" OR _dir MATCHES "^\\$<")
+                    if(NOT _dir STREQUAL "")
+                        set(_lucent_saw_private_include TRUE)
+                    endif()
+                    continue()
+                endif()
+                if(EXISTS "${_dir}")
+                    set(_lucent_saw_private_include TRUE)
+                else()
+                    set(_lucent_private_target_ok FALSE)
+                endif()
+            endforeach()
+            if(NOT _lucent_saw_private_include)
+                set(_lucent_private_target_ok FALSE)
+            endif()
+        endif()
+    endif()
+    if(_lucent_private_target_ok)
         target_link_libraries(voxprint-lucent PRIVATE Qt6::GuiPrivate)
     else()
         find_package(Qt6 REQUIRED COMPONENTS Gui)
         set(_lucent_private "")
         if(DEFINED Qt6Gui_PRIVATE_INCLUDE_DIRS)
-            list(APPEND _lucent_private ${Qt6Gui_PRIVATE_INCLUDE_DIRS})
+            foreach(_dir IN LISTS Qt6Gui_PRIVATE_INCLUDE_DIRS)
+                if(EXISTS "${_dir}/rhi/qrhi.h")
+                    list(APPEND _lucent_private "${_dir}")
+                endif()
+            endforeach()
         endif()
+        set(_lucent_roots "")
         get_target_property(_gui_dirs Qt6::Gui INTERFACE_INCLUDE_DIRECTORIES)
-        foreach(_dir IN LISTS _gui_dirs)
+        if(_gui_dirs)
+            list(APPEND _lucent_roots ${_gui_dirs})
+        endif()
+        if(CMAKE_LIBRARY_ARCHITECTURE)
+            list(APPEND _lucent_roots "/usr/include/${CMAKE_LIBRARY_ARCHITECTURE}/qt6")
+        endif()
+        list(APPEND _lucent_roots "/usr/include/qt6")
+        foreach(_dir IN LISTS _lucent_roots)
             foreach(_candidate
+                    "${_dir}/${Qt6_VERSION}/QtGui"
+                    "${_dir}/QtGui/${Qt6_VERSION}/QtGui"
+                    "${_dir}/../${Qt6_VERSION}/QtGui"
                     "${_dir}/${Qt6_VERSION}/QtGui/private"
-                    "${_dir}/../${Qt6_VERSION}/QtGui/private"
                     "${_dir}/QtGui/${Qt6_VERSION}/QtGui/private")
                 if(EXISTS "${_candidate}/rhi/qrhi.h")
                     list(APPEND _lucent_private "${_candidate}")
                 endif()
             endforeach()
         endforeach()
+        if(_lucent_private)
+            list(REMOVE_DUPLICATES _lucent_private)
+        endif()
         if(_lucent_private STREQUAL "")
-            message(FATAL_ERROR "Qt ${Qt6_VERSION} is missing Gui private headers (rhi/qrhi.h)")
+            message(FATAL_ERROR
+                "Qt ${Qt6_VERSION} is missing Gui private headers (rhi/qrhi.h). "
+                "Install qt6-base-private-dev, or use a Qt build whose GuiPrivate includes exist.")
         endif()
         target_include_directories(voxprint-lucent PRIVATE ${_lucent_private})
     endif()

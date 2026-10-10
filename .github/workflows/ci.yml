@@ -104,7 +104,7 @@ jobs:
       - name: Build in a Debian 13 container
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE":/src -w /src debian:trixie \
-            bash -eux -c 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config qt6-base-dev libgl1-mesa-dev libvulkan-dev libxkbcommon-dev && cmake -S cpp -B /tmp/build-qt68 -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build /tmp/build-qt68'
+            bash -eux -c 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential cmake ninja-build pkg-config qt6-base-dev qt6-base-private-dev libgl1-mesa-dev libvulkan-dev libxkbcommon-dev && cmake -S cpp -B /tmp/build-qt68 -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build /tmp/build-qt68'
 
   benchmark:
     name: benchmark (${{ matrix.os }})
