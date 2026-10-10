@@ -75,14 +75,24 @@ Row rowFor(Text id) {
         return {"Flip vertical", "Отразить по вертикали", "Vertikal spiegeln"};
     case Text::Crop:
         return {"Crop", "Обрезать", "Zuschneiden"};
+    case Text::Save:
+        return {"Save", "Сохранить", "Speichern"};
     case Text::SaveCopy:
         return {"Save a copy", "Сохранить копию", "Kopie speichern"};
     case Text::SaveAs:
         return {"Save as", "Сохранить как", "Speichern unter"};
+    case Text::Export:
+        return {"Export", "Экспорт", "Exportieren"};
+    case Text::Download:
+        return {"Download", "Скачать", "Herunterladen"};
     case Text::MoveToTrash:
         return {"Move to trash", "В корзину", "In den Papierkorb"};
     case Text::Enlarge:
         return {"Enlarge", "Enlarge", "Enlarge"};
+    case Text::InstallEnlarge:
+        return {"Install Enlarge", "Установить Enlarge", "Enlarge installieren"};
+    case Text::EnlargeMissing:
+        return {"Enlarge is not installed.", "Enlarge не установлен.", "Enlarge ist nicht installiert."};
     case Text::Settings:
         return {"Settings", "Настройки", "Einstellungen"};
     case Text::About:

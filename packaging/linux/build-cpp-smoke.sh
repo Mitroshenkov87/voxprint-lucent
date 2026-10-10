@@ -62,3 +62,45 @@ if [ -z "$phase" ] || [ "$phase" -gt 250 ]; then
     echo "first-pixel regression: ${phase:-missing} ms (budget 250)" >&2
     exit 1
 fi
+
+# After the timed launch. --dry-run uses QCoreApplication: no window, no GPU.
+ver=$("$ROOT/cpp/build-ci/voxprint-lucent" --version)
+printf '%s\n' "$ver"
+printf '%s\n' "$ver" | grep -q '0.1.0 RC'
+printf '%s\n' "$ver" | grep -q Zohar
+absent=$("$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
+printf '%s\n' "$absent"
+printf '%s\n' "$absent" | grep -q '"dry_run":true'
+printf '%s\n' "$absent" | grep -q '"startup":"ok"'
+printf '%s\n' "$absent" | grep -q '"installed":false'
+printf '%s\n' "$absent" | grep -q 'github.com/Mitroshenkov87/voxprint-enlarge/releases'
+stub=/tmp/lucent-enlarge-stub
+cat > "$stub" <<'EOF'
+#!/bin/sh
+if [ "$1" = "--capabilities" ]; then
+  printf '%s\n' '{"protocol":1,"app":"enlarge","version":"0.0.0","gpu":{"status":"none","reason":"no_nvidia"}}'
+  exit 0
+fi
+printf '%s\n' '{"protocol":1,"type":"accepted","id":"cli","queue_pos":0}'
+printf '%s\n' '{"protocol":1,"type":"done","id":"cli","output":"/tmp/lucent-would.avif","width":2,"height":2,"format":"avif","ms":0}'
+exit 0
+EOF
+chmod +x "$stub"
+present=$(LUCENT_ENLARGE_EXE="$stub" "$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
+printf '%s\n' "$present"
+printf '%s\n' "$present" | grep -q '"installed":true'
+printf '%s\n' "$present" | grep -q '"type":"done"'
+both=$("$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark --dry-run)
+printf '%s\n' "$both" | grep -q '"dry_run":true'
+if printf '%s\n' "$both" | grep -q '^FIRST_PIXEL$'; then
+  echo "dry-run constructed the benchmark viewer" >&2
+  exit 1
+fi
+set +e
+"$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-missing.jpg >/dev/null
+missing=$?
+set -e
+if [ "$missing" -ne 3 ]; then
+  echo "missing image exit $missing, expected 3" >&2
+  exit 1
+fi

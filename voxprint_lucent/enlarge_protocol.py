@@ -16,6 +16,7 @@ from voxprint_lucent.discovery import pipe_name, socket_path
 from voxprint_lucent.formats import OutputFormat, parse_output_format
 
 PROTOCOL = 1
+ENLARGE_RELEASES_URL = "https://github.com/Mitroshenkov87/voxprint-enlarge/releases"
 
 ERROR_CODES = frozenset(
     {
@@ -156,11 +157,21 @@ def parse_capabilities(data: dict[str, Any]) -> Capabilities:
     )
 
 
-def action_visible(caps: Capabilities | None) -> bool:
-    """Hide Enlarge when the program is absent or it reports no usable GPU."""
+def action_enabled(caps: Capabilities | None) -> bool:
+    """Enable Enlarge when it is installed and reports a usable GPU."""
     if caps is None:
         return False
     return caps.gpu.status != "none"
+
+
+def action_visible(caps: Capabilities | None) -> bool:
+    """Same rule as ``action_enabled``. The button stays on screen either way."""
+    return action_enabled(caps)
+
+
+def install_offered(caps: Capabilities | None) -> bool:
+    """An Install Enlarge button is offered only when the program is absent."""
+    return caps is None
 
 
 def action_tooltip(caps: Capabilities | None) -> str:

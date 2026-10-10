@@ -1,15 +1,26 @@
-"""Enlarge actions inside the tools process. Hidden when no usable GPU is reported."""
+"""Enlarge actions inside the tools process.
+
+The action stays visible. It is disabled when Enlarge is missing or reports no
+usable GPU. A missing install offers an Install Enlarge button.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from voxprint_lucent.enlarge_client import EnlargeClient, EnlargeError, EnlargeResult
 from voxprint_lucent.enlarge_compare import CompareWindow
-from voxprint_lucent.enlarge_protocol import action_tooltip, action_visible
+from voxprint_lucent.enlarge_protocol import (
+    ENLARGE_RELEASES_URL,
+    action_enabled,
+    action_tooltip,
+    install_offered,
+)
 from voxprint_lucent.theme import build_stylesheet
 
 
@@ -28,26 +39,32 @@ class EnlargeWindow(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel(path.name))
         layout.addWidget(self._status)
-        if action_visible(self._caps):
-            self._status.setText("Ready.")
-            row = QHBoxLayout()
-            quick = QPushButton("Quick enlarge")
-            quick.setObjectName("quick-enlarge")
-            quick.setToolTip(action_tooltip(self._caps))
-            quick.clicked.connect(self.run_quick)
-            open_button = QPushButton("Open in Enlarge")
-            open_button.setObjectName("open-enlarge")
-            open_button.setToolTip(action_tooltip(self._caps))
-            open_button.clicked.connect(self.run_open)
-            cancel = QPushButton("Cancel")
-            cancel.setObjectName("cancel-enlarge")
-            cancel.clicked.connect(self.cancel)
-            row.addWidget(quick)
-            row.addWidget(open_button)
-            row.addWidget(cancel)
-            layout.addLayout(row)
-        else:
-            self._status.setText(action_tooltip(self._caps))
+        enabled = action_enabled(self._caps)
+        self._status.setText("Ready." if enabled else action_tooltip(self._caps))
+        row = QHBoxLayout()
+        quick = QPushButton("Quick enlarge")
+        quick.setObjectName("quick-enlarge")
+        quick.setEnabled(enabled)
+        quick.setToolTip(action_tooltip(self._caps))
+        quick.clicked.connect(self.run_quick)
+        open_button = QPushButton("Open in Enlarge")
+        open_button.setObjectName("open-enlarge")
+        open_button.setEnabled(enabled)
+        open_button.setToolTip(action_tooltip(self._caps))
+        open_button.clicked.connect(self.run_open)
+        cancel = QPushButton("Cancel")
+        cancel.setObjectName("cancel-enlarge")
+        cancel.setEnabled(enabled)
+        cancel.clicked.connect(self.cancel)
+        row.addWidget(quick)
+        row.addWidget(open_button)
+        row.addWidget(cancel)
+        if install_offered(self._caps):
+            install = QPushButton("Install Enlarge")
+            install.setObjectName("install-enlarge")
+            install.clicked.connect(self.open_releases)
+            row.addWidget(install)
+        layout.addLayout(row)
         self.resize(560, 180)
 
     def status_text(self) -> str:
@@ -61,6 +78,10 @@ class EnlargeWindow(QWidget):
 
     def cancel(self) -> None:
         self._client.cancel()
+
+    @staticmethod
+    def open_releases() -> None:
+        QDesktopServices.openUrl(QUrl(ENLARGE_RELEASES_URL))
 
     def shutdown(self) -> None:
         self._client.shutdown()

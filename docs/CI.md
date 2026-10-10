@@ -25,7 +25,7 @@ Concurrency group is `ci-${{ github.workflow }}-${{ github.ref }}` with cancel-i
 - ccache for that gcc/g++ smoke build. The key includes `cpp/**` and the smoke script, with restore prefix `ccache-linux-`. ccache does not apply to the MSVC harness.
 - Windows harness: `C:\Qt\6.12.0` and `C:\vcpkg\installed`, `downloads`, and `packages`, key `m0-win-qt-6.12.0-vcpkg-libavif-dav1d-libjxl-v1`. The harness skips the Qt download when `windeployqt.exe` is already present. `vcpkg install` is incremental when those directories are restored. The C++ build directory is not cached.
 
-The 250 ms check is unchanged. The smoke script still warms one `--benchmark` launch and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250.
+The 250 ms check is unchanged. The smoke script still warms one `--benchmark` launch and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250. After that measurement it runs `--version` and `--dry-run`, including a stand-in Enlarge CLI, so the hand-off is exercised without a GPU.
 
 The Qt 6.8 job compiles the viewer inside `debian:trixie` with `qt6-base-dev` and `qt6-base-private-dev`. CMake links `Qt6::GuiPrivate` only when that target's include directories exist; otherwise it adds the directory that contains `rhi/qrhi.h`. The job does not run the 250 ms check. That check stays on the Qt 6.12 smoke job.
 

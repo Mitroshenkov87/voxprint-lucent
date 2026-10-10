@@ -74,7 +74,11 @@ private:
     void applyCrop();
     void cancelCrop();
     bool writeView(const QString &path);
+    QString uniqueAvif(const QString &directory, const QString &base, const QString &infix) const;
+    void saveImage();
     void saveCopy();
+    void exportImage();
+    void downloadImage();
     void saveAs();
     void moveToTrash();
     void syncRhi();

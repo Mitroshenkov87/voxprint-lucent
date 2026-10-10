@@ -30,6 +30,7 @@
 #include <QProcess>
 #include <QScreen>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QThreadPool>
 #include <QTimer>
 #include <QWheelEvent>
@@ -917,8 +918,11 @@ void Browser::ensureChrome() {
     callbacks.rotate = [this](bool right) { rotateBy(right); };
     callbacks.flip = [this](bool horizontal) { flipImage(horizontal); };
     callbacks.crop = [this] { beginCrop(); };
+    callbacks.save = [this] { saveImage(); };
     callbacks.saveCopy = [this] { saveCopy(); };
     callbacks.saveAs = [this] { saveAs(); };
+    callbacks.exportImage = [this] { exportImage(); };
+    callbacks.download = [this] { downloadImage(); };
     callbacks.trash = [this] { moveToTrash(); };
     callbacks.slideshow = [this] { toggleSlideshow(); };
     callbacks.fullscreen = [this] { toggleFullscreen(); };
@@ -1071,6 +1075,18 @@ void Browser::applyCrop() {
     update();
 }
 
+QString Browser::uniqueAvif(const QString &directory, const QString &base, const QString &infix) const {
+    const QString ext = QStringLiteral(".avif");
+    QString dest = directory + QLatin1Char('/') + base + infix + ext;
+    int number = 2;
+    while (QFileInfo::exists(dest)) {
+        const QString counted = infix.isEmpty() ? QLatin1Char('-') + QString::number(number++)
+                                                 : infix + QLatin1Char('-') + QString::number(number++);
+        dest = directory + QLatin1Char('/') + base + counted + ext;
+    }
+    return dest;
+}
+
 bool Browser::writeView(const QString &path) {
     if (image_.isNull() || path.isEmpty()) {
         return false;
@@ -1087,6 +1103,22 @@ bool Browser::writeView(const QString &path) {
     return true;
 }
 
+void Browser::saveImage() {
+    if (image_.isNull()) {
+        return;
+    }
+    const QFileInfo info(currentPath_);
+    QString directory = info.absolutePath();
+    if (directory.isEmpty()) {
+        directory = QDir::homePath();
+    }
+    QString base = info.completeBaseName();
+    if (base.isEmpty()) {
+        base = QStringLiteral("image");
+    }
+    writeView(uniqueAvif(directory, base, QStringLiteral(".saved")));
+}
+
 void Browser::saveCopy() {
     if (image_.isNull()) {
         return;
@@ -1100,13 +1132,40 @@ void Browser::saveCopy() {
     if (base.isEmpty()) {
         base = QStringLiteral("image");
     }
-    QString dest = directory + QLatin1Char('/') + base + QStringLiteral("-copy.avif");
-    int suffix = 2;
-    while (QFileInfo::exists(dest)) {
-        dest = directory + QLatin1Char('/') + base + QStringLiteral("-copy-") + QString::number(suffix++)
-            + QStringLiteral(".avif");
+    writeView(uniqueAvif(directory, base, QStringLiteral("-copy")));
+}
+
+void Browser::exportImage() {
+    if (image_.isNull()) {
+        return;
     }
-    writeView(dest);
+    const QFileInfo info(currentPath_);
+    QString directory = info.absolutePath();
+    if (directory.isEmpty()) {
+        directory = QDir::homePath();
+    }
+    QString base = info.completeBaseName();
+    if (base.isEmpty()) {
+        base = QStringLiteral("image");
+    }
+    writeView(uniqueAvif(directory, base, QStringLiteral(".export")));
+}
+
+void Browser::downloadImage() {
+    if (image_.isNull()) {
+        return;
+    }
+    QString directory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    if (directory.isEmpty()) {
+        directory = QDir::homePath();
+    }
+    QDir().mkpath(directory);
+    const QFileInfo info(currentPath_);
+    QString base = info.completeBaseName();
+    if (base.isEmpty()) {
+        base = QStringLiteral("image");
+    }
+    writeView(uniqueAvif(directory, base, QString()));
 }
 
 void Browser::saveAs() {

@@ -4,6 +4,7 @@
 #include "icons.h"
 
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
 #include <QPixmap>
 
@@ -28,6 +29,38 @@ void chevron(QPainter &painter, bool left) {
         painter.drawLine(QPointF(8, 5), QPointF(14, 11));
         painter.drawLine(QPointF(14, 11), QPointF(8, 17));
     }
+}
+
+QPainterPath trayPath() {
+    QPainterPath path;
+    path.moveTo(3, 12);
+    path.lineTo(3, 16);
+    path.arcTo(QRectF(3, 13.5, 5, 5), 180, 90);
+    path.lineTo(16.5, 18.5);
+    path.arcTo(QRectF(14, 13.5, 5, 5), 270, 90);
+    path.lineTo(19, 12);
+    return path;
+}
+
+QPainterPath lipPath() {
+    QPainterPath path;
+    path.moveTo(3, 12);
+    path.lineTo(6.5, 12);
+    path.lineTo(8, 14.5);
+    path.lineTo(14, 14.5);
+    path.lineTo(15.5, 12);
+    path.lineTo(19, 12);
+    return path;
+}
+
+void drawTray(QPainter &painter) {
+    painter.drawPath(trayPath());
+    painter.drawPath(lipPath());
+}
+
+void chevronAt(QPainter &painter, qreal x, qreal y) {
+    painter.drawLine(QPointF(x - 4, y), QPointF(x, y + 4));
+    painter.drawLine(QPointF(x, y + 4), QPointF(x + 4, y));
 }
 
 void corners(QPainter &painter, bool inward) {
@@ -131,15 +164,46 @@ QIcon lucentIcon(Icon id) {
         painter.drawLine(QPointF(14, 15), QPointF(18, 15));
         break;
     case Icon::Save:
-        painter.drawRect(QRectF(4, 3, 14, 16));
-        painter.drawLine(QPointF(7, 3), QPointF(7, 8));
-        painter.drawLine(QPointF(7, 8), QPointF(15, 8));
-        painter.drawRect(QRectF(7, 12, 8, 5));
+        drawTray(painter);
+        painter.drawLine(QPointF(11, 2.5), QPointF(11, 11));
+        chevronAt(painter, 11, 7);
         break;
     case Icon::SaveAs:
-        painter.drawRect(QRectF(3, 8, 12, 10));
-        painter.drawLine(QPointF(13, 5), QPointF(18, 5));
-        painter.drawLine(QPointF(15.5, 2.5), QPointF(15.5, 7.5));
+        drawTray(painter);
+        painter.drawLine(QPointF(11, 2.5), QPointF(11, 8.6));
+        chevronAt(painter, 11, 4.6);
+        chevronAt(painter, 11, 7.2);
+        break;
+    case Icon::SaveCopy: {
+        painter.save();
+        painter.setOpacity(0.45);
+        painter.drawLine(QPointF(14, 2), QPointF(14, 8));
+        chevronAt(painter, 14, 4);
+        painter.restore();
+        painter.save();
+        painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+        QPen knock = painter.pen();
+        knock.setColor(Qt::black);
+        knock.setWidthF(3.8);
+        painter.setPen(knock);
+        painter.drawLine(QPointF(9.5, 3.5), QPointF(9.5, 11));
+        chevronAt(painter, 9.5, 7);
+        painter.restore();
+        drawTray(painter);
+        painter.drawLine(QPointF(9.5, 3.5), QPointF(9.5, 11));
+        chevronAt(painter, 9.5, 7);
+        break;
+    }
+    case Icon::Export:
+        drawTray(painter);
+        painter.drawLine(QPointF(10, 11), QPointF(17.5, 3.5));
+        painter.drawLine(QPointF(12.5, 3.5), QPointF(17.5, 3.5));
+        painter.drawLine(QPointF(17.5, 3.5), QPointF(17.5, 8.5));
+        break;
+    case Icon::Download:
+        painter.drawLine(QPointF(11, 3), QPointF(11, 13));
+        chevronAt(painter, 11, 9);
+        painter.drawLine(QPointF(4, 18), QPointF(18, 18));
         break;
     case Icon::Trash:
         painter.drawLine(QPointF(5, 7), QPointF(17, 7));

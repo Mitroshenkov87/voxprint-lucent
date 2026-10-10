@@ -38,15 +38,17 @@ Change rules: unknown fields are ignored by both sides; adding optional fields o
 - `gpu.status`: `ok` (RTX 40 / CC 8.9+), `warn` (usable but below the suite minimum; Enlarge warns, does not block), `none` (no usable GPU).
 - `gpu.reason`: `null` when `ok`; with `none` it is `no_nvidia` or `driver_too_old` (NVIDIA driver 600+ required). Open enum.
 - Model ids above are illustrative; the registry is the source of truth. `installed: false` means the weights are not downloaded.
-- Client behaviour (Lucent): `ok` -> action enabled; `warn` -> enabled with Enlarge's warning in the tooltip; `none` or Enlarge absent -> action hidden or disabled with the reason.
+- Client behaviour (Lucent): `ok` -> action enabled; `warn` -> enabled with Enlarge's warning in the tooltip; `none` -> action disabled with the reason, and no install button. If Enlarge is not installed, the action stays disabled and an Install Enlarge button opens https://github.com/Mitroshenkov87/voxprint-enlarge/releases.
 
 ## 3. Transport
 
-- `QLocalServer` / `QLocalSocket`.
+Enlarge may keep this socket behind its own process. **Lucent does not open it.** Lucent calls the headless CLI in section 6 and reads JSON from stdout. A caller never depends on the socket.
+
+- `QLocalServer` / `QLocalSocket` (Enlarge's own server, not the Lucent caller).
 - **Windows:** named pipe `\\.\pipe\voxprint-enlarge-<first 16 hex chars of sha256(user SID)>`, ACL current user only.
 - **Linux:** `$XDG_RUNTIME_DIR/voxprint/enlarge.sock` (directory 0700, socket 0600).
 - UTF-8 JSON-lines: one object per line, `\n` terminated. Every message carries `"protocol": 1`.
-- **Launch:** if nothing is listening, the client starts `voxprint-enlarge --serve --hidden` and waits up to 3 s for the socket.
+- **Launch:** Enlarge may start its own server. Lucent does not run `--serve` and does not wait on the socket.
 
 ## 4. Messages
 
@@ -100,12 +102,14 @@ Error codes (open enum):
 
 Default: `<name>.enlarged-<scale>x.<ext>` next to the source (or in `output_dir`), where `<ext>` follows `format` (`avif`, `jxl`, `webp`, `jpg`, `heic`). If the name exists, a numeric suffix is added (`<name>.enlarged-2x-1.avif`, `-2`, ...). The server **never overwrites** an existing file, including an explicit `output`.
 
-## 6. CLI fallback
+## 6. CLI
 
-For scripts, file managers, or when the socket fails:
+Lucent's only enlarge hand-off, and the path for scripts and file managers:
 
 ```
-voxprint-enlarge --input <file> --scale 2 --preset photo [--quality fast|max] [--model <id>] [--format avif] [--output <file>] --json-progress
+voxprint-enlarge --input <file> --scale 2 --preset photo [--quality fast|max] [--model <id>] [--format avif] [--output <file>] [--output-dir <dir>] [--open-ui] [--dry-run] --json-progress
 ```
 
 Streams the same `accepted` / `progress` / `done` / `error` objects (JSON-lines) on stdout. Exit code 0 on success, non-zero on error. Same output naming and no-overwrite rule as section 5.
+
+`--open-ui` asks Enlarge to open its window. The JSON result is still printed. `--dry-run` skips the GPU refusal and does not write the output file; `done.output` is the path that would have been written. Validation errors, including `model_missing`, still apply. `voxprint-lucent --dry-run` is specified in [CLI.md](CLI.md).

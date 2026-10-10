@@ -9,8 +9,22 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent)
 
 qt_standard_project_setup()
 
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../BUILD.json" LUCENT_BUILD_JSON)
+string(JSON LUCENT_BUILD_OFFSET GET "${LUCENT_BUILD_JSON}" offset)
+string(JSON LUCENT_CODENAME GET "${LUCENT_BUILD_JSON}" codename)
+if(NOT DEFINED LUCENT_CI_RUN_NUMBER)
+    set(LUCENT_CI_RUN_NUMBER "$ENV{GITHUB_RUN_NUMBER}")
+endif()
+if(LUCENT_CI_RUN_NUMBER STREQUAL "")
+    set(LUCENT_CI_RUN_NUMBER 0)
+endif()
+math(EXPR LUCENT_BUILD_NUMBER "${LUCENT_CI_RUN_NUMBER} + ${LUCENT_BUILD_OFFSET}")
+set(LUCENT_VERSION "0.1.0-rc3")
+configure_file(src/lucent_build.h.in "${CMAKE_CURRENT_BINARY_DIR}/lucent_build.h" @ONLY)
+
 qt_add_executable(voxprint-lucent
     src/main.cpp
+    src/dry_run.cpp
     src/decode.cpp
     src/theme.cpp
     src/viewer.cpp
@@ -28,10 +42,10 @@ qt_add_executable(voxprint-lucent
     src/chrome.cpp
 )
 
-target_compile_definitions(voxprint-lucent PRIVATE LUCENT_VERSION="0.1.0-rc2")
+target_compile_definitions(voxprint-lucent PRIVATE LUCENT_VERSION="${LUCENT_VERSION}")
 
 target_link_libraries(voxprint-lucent PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
-target_include_directories(voxprint-lucent PRIVATE src)
+target_include_directories(voxprint-lucent PRIVATE src "${CMAKE_CURRENT_BINARY_DIR}")
 
 if(Qt6_VERSION VERSION_GREATER_EQUAL 6.7.0)
     # <rhi/qrhi.h> ships with Qt6::GuiPrivate. Debian 13's qt6-base-dev still
