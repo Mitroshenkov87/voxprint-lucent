@@ -1,0 +1,13 @@
+Voxprint AI Lucent 0.1.0-rc1
+Copyright 2026 Aleksandr Mitroshenkov
+
+Per-user install under %LOCALAPPDATA%\Voxprint\Lucent. No administrator.
+
+voxprint-lucent.exe is the viewer. It does not need an NVIDIA GPU.
+python\python.exe is the tools and Enlarge client (PySide6). Press I in the
+viewer, or run voxprint-lucent-tools.cmd --path IMAGE.
+Enlarge itself is a separate app. This install only contains the client.
+
+Uninstall from Windows Settings, Apps, Voxprint AI Lucent.
+
+The measurement zip (Run-M0.ps1) is a separate download from the same release.

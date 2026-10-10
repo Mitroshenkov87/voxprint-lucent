@@ -12,6 +12,7 @@
 #include "theme.h"
 
 #include <QCoreApplication>
+#include <QDir>
 #include <QFileInfo>
 #include <QKeyEvent>
 #include <QLabel>
@@ -480,10 +481,46 @@ void Browser::fitWindow() {
 }
 
 void Browser::openTools() {
-    const QString python = qEnvironmentVariable("LUCENT_PYTHON", QStringLiteral("python"));
-    QProcess::startDetached(python,
-                             {QStringLiteral("-m"), QStringLiteral("voxprint_lucent.tools_host"), QStringLiteral("--path"),
-                              currentPath_});
+    const QString appDir = QCoreApplication::applicationDirPath();
+    QString python = qEnvironmentVariable("LUCENT_PYTHON");
+    const QString bundled = appDir + QStringLiteral("/python/python.exe");
+    if (python.isEmpty() && QFileInfo::exists(bundled)) {
+        python = bundled;
+    }
+    if (python.isEmpty()) {
+#ifdef Q_OS_WIN
+        python = QStringLiteral("python");
+#else
+        python = QStringLiteral("python3");
+#endif
+    }
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QStringList pythonPath;
+    if (QFileInfo::exists(appDir + QStringLiteral("/voxprint_lucent/__init__.py"))) {
+        pythonPath.append(appDir);
+    }
+    const QString debRoot = QDir(appDir).filePath(QStringLiteral("../lib/voxprint-lucent"));
+    if (QFileInfo::exists(debRoot + QStringLiteral("/voxprint_lucent/__init__.py"))) {
+        pythonPath.append(QDir(debRoot).absolutePath());
+    }
+    if (!pythonPath.isEmpty()) {
+        const QString existing = env.value(QStringLiteral("PYTHONPATH"));
+        if (!existing.isEmpty()) {
+            pythonPath.append(existing);
+        }
+#ifdef Q_OS_WIN
+        env.insert(QStringLiteral("PYTHONPATH"), pythonPath.join(QLatin1Char(';')));
+#else
+        env.insert(QStringLiteral("PYTHONPATH"), pythonPath.join(QLatin1Char(':')));
+#endif
+    }
+    QProcess process;
+    process.setProgram(python);
+    process.setArguments({QStringLiteral("-m"), QStringLiteral("voxprint_lucent.tools_host"),
+                          QStringLiteral("--path"), currentPath_});
+    process.setWorkingDirectory(appDir);
+    process.setProcessEnvironment(env);
+    process.startDetached();
 }
 
 void Browser::cycleLanguage() {

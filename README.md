@@ -2,86 +2,97 @@
 
 Fast, colour-accurate image viewer for the [Voxprint AI Media Suite](https://github.com/Mitroshenkov87).
 
-Double-click an image and it should be on screen immediately, including AVIF, JPEG XL, and WebP, with colour that follows the embedded profile. One later action hands the file to Voxprint AI Enlarge. Lucent is a clean-room project: the ideas of a fast native viewer are familiar, and no ImageGlass code, assets, themes, icons, or config formats are used. ImageGlass is GPL-3.0. This repository is Apache-2.0 and contains no GPL code.
+Double-click an image and it should be on screen immediately, including JPEG, WebP, and, on Windows, AVIF and JPEG XL. Lucent does not use the network to show a picture. One later action can hand the file to Voxprint AI Enlarge.
 
-## Platforms
+Lucent is a clean-room project. No ImageGlass code, assets, themes, icons, or config formats are used. ImageGlass is GPL-3.0. This repository is Apache-2.0.
 
-- Windows 11 24H2 and newer, x64
-- Linux distributions released from 2025 onward (Wayland first)
+## System requirements
 
-The viewer is a C++/Qt 6 executable, `voxprint-lucent`, built for x86-64-v3 (AVX2). There is no 32-bit build and no fallback for older operating systems or CPUs. Code stays friendly to a future ARM build; ARM is not built now.
+- Windows 11 24H2 or newer, or Windows Server 2025, x64. Linux distributions from 2025 onward, x86-64-v3 (AVX2). There is no 32-bit build.
+- **Viewing does not need an NVIDIA GPU.** Any modern GPU, including an integrated one, is enough. `LUCENT_RHI=0` keeps painting on the CPU.
+- The Windows installer brings its own Qt runtime, AVIF and JPEG XL plugins, and the tools program. You do not install Qt or Python yourself.
+- Tools and the Enlarge hand-off on Linux need Python 3.14. The Linux package's viewer includes Qt 6.12, JPEG, and WebP. AVIF and JPEG XL plugins are in the Windows installer.
+- Enlarge is a separate application. Lucent only contains the client. Enlarge has its own requirements and warns below an RTX 40. Lucent itself still opens images without it.
 
-**Lucent does not require an NVIDIA GPU.** That is an exception to the suite GPU rule. Any modern GPU, including an integrated one, is enough to view images. The Enlarge hand-off needs Voxprint AI Enlarge, and Enlarge is the component that warns when the GPU is below RTX 40.
+## Install
 
-## Architecture
+Release files are on this repository's GitHub releases. `v0.1.0-rc1` is a pre-release. Check `SHA256SUMS` against the download.
 
-`voxprint-lucent` owns startup, the single instance, decode, the look-ahead cache, and rendering. Settings, tools, the info panel, the Enlarge UI, and the updater run in a separate process, `voxprint-lucent-tools` (Python 3.14 and PySide6), and only when you open them. They are not on the path that paints the first image.
+**Windows.** Run `VoxprintAILucent-0.1.0-rc1-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
 
-Both processes take their colours from one token file, `share/palette.json`, filled into `share/lucent.qss.in`. The splash identity colour is `#60a5fa`. A blocking splash is not shown before the first pixel; the colour is the window border and the theme accent.
+The zip `lucent-0.1.0-rc1-windows.zip` is the measurement bundle (the viewer plus `Run-M0.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
 
-Milestone M0 measured that split. PySide6 does not meet a 250 ms cold first pixel. The C++ raster path does, except for 12 MP AVIF 4:4:4, which is limited by the decode. The numbers, the independent check, and the pass/fail table are in [docs/M0-RESULTS.md](docs/M0-RESULTS.md). The reference laptop has not been measured yet. That run confirms the result. Work on the core viewer continues without waiting for it.
+**Linux.**
 
-## Viewing
+```bash
+sudo apt install ./voxprint-lucent_0.1.0~rc1_amd64.deb
+```
 
-Open an image with `voxprint-lucent photo.jpg`. The same folder is browsed with Left and Right, in natural order (Explorer order on Windows). The viewer keeps two images ahead and two behind. Wheel zoom stays anchored on the cursor. Drag to pan; the pan eases out when you release. Keys, all remappable with Ctrl+K:
+## First run
+
+Open an image from the Start menu shortcut, from a file association, or from a terminal:
+
+```bash
+voxprint-lucent photo.jpg
+```
+
+The picture is drawn by the C++ program. Left and Right move through the same folder. The tools window stays closed until you ask for it.
+
+Press `I`, or run:
+
+```bash
+voxprint-lucent-tools --path photo.jpg
+```
+
+That window shows dimensions, format, bit depth, colour profile, and a JPEG EXIF and GPS summary. From there you can step frames, export a frame, rotate, flip, crop, copy a colour, copy the image or its path, reveal the folder, or move the file to the trash.
+
+## Keys
+
+All of these can be remapped with Ctrl+K.
 
 - `1` actual size, `2` fit, `3` fill, `4` fit width, `5` fit height
+- Wheel zooms on the cursor. Drag pans.
+- Left and Right move to the previous and next image
 - `S` slideshow, `F11` fullscreen, Ctrl+Shift+F frameless, Ctrl+Shift+W fit the window to the image
 - `.` and `,` step frames of a multi-page or animated file
-- `I` opens tools in the separate process, Ctrl+L cycles English, Russian, and German
-
-The tools window lists dimensions, format, bit depth, colour profile, and an EXIF/GPS summary. From there you can step and export a frame (AVIF, JPEG XL, or WebP), rotate or flip, crop to AVIF, copy the colour under the cursor, copy the image or its path, reveal the folder, or move the file to the trash.
+- `I` opens the tools window. Ctrl+L cycles English, Russian, and German
 - `Q` or Esc quits. Esc leaves fullscreen, then stops a slideshow, before it quits
 
-`--benchmark` still paints one image, prints `FIRST_PIXEL`, and quits. It does not build the folder list, the cache, or the GPU view.
+## Formats
 
-## Network
+Lucent reads JPEG, WebP, PNG, GIF, TIFF, BMP, and, when the plugin is installed, AVIF, JPEG XL, HEIF, RAW, and EXR. The Windows installer includes AVIF and JPEG XL. HEIF uses the system codec only. libde265 and x265 are not shipped.
 
-- An update check against this repository's GitHub releases is allowed, and so is any request you trigger yourself (for example "Check for updates now").
-- Statistics and diagnostics are strictly opt-in. They are off by default. Only you turn collection on, or send a report yourself.
-- There is no background telemetry, and viewing an image does not use the network. The update check is not implemented in this milestone; the policy is in `voxprint_lucent/network_policy.py` and the viewer does not import it at startup.
+Where the tools save a file, the default is AVIF. JPEG XL and WebP are the other choices. JPEG and HEIC are legacy choices. PNG is not an output format.
 
-## Output formats
+Embedded colour profiles are converted to sRGB. A separate monitor profile is not applied in this version.
 
-Where the tools save a file, the default format is AVIF. JPEG XL and WebP are options. JPEG and HEIC are legacy options. PNG is not an output format. HEIC is the system codec only and is not bundled. libde265 and x265 are not shipped.
+## Enlarge
 
-## Run the Windows measurement
-
-On Windows 11 or Windows Server 2025, download the `lucent-m0-windows` artifact from CI and unzip it. Leave Microsoft Defender real-time protection on. A cold sample means the first launch after a reboot. Later launches in that same boot are not cold.
-
-Register the one-shot logon task, then reboot:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Run-M0.ps1 -ScheduleCold
-```
-
-Sign in and let the task start the run. It removes itself when it finishes. If you would rather not use a scheduled task, reboot and run `.\Run-M0.ps1` yourself while the machine has been up for less than three minutes.
-
-From a checkout of this repository the same script is `bench\Run-M0.ps1`. It writes `m0-<timestamp>.log` and `m0-<timestamp>.json` with the OS build, CPU, GPU, Defender state, each sample, the median, the nearest-rank p95, and pass/fail of the first post-reboot C++ JPEG launch against 250 ms. Ten separate cold medians would need ten reboots; the log says so.
-
-`-WarmOnly` records warm runs and leaves the cold gate as unmeasured.
-
-## Develop
+Enlarge is optional. With Voxprint AI Enlarge installed:
 
 ```bash
-python3.14 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
-cmake -S cpp -B cpp/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build cpp/build
-.venv/bin/ruff check .
-.venv/bin/pytest
+voxprint-lucent-tools --enlarge --path photo.jpg
 ```
 
-The C++ viewer needs Qt 6. The product pin is Qt 6.12, matching PySide6. A local configure may find an older system Qt; that binary is only a smoke test. CI builds Ubuntu against the Qt 6.12 SDK and builds the Windows zip with Qt 6.12, KImageFormats AVIF/JPEG XL plugins, and the PySide6 comparison viewer.
+Lucent finds Enlarge from its install registration, sends the file path (not the pixels), and opens a before/after split. Keep leaves the result. Reveal opens the folder. Discard deletes the result and leaves the original. If Enlarge is missing, or it reports no usable GPU, the actions stay hidden. A GPU that is usable but below an RTX 40 stays available and shows Enlarge's warning on the button.
+
+The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). Discovery is [docs/APP-DISCOVERY.md](docs/APP-DISCOVERY.md). This repository does not ship the Enlarge server. Tests use `python -m voxprint_lucent.enlarge_mock`.
+
+## Updates and privacy
+
+- The only network call Lucent makes on its own is an update check, and only when you run `voxprint-lucent-tools --check-update`. It is a plain HTTPS GET of this repository's GitHub releases. The request carries the product name and no account, no install id, and no usage statistics.
+- Opening an image does not use the network. There is no background telemetry.
+- Statistics and diagnostics are strictly opt-in. They are off by default. Only you turn collection on, or send a report yourself. Nothing in this version sends a diagnostics report.
+
+## Uninstall
+
+**Windows.** Settings, Apps, Voxprint AI Lucent. That removes the per-user install.
+
+**Linux.**
 
 ```bash
-cpp/build/voxprint-lucent photo.jpg --benchmark
-.venv/bin/voxprint-lucent-tools --ping
+sudo apt remove voxprint-lucent
 ```
-
-`--benchmark` prints `FIRST_PIXEL` and quits. It does not take the single-instance socket, so a timing run does not pay for a connect timeout.
-
-Decisions, the v1 plan, and the viewer research live in `docs/`.
 
 ## ☕ Support the Project
 
@@ -97,3 +108,16 @@ If you find this project useful and would like to support its development, you c
 ## Licence
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+## Develop
+
+Build instructions, the 250 ms check, and the milestone notes live in `docs/`. A checkout uses Python 3.14:
+
+```bash
+python3.14 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/ruff check .
+.venv/bin/pytest
+```
+
+`--benchmark` prints `FIRST_PIXEL` and quits. It does not open the tools process. The product pin is Qt 6.12.
