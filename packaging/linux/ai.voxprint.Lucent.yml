@@ -1,0 +1,22 @@
+# Flatpak manifest for a later release build. CI does not run flatpak-builder.
+# The KDE runtime is the one that already ships KImageFormats.
+id: ai.voxprint.Lucent
+runtime: org.kde.Platform
+runtime-version: "6.9"
+sdk: org.kde.Sdk
+command: voxprint-lucent
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home:ro
+modules:
+  - name: voxprint-lucent
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 packaging/linux/ai.voxprint.Lucent.desktop /app/share/applications/ai.voxprint.Lucent.desktop
+      - python3 -m pip install --prefix=/app .
+    sources:
+      - type: dir
+        path: ../..

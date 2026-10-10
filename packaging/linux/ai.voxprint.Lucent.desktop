@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Voxprint AI Lucent
+GenericName=Image viewer
+Comment=Fast, colour-accurate image viewer
+Exec=voxprint-lucent %F
+Icon=ai.voxprint.Lucent
+Terminal=false
+Categories=Graphics;Viewer;
+MimeType=image/avif;image/jxl;image/webp;image/jpeg;image/png;image/gif;image/tiff;image/bmp;image/heif;image/heic;
+StartupWMClass=voxprint-lucent

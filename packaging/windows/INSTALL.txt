@@ -1,0 +1,9 @@
+Voxprint AI Lucent 0.1.0 skeleton
+Copyright 2026 Aleksandr Mitroshenkov
+
+This per-user install (no administrator) is the M0 packaging skeleton.
+It launches the Python module with Python 3.14. The release installer
+replaces this launcher with a Nuitka standalone onedir build.
+
+Lucent does not require an NVIDIA GPU. The Enlarge hand-off, added in a
+later milestone, needs Voxprint AI Enlarge.

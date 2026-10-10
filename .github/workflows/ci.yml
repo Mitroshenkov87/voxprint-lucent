@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-test:
+    name: lint and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Qt system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libfontconfig1 libx11-6 libx11-xcb1 libxcb1 \
+            libxcb-cursor0 libxcb-glx0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+            libxcb-xinerama0 libxext6 libxi6 libxrender1 \
+            libvulkan1 mesa-vulkan-drivers xvfb libgl1-mesa-dri
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff
+        run: python -m ruff check .
+      - name: Tests (Linux)
+        if: runner.os == 'Linux'
+        env:
+          VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.json
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          QT_QPA_PLATFORM: xcb
+        run: xvfb-run -a -s "-screen 0 1280x720x24" python -m pytest
+      - name: Tests (Windows)
+        if: runner.os == 'Windows'
+        run: python -m pytest
+
+  benchmark:
+    name: benchmark (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Qt system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libfontconfig1 libx11-6 libx11-xcb1 libxcb1 \
+            libxcb-cursor0 libxcb-glx0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+            libxcb-xinerama0 libxext6 libxi6 libxrender1 \
+            libvulkan1 mesa-vulkan-drivers xvfb libgl1-mesa-dri
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Benchmark (Linux)
+        if: runner.os == 'Linux'
+        env:
+          VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.json
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          QT_QPA_PLATFORM: xcb
+        run: xvfb-run -a -s "-screen 0 1280x720x24" python -m bench.harness --runs 10
+      - name: Benchmark (Windows)
+        if: runner.os == 'Windows'
+        run: python -m bench.harness --runs 10
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m0-benchmark-${{ matrix.os }}
+          path: bench/results/latest.json
+          if-no-files-found: ignore
+
+  package:
+    name: package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Debian package
+        if: runner.os == 'Linux'
+        run: sh packaging/linux/build-deb.sh
+      - name: WiX per-user MSI
+        if: runner.os == 'Windows'
+        run: pwsh -File packaging/windows/build-installer.ps1
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.os }}
+          path: dist/*
+          if-no-files-found: error
+
+  cpp-smoke:
+    name: C++ smoke (ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Compiler and Qt runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build \
+            libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libfontconfig1 libx11-6 libx11-xcb1 libxcb1 \
+            libxcb-cursor0 libxcb-glx0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+            libxcb-xinerama0 libxext6 libxi6 libxrender1 \
+            libvulkan1 mesa-vulkan-drivers xvfb libgl1-mesa-dri
+      - name: Build against Qt 6.12 and require FIRST_PIXEL
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: sh packaging/linux/build-cpp-smoke.sh
+
+  m0-harness:
+    name: M0 Windows harness
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Build the self-contained zip
+        run: pwsh -File packaging/windows/build-m0-harness.ps1
+      - name: Upload lucent-m0-windows.zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: lucent-m0-windows
+          path: dist/lucent-m0-windows.zip
+          if-no-files-found: error
