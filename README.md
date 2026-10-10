@@ -29,6 +29,8 @@ Open an image with `voxprint-lucent photo.jpg`. The same folder is browsed with 
 - `S` slideshow, `F11` fullscreen, Ctrl+Shift+F frameless, Ctrl+Shift+W fit the window to the image
 - `.` and `,` step frames of a multi-page or animated file
 - `I` opens tools in the separate process, Ctrl+L cycles English, Russian, and German
+
+The tools window lists dimensions, format, bit depth, colour profile, and an EXIF/GPS summary. From there you can step and export a frame (AVIF, JPEG XL, or WebP), rotate or flip, crop to AVIF, copy the colour under the cursor, copy the image or its path, reveal the folder, or move the file to the trash.
 - `Q` or Esc quits. Esc leaves fullscreen, then stops a slideshow, before it quits
 
 `--benchmark` still paints one image, prints `FIRST_PIXEL`, and quits. It does not build the folder list, the cache, or the GPU view.

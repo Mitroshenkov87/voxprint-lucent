@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import numpy as np
 from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QApplication
 
@@ -48,7 +49,7 @@ def export_copy(args) -> int:  # type: ignore[no-untyped-def]
             print("PNG is not an output format", file=sys.stderr)
             return 2
     try:
-        written = _write_qimage(image, dest, fmt, lossless=bool(args.lossless))
+        written = write_qimage(image, dest, fmt, lossless=bool(args.lossless))
     except CodecMissing as exc:
         print(str(exc), file=sys.stderr)
         return 3
@@ -56,9 +57,7 @@ def export_copy(args) -> int:  # type: ignore[no-untyped-def]
     return 0
 
 
-def _write_qimage(image: QImage, dest: Path, fmt: OutputFormat, *, lossless: bool) -> Path:
-    import numpy as np
-
+def write_qimage(image: QImage, dest: Path, fmt: OutputFormat, *, lossless: bool) -> Path:
     rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
     width, height = rgba.width(), rgba.height()
     stride = rgba.bytesPerLine()
