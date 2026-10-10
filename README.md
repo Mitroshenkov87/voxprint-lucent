@@ -21,6 +21,18 @@ Both processes take their colours from one token file, `share/palette.json`, fil
 
 Milestone M0 measured that split. PySide6 does not meet a 250 ms cold first pixel. The C++ raster path does, except for 12 MP AVIF 4:4:4, which is limited by the decode. The numbers, the independent check, and the pass/fail table are in [docs/M0-RESULTS.md](docs/M0-RESULTS.md). The reference laptop has not been measured yet. That run confirms the result. Work on the core viewer continues without waiting for it.
 
+## Viewing
+
+Open an image with `voxprint-lucent photo.jpg`. The same folder is browsed with Left and Right, in natural order (Explorer order on Windows). The viewer keeps two images ahead and two behind. Wheel zoom stays anchored on the cursor. Drag to pan; the pan eases out when you release. Keys, all remappable with Ctrl+K:
+
+- `1` actual size, `2` fit, `3` fill, `4` fit width, `5` fit height
+- `S` slideshow, `F11` fullscreen, Ctrl+Shift+F frameless, Ctrl+Shift+W fit the window to the image
+- `.` and `,` step frames of a multi-page or animated file
+- `I` opens tools in the separate process, Ctrl+L cycles English, Russian, and German
+- `Q` or Esc quits. Esc leaves fullscreen, then stops a slideshow, before it quits
+
+`--benchmark` still paints one image, prints `FIRST_PIXEL`, and quits. It does not build the folder list, the cache, or the GPU view.
+
 ## Network
 
 - An update check against this repository's GitHub releases is allowed, and so is any request you trigger yourself (for example "Check for updates now").

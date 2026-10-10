@@ -4,6 +4,7 @@
 // voxprint-lucent: C++/Qt 6 viewer core. Settings, tools, the info panel,
 // the Enlarge UI and the updater live in the on-demand PySide6 tools host.
 
+#include "browser.h"
 #include "viewer.h"
 
 #include <QApplication>
@@ -14,6 +15,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <functional>
 
 namespace {
 
@@ -43,26 +45,27 @@ bool claimOrForward(QLocalServer &server, const QString &path) {
     return false;
 }
 
-void takeForward(QLocalSocket *socket, lucent::Viewer &viewer) {
+void takeForward(QLocalSocket *socket, const std::function<void(const QString &)> &open) {
     if (socket == nullptr) {
         return;
     }
-    QObject::connect(socket, &QLocalSocket::readyRead, socket, [socket, &viewer] {
+    QObject::connect(socket, &QLocalSocket::readyRead, socket, [socket, open] {
         const QString path = QString::fromUtf8(socket->readAll()).trimmed();
         if (!path.isEmpty()) {
-            viewer.setWindowFilePath(path);
-            viewer.openPath(path);
+            open(path);
         }
         socket->deleteLater();
     });
 }
 
-void acceptForwards(QLocalServer &server, lucent::Viewer &viewer) {
-    QObject::connect(&server, &QLocalServer::newConnection, &viewer, [&server, &viewer] {
-        takeForward(server.nextPendingConnection(), viewer);
+void acceptForwards(QLocalServer &server, const std::function<void(const QString &)> &open) {
+    QObject::connect(&server, &QLocalServer::newConnection, &server, [&server, open] {
+        while (server.hasPendingConnections()) {
+            takeForward(server.nextPendingConnection(), open);
+        }
     });
     while (server.hasPendingConnections()) {
-        takeForward(server.nextPendingConnection(), viewer);
+        takeForward(server.nextPendingConnection(), open);
     }
 }
 
@@ -105,10 +108,16 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    lucent::Viewer viewer(options, started);
-    if (!options.benchmark && server.isListening()) {
-        acceptForwards(server, viewer);
+    if (options.benchmark) {
+        lucent::Viewer viewer(options, started);
+        viewer.show();
+        return app.exec();
     }
-    viewer.show();
+
+    lucent::Browser browser(options, started);
+    if (server.isListening()) {
+        acceptForwards(server, [&browser](const QString &path) { browser.openPath(path); });
+    }
+    browser.show();
     return app.exec();
 }
