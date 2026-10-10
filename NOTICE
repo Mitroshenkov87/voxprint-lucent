@@ -20,5 +20,7 @@ vendored in this repository. Those components keep their own licences:
 - NumPy (BSD-3-Clause), required by imagecodecs.
 
 No GPL-licensed code is included. ImageGlass, qView, nomacs, qimgv, Loupe,
-and JPEGView were not used as source. exiv2 is not used. libde265 and x265
+and JPEGView were not used as source. The toolbar icons are drawn in
+`cpp/src/icons.cpp` for this project. They are not ImageGlass, Lucide, or
+Fluent UI artwork. exiv2 is not used. libde265 and x265
 are not bundled. pillow-jxl-plugin is not used.

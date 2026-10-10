@@ -95,16 +95,16 @@ int main(int argc, char **argv) {
     QImageReader::setAllocationLimit(512);
 
     const lucent::LaunchOptions options = parseArgs(QApplication::arguments());
-    if (options.image.isEmpty()) {
+    if (options.benchmark && options.image.isEmpty()) {
         std::fprintf(stderr, "usage: voxprint-lucent IMAGE [--benchmark] [--navigate-next IMAGE]\n");
         return 2;
     }
-    if (!QFile::exists(options.image)) {
+    if (!options.image.isEmpty() && !QFile::exists(options.image)) {
         std::fprintf(stderr, "No such image: %s\n", qPrintable(options.image));
         return 3;
     }
     QLocalServer server;
-    if (!options.benchmark && claimOrForward(server, options.image)) {
+    if (!options.benchmark && !options.image.isEmpty() && claimOrForward(server, options.image)) {
         return 0;
     }
 

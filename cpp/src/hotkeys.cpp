@@ -64,7 +64,39 @@ const char *actionId(Action action) {
         return "language";
     case Action::Quit:
         return "quit";
+    case Action::Open:
+        return "open";
+    case Action::RotateLeft:
+        return "rotate-left";
+    case Action::RotateRight:
+        return "rotate-right";
+    case Action::FlipHorizontal:
+        return "flip-horizontal";
+    case Action::FlipVertical:
+        return "flip-vertical";
+    case Action::Crop:
+        return "crop";
+    case Action::SaveCopy:
+        return "save-copy";
+    case Action::SaveAs:
+        return "save-as";
+    case Action::Trash:
+        return "trash";
+    case Action::Enlarge:
+        return "enlarge";
+    case Action::Settings:
+        return "settings";
+    case Action::CopyImage:
+        return "copy-image";
+    case Action::CopyPath:
+        return "copy-path";
+    case Action::Reveal:
+        return "reveal";
+    case Action::Gallery:
+        return "gallery";
     }
+    const Action missed = action;
+    Q_UNUSED(missed);
     return "unknown";
 }
 
@@ -104,7 +136,39 @@ Text labelId(Action action) {
         return Text::Language;
     case Action::Quit:
         return Text::Quit;
+    case Action::Open:
+        return Text::Open;
+    case Action::RotateLeft:
+        return Text::RotateLeft;
+    case Action::RotateRight:
+        return Text::RotateRight;
+    case Action::FlipHorizontal:
+        return Text::FlipHorizontal;
+    case Action::FlipVertical:
+        return Text::FlipVertical;
+    case Action::Crop:
+        return Text::Crop;
+    case Action::SaveCopy:
+        return Text::SaveCopy;
+    case Action::SaveAs:
+        return Text::SaveAs;
+    case Action::Trash:
+        return Text::MoveToTrash;
+    case Action::Enlarge:
+        return Text::Enlarge;
+    case Action::Settings:
+        return Text::Settings;
+    case Action::CopyImage:
+        return Text::CopyImage;
+    case Action::CopyPath:
+        return Text::CopyPath;
+    case Action::Reveal:
+        return Text::RevealInFolder;
+    case Action::Gallery:
+        return Text::Gallery;
     }
+    const Action missed = action;
+    Q_UNUSED(missed);
     return Text::Free;
 }
 
@@ -128,6 +192,21 @@ void setDefaults() {
         {Action::Language, Qt::Key_L, Qt::ControlModifier},
         {Action::Quit, Qt::Key_Q, Qt::NoModifier},
         {Action::Quit, Qt::Key_Escape, Qt::NoModifier},
+        {Action::Open, Qt::Key_O, Qt::ControlModifier},
+        {Action::RotateLeft, Qt::Key_Left, Qt::ControlModifier},
+        {Action::RotateRight, Qt::Key_Right, Qt::ControlModifier},
+        {Action::FlipHorizontal, Qt::Key_H, Qt::ControlModifier},
+        {Action::FlipVertical, Qt::Key_V, Qt::ControlModifier},
+        {Action::Crop, Qt::Key_X, Qt::ControlModifier | Qt::ShiftModifier},
+        {Action::SaveCopy, Qt::Key_S, Qt::ControlModifier},
+        {Action::SaveAs, Qt::Key_S, Qt::ControlModifier | Qt::ShiftModifier},
+        {Action::Trash, Qt::Key_Delete, Qt::NoModifier},
+        {Action::Enlarge, Qt::Key_E, Qt::ControlModifier},
+        {Action::Settings, Qt::Key_Comma, Qt::ControlModifier},
+        {Action::CopyImage, Qt::Key_C, Qt::ControlModifier},
+        {Action::CopyPath, Qt::Key_C, Qt::ControlModifier | Qt::ShiftModifier},
+        {Action::Reveal, Qt::Key_R, Qt::ControlModifier},
+        {Action::Gallery, Qt::Key_G, Qt::NoModifier},
     };
 }
 
@@ -151,7 +230,10 @@ public:
             Action::Next,       Action::Previous, Action::Fit,        Action::Fill,      Action::OneToOne,
             Action::FitWidth,   Action::FitHeight, Action::Fullscreen, Action::Frameless, Action::WindowFit,
             Action::Slideshow,  Action::NextFrame, Action::PreviousFrame, Action::Tools, Action::Language,
-            Action::Quit,
+            Action::Quit,       Action::Open,      Action::RotateLeft,    Action::RotateRight, Action::FlipHorizontal,
+            Action::FlipVertical, Action::Crop,    Action::SaveCopy,      Action::SaveAs, Action::Trash,
+            Action::Enlarge,    Action::Settings,  Action::CopyImage,     Action::CopyPath, Action::Reveal,
+            Action::Gallery,
         };
         for (const Action action : actions) {
             auto *item = new QListWidgetItem(itemText(action), list_);
@@ -234,7 +316,10 @@ void loadHotkeys() {
             Action::OneToOne,    Action::FitWidth,     Action::FitHeight,     Action::Fullscreen,
             Action::Frameless,   Action::WindowFit,    Action::Slideshow,     Action::NextFrame,
             Action::PreviousFrame, Action::Tools,      Action::Hotkeys,       Action::Language,
-            Action::Quit,
+            Action::Quit,       Action::Open,         Action::RotateLeft, Action::RotateRight,   Action::FlipHorizontal,
+            Action::FlipVertical, Action::Crop,       Action::SaveCopy,   Action::SaveAs,        Action::Trash,
+            Action::Enlarge,    Action::Settings,     Action::CopyImage,  Action::CopyPath,      Action::Reveal,
+            Action::Gallery,
         };
         for (const Action action : actions) {
             if (stored == QLatin1String(actionId(action))) {

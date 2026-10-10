@@ -8,6 +8,7 @@
 
 #include <QImage>
 #include <QPointer>
+#include <QRect>
 #include <QStringList>
 
 #include <atomic>
@@ -16,6 +17,11 @@
 class QLabel;
 class QThreadPool;
 class QTimer;
+
+namespace lucent {
+class Chrome;
+class SplashFrame;
+}
 
 namespace lucent {
 
@@ -41,7 +47,7 @@ protected:
     void resizeEvent(QResizeEvent *event) override;
 
 private:
-    void openFile(const QString &absolutePath);
+    void openFile(const QString &absolutePath, bool browse = true);
     void showImage(const QImage &image, bool resetZoom);
     void armAfterFirstPaint();
     void applyMode(ZoomMode mode);
@@ -55,8 +61,22 @@ private:
     void toggleFullscreen();
     void toggleFrameless();
     void fitWindow();
-    void openTools();
+    void openTools(bool enlarge = false);
     void cycleLanguage();
+    void ensureChrome();
+    void refreshFolder();
+    void offerSplash(const QImage &image);
+    void startSplashLoad();
+    void maybeWelcome();
+    void rotateBy(bool right);
+    void flipImage(bool horizontal);
+    void beginCrop();
+    void applyCrop();
+    void cancelCrop();
+    bool writeView(const QString &path);
+    void saveCopy();
+    void saveAs();
+    void moveToTrash();
     void syncRhi();
     QString cacheKey(const QString &path, int frame, bool full) const;
 
@@ -83,6 +103,14 @@ private:
     QThreadPool *pool_ = nullptr;
     RhiSurface *rhi_ = nullptr;
     PreviewCache *cache_ = nullptr;
+    Chrome *chrome_ = nullptr;
+    SplashFrame *splash_ = nullptr;
+    bool imageReady_ = false;
+    bool browseFolder_ = true;
+    bool cropping_ = false;
+    bool cropDragging_ = false;
+    QRect cropRect_;
+    QPoint cropAnchor_;
     std::shared_ptr<std::atomic<bool>> alive_ = std::make_shared<std::atomic<bool>>(true);
 };
 
