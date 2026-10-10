@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from voxprint_lucent.network_policy import UpdateCheckError, check_for_update
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -26,9 +28,25 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Open the Enlarge hand-off for --path instead of the info panel.",
     )
+    parser.add_argument(
+        "--check-update",
+        action="store_true",
+        help="Read this repository's GitHub releases and print a newer tag.",
+    )
     args = parser.parse_args(argv)
     if args.ping:
         print("pong")
+        return 0
+    if args.check_update:
+        try:
+            offer = check_for_update()
+        except UpdateCheckError as exc:
+            print(f"update check failed: {exc}", flush=True)
+            return 1
+        if offer is None:
+            print("up to date", flush=True)
+            return 0
+        print(f"{offer['tag']} {offer['html_url']}", flush=True)
         return 0
     path = Path(args.path)
     if not args.path or not path.is_file():

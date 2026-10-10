@@ -1,15 +1,15 @@
 # CI minutes
 
-Private GitHub Actions bills Ubuntu minutes at 1x and Windows minutes at 2x. The free monthly allowance is the budget. The owner decides about billing. This workflow is arranged so a pull request stays inside a small Ubuntu slice, and the long Windows jobs run when `main` or a release tag moves, or when someone starts the workflow by hand.
+While this repository is private, GitHub Actions bills Ubuntu minutes at 1x and Windows minutes at 2x. The free monthly allowance is the budget. The owner decides about billing. This workflow is arranged so a pull request stays inside a small Ubuntu slice, and the long Windows jobs run when `main` moves or when someone starts the workflow by hand. A version tag builds the release candidate instead of repeating that matrix.
 
 ## What runs where
 
 | Event | Jobs |
 |---|---|
 | Pull request, and a listed path changed | Ubuntu lint and tests, Ubuntu C++ smoke |
-| Push to `main` | Those two, plus Ubuntu and Windows benchmarks, the deb, the WiX package, and the M0 Windows harness |
-| Tag `v*` or `release*` | Same as `main`. Tags are not path-filtered, so a release always builds packages |
-| `workflow_dispatch` | Same as `main` |
+| Push to `main` | Those two, plus Ubuntu and Windows benchmarks, the skeleton deb, the skeleton WiX package, and the M0 Windows harness |
+| Tag `v*` | [Release](../.github/workflows/release.yml) only: the Windows MSI, the measurement zip, and the Linux package, published as a GitHub release. A tag that contains `-` (such as `v0.1.0-rc1`) is a pre-release. The CI matrix does not also run, so the tag is not billed twice |
+| `workflow_dispatch` | Same as a push to `main` |
 | Pull request that only touches docs or other unlisted paths | Nothing |
 
 Feature-branch pushes do not start a run. A pull request used to start two full matrices, one for the branch push and one for the pull request.
@@ -39,7 +39,7 @@ A pull request that matches the path filter:
 
 About **10 billed minutes** for a warm pull request, and about **15–20** for a cold one. A docs-only pull request is **0**.
 
-A push to `main`, a release tag, or a manual run, warm caches:
+A push to `main` or a manual run, warm caches:
 
 | Job | Wall minutes | Billed |
 |---|---|---|
@@ -55,3 +55,5 @@ A push to `main`, a release tag, or a manual run, warm caches:
 Cold, the harness is the measured ~28 minutes of wall clock (56 billed) and the smoke job is about 12, so a cold main push is about **100 billed minutes**. Windows is the whole of that gap.
 
 The previous workflow could bill that heavy set twice per pull-request update, on the order of 80–140 minutes, because every branch push and every pull request each ran Ubuntu and Windows lint, both benchmarks, both packages, the smoke build, and the harness.
+
+A `v*` tag runs the release workflow instead of this matrix. Warm, that is about one Windows harness (about 15 wall minutes, 30 billed, once Qt and vcpkg are cached) plus one Ubuntu package build (about 10–15 billed, dominated by the Qt SDK and the viewer compile). Cold, use the measured harness figure of about 28 wall minutes (56 billed) plus about 15 for Ubuntu. The publish job is about 1 minute.
