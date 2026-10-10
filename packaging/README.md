@@ -18,4 +18,4 @@ Flatpak with the `org.kde.Platform` runtime is the intended Linux delivery (that
 
 ## What CI runs
 
-Lint, tests, a non-blocking PySide6 benchmark, a C++ smoke build on `ubuntu-latest` (aqtinstall Qt 6.12, not the distro's Qt 6.4), the WiX skeleton, and the deb. `windows-latest` also builds `dist/lucent-m0-windows.zip`: the C++ viewer, the Qt 6.12 runtime, KImageFormats AVIF and JPEG XL plugins, embeddable Python with the PySide6 comparison viewer, test images, and `Run-M0.ps1`. Nuitka is not part of CI.
+Lint, tests, a non-blocking PySide6 benchmark, a C++ smoke build on `ubuntu-latest` (aqtinstall Qt 6.12, not the distro's Qt 6.4), the WiX skeleton, and the deb. `windows-latest` also builds `dist/lucent-m0-windows.zip`: the C++ viewer, the Qt 6.12 runtime, KImageFormats AVIF and JPEG XL plugins, embeddable Python with the PySide6 comparison viewer, test images, and `Run-M0.ps1`. That embeddable interpreter ignores `PYTHONPATH` while `python*._pth` exists, so the build lists `..\app` in that file (paths are relative to the `python` folder). A git checkout still uses a normal interpreter and `PYTHONPATH`. Nuitka is not part of CI.

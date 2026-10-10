@@ -23,6 +23,11 @@
     Results: a timestamped .log and .json under results\ (next to an unpacked
     harness) or bench\results\ (in a git checkout).
 
+    The harness zip's embeddable Python ignores PYTHONPATH. The build lists
+    ..\app in python\python*._pth so -m voxprint_lucent imports the staged
+    tree. A git checkout uses a normal interpreter and the PYTHONPATH this
+    script sets.
+
 .PARAMETER ScheduleCold
     Register the post-reboot task and exit without launching the viewer.
 

@@ -31,6 +31,34 @@ function Invoke-Native {
     }
 }
 
+function Invoke-CppSmoke {
+    param([string]$ImagePath)
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = Join-Path $Stage 'voxprint-lucent.exe'
+    $psi.Arguments = ('"{0}" --benchmark' -f $ImagePath)
+    $psi.WorkingDirectory = $Stage
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $proc = New-Object System.Diagnostics.Process
+    $proc.StartInfo = $psi
+    [void]$proc.Start()
+    $outTask = $proc.StandardOutput.ReadToEndAsync()
+    $errTask = $proc.StandardError.ReadToEndAsync()
+    if (-not $proc.WaitForExit(60000)) {
+        try { $proc.Kill() } catch { }
+        throw "C++ smoke timed out for $ImagePath"
+    }
+    $stdout = [string]$outTask.Result
+    $stderr = [string]$errTask.Result
+    if ($proc.ExitCode -ne 0) {
+        throw "C++ smoke failed for $ImagePath (exit $($proc.ExitCode)): $stderr"
+    }
+    if ($stdout -notmatch '(?m)^FIRST_PIXEL\s*$') {
+        throw "C++ smoke for $ImagePath did not print FIRST_PIXEL. stdout=[$stdout] stderr=[$stderr]"
+    }
+}
+
 function Import-VisualStudio {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
     if (-not (Test-Path -LiteralPath $vswhere)) {
@@ -185,10 +213,21 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy bench failed ($LASTEXITCODE)" }
 if ($LASTEXITCODE -ge 8) { throw "robocopy share failed ($LASTEXITCODE)" }
 $PSNativeCommandUseErrorActionPreference = $nativePref
 Copy-Item (Join-Path $Repo 'bench\Run-M0.ps1') (Join-Path $Stage 'Run-M0.ps1')
+# Embeddable CPython keeps an isolated sys.path while python*._pth exists, so
+# PYTHONPATH is ignored. Paths in that file are relative to the python folder.
+$Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
+@(
+    'python314.zip',
+    '.',
+    '..\app',
+    'Lib\site-packages',
+    'import site'
+) | Set-Content -LiteralPath $Pth.FullName -Encoding ASCII
+Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
 
 Write-Host 'Generating test images'
 $ImageDir = Join-Path $Stage 'images'
-$env:PYTHONPATH = $App
+Invoke-Native { & (Join-Path $PyDir 'python.exe') -c 'import bench.fixtures, voxprint_lucent' }
 Invoke-Native {
     & (Join-Path $PyDir 'python.exe') -c @"
 from pathlib import Path
@@ -212,8 +251,7 @@ New-Item -ItemType Directory -Force -Path $platforms | Out-Null
 Copy-Item (Join-Path $QtPrefix 'plugins\platforms\qoffscreen.dll') (Join-Path $platforms 'qoffscreen.dll')
 $env:QT_QPA_PLATFORM = 'offscreen'
 foreach ($name in @('smoke.jpg', 'smoke.webp', 'smoke.avif', 'smoke.jxl')) {
-    & (Join-Path $Stage 'voxprint-lucent.exe') (Join-Path $ImageDir $name) --benchmark
-    if ($LASTEXITCODE -ne 0) { throw "C++ smoke failed for $name (exit $LASTEXITCODE)" }
+    Invoke-CppSmoke (Join-Path $ImageDir $name)
 }
 $env:LUCENT_SHARE = Join-Path $App 'share'
 Invoke-Native { & (Join-Path $PyDir 'python.exe') -m voxprint_lucent.tools_host --ping }
