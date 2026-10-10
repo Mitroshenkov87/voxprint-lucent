@@ -66,6 +66,7 @@ _TEXT = {
 
 
 def language() -> str:
+    """Return the active tools-window language code."""
     code = os.environ.get("LUCENT_LANG", "en").lower()[:2]
     if code in _TEXT:
         return code
@@ -73,4 +74,5 @@ def language() -> str:
 
 
 def label(key: str) -> str:
+    """Return the translated label for `key`."""
     return _TEXT[language()][key]

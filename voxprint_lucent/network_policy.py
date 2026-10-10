@@ -34,10 +34,12 @@ class UpdateCheckError(RuntimeError):
 
 
 def diagnostics_enabled(settings: Mapping[str, object]) -> bool:
+    """Return whether the user turned diagnostics on. Off unless the setting says so."""
     return bool(settings.get("diagnostics_opt_in", False))
 
 
 def statistics_enabled(settings: Mapping[str, object]) -> bool:
+    """Return whether the user turned statistics on. Off unless the setting says so."""
     return bool(settings.get("statistics_opt_in", False))
 
 
@@ -70,6 +72,7 @@ def version_key(text: str) -> tuple[int, int, int, int, int]:
 
 
 def is_prerelease_version(text: str) -> bool:
+    """Return whether `text` names a pre-release."""
     raw = text.strip()
     if raw[:1] in "vV":
         raw = raw[1:]

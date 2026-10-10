@@ -13,6 +13,7 @@ from voxprint_lucent.network_policy import UpdateCheckError, check_for_update
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the tools host and return the process status."""
     parser = argparse.ArgumentParser(
         prog="voxprint-lucent-tools",
         description="Voxprint AI Lucent tools host. Not part of viewer startup.",

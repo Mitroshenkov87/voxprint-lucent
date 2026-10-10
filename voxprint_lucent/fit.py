@@ -40,6 +40,7 @@ def contain_vertices(
 
 
 def vertices_bytes(vertices: list[tuple[float, float, float, float]]) -> bytes:
+    """Pack texture vertices into the byte layout the shader expects."""
     flat = array.array("f")
     for x, y, u, v in vertices:
         flat.extend((x, y, u, v))

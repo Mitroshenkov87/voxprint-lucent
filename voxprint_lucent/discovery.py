@@ -126,6 +126,7 @@ def probe_capabilities(install: AppInstall, app: str) -> dict[str, Any] | None:
 
 
 def load_cached(app: str, registered_version: str) -> dict[str, Any] | None:
+    """Return a cached capabilities document when the version is still current."""
     path = _cache_file(app)
     if not path.is_file():
         return None
@@ -148,6 +149,7 @@ def load_cached(app: str, registered_version: str) -> dict[str, Any] | None:
 
 
 def store_cached(app: str, version: str, body: dict[str, Any]) -> None:
+    """Write a capabilities document for this app version."""
     path = _cache_file(app)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {"fetched_at": time.time(), "version": version, "body": body}

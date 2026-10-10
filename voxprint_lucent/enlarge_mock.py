@@ -214,6 +214,7 @@ def serve() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the stand-in Enlarge server from `argv`."""
     parser = argparse.ArgumentParser(prog="voxprint-enlarge")
     parser.add_argument("--serve", action="store_true")
     parser.add_argument("--hidden", action="store_true")

@@ -7,7 +7,7 @@ While this repository is private, GitHub Actions bills Ubuntu minutes at 1x and 
 | Event | Jobs |
 |---|---|
 | Pull request, and a listed path changed | Ubuntu lint and tests, Ubuntu C++ smoke, Qt 6.8 compile in a Debian 13 container |
-| Push to `main` | Those two, plus Ubuntu and Windows benchmarks, the skeleton deb, the skeleton WiX package, and the M0 Windows harness |
+| Push to `main` | Those jobs, plus the docs site (built and published to GitHub Pages), Ubuntu and Windows benchmarks, the skeleton deb, the skeleton WiX package, and the M0 Windows harness |
 | Tag `v*` | [Release](../.github/workflows/release.yml) only: the Windows MSI, the measurement zip, and the Linux package, published as a GitHub release. A tag that contains `-` (such as `v0.1.0-rc1`) is a pre-release. The CI matrix does not also run, so the tag is not billed twice |
 | `workflow_dispatch` | Same as a push to `main` |
 | Pull request that only touches docs or other unlisted paths | Nothing |
@@ -25,7 +25,9 @@ Concurrency group is `ci-${{ github.workflow }}-${{ github.ref }}` with cancel-i
 - ccache for that gcc/g++ smoke build. The key includes `cpp/**` and the smoke script, with restore prefix `ccache-linux-`. ccache does not apply to the MSVC harness.
 - Windows harness: `C:\Qt\6.12.0` and `C:\vcpkg\installed`, `downloads`, and `packages`, key `m0-win-qt-6.12.0-vcpkg-libavif-dav1d-libjxl-v1`. The harness skips the Qt download when `windeployqt.exe` is already present. `vcpkg install` is incremental when those directories are restored. The C++ build directory is not cached.
 
-The 250 ms check is unchanged. The smoke script still warms one `--benchmark` launch and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250. After that measurement it runs `--version` and `--dry-run`, including a stand-in Enlarge CLI, so the hand-off is exercised without a GPU.
+The 250 ms check is unchanged. The smoke script still warms one `--benchmark` launch and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250. After that measurement it runs `--version` and `--dry-run`, including a stand-in Enlarge CLI, so the hand-off is exercised without a GPU. It then runs `voxprint-lucent --help` and fails if `docs/CLI.md` is not the page that command generates.
+
+The lint job also runs Doxygen with `WARN_AS_ERROR` (public headers only) and `mkdocs build --strict`. Ruff's `D1` rules require a docstring on every public Python module, class, and function, using the Google convention. Tests and `bench/` are excluded. Those checks stay on the pull-request lint job. Publishing the site is a separate job that runs only when `main` moves or someone starts the workflow by hand, and only after lint and the C++ smoke succeed. It uses `actions/deploy-pages`. A docs-only pull request still starts no runner.
 
 The Qt 6.8 job compiles the viewer inside `debian:trixie` with `qt6-base-dev` and `qt6-base-private-dev`. CMake links `Qt6::GuiPrivate` only when that target's include directories exist; otherwise it adds the directory that contains `rhi/qrhi.h`. The job does not run the 250 ms check. That check stays on the Qt 6.12 smoke job.
 
@@ -40,13 +42,14 @@ A pull request that matches the path filter:
 - Debian 13 Qt 6.8 compile: about 3–8 minutes, mostly the image pull and `apt-get`.
 - No Windows jobs, so no 2x multiplier.
 
-About **10 billed minutes** for a warm pull request, and about **15–20** for a cold one. A docs-only pull request is **0**.
+About **10 billed minutes** for a warm pull request, and about **15–20** for a cold one. Doxygen and the MkDocs build add about a minute to the lint job. A docs-only pull request is **0**. The Pages publish job does not run on a pull request.
 
 A push to `main` or a manual run, warm caches:
 
 | Job | Wall minutes | Billed |
 |---|---|---|
-| Ubuntu lint and tests | 4 | 4 |
+| Ubuntu lint and tests | 5 | 5 |
+| Docs site (GitHub Pages) | 4 | 4 |
 | Ubuntu C++ smoke | 5 | 5 |
 | Debian 13 Qt 6.8 compile | 6 | 6 |
 | Ubuntu deb | 1 | 1 |
@@ -54,7 +57,7 @@ A push to `main` or a manual run, warm caches:
 | Windows benchmark | 6 | 12 |
 | Windows WiX package | 3 | 6 |
 | M0 Windows harness | 15 | 30 |
-| **Total** |  | **about 66** |
+| **Total** |  | **about 71** |
 
 Cold, the harness is the measured ~28 minutes of wall clock (56 billed) and the smoke job is about 12, so a cold main push is about **100 billed minutes**. Windows is the whole of that gap.
 

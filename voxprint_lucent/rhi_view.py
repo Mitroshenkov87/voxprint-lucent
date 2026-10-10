@@ -49,7 +49,9 @@ def _load_shader(name: str) -> QShader:
 
 
 class ImageRhiWidget(QRhiWidget):
+    """Draws one image with a Qt RHI widget."""
     def __init__(self) -> None:
+        """Create an empty RHI surface."""
         super().__init__()
         self.setApi(preferred_api())
         self.setMinimumSize(QSize(320, 200))
@@ -67,6 +69,7 @@ class ImageRhiWidget(QRhiWidget):
         self._kept: list[object] = []
 
     def set_image(self, image: QImage) -> None:
+        """Replace the image drawn on the next frame."""
         if image.format() != QImage.Format.Format_RGBA8888:
             image = image.convertToFormat(QImage.Format.Format_RGBA8888)
         self._rgba = image
@@ -76,9 +79,11 @@ class ImageRhiWidget(QRhiWidget):
 
     @property
     def generation(self) -> int:
+        """Return how many times the image has been replaced."""
         return self._generation
 
     def releaseResources(self) -> None:  # noqa: N802 - Qt override
+        """Drop GPU resources Qt is done with."""
         for obj in (self._pipeline, self._vbuf, self._srb, self._tex, self._sampler):
             if obj is not None:
                 obj.destroy()
@@ -92,6 +97,7 @@ class ImageRhiWidget(QRhiWidget):
         self._kept.clear()
 
     def initialize(self, cb) -> None:  # noqa: ARG002 - Qt override
+        """Prepare the pipeline before the first frame."""
         rhi = self.rhi()
         if rhi is None or self._rgba is None:
             return
@@ -102,6 +108,7 @@ class ImageRhiWidget(QRhiWidget):
         self._ensure_pipeline()
 
     def render(self, cb) -> None:
+        """Draw the current image."""
         if self._rgba is None or self.rhi() is None:
             return
         if self._pipeline is None:

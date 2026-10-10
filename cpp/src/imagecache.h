@@ -10,9 +10,12 @@
 
 namespace lucent {
 
+/// Memory of recent preview decodes, capped at about 256 MiB.
 class PreviewCache {
 public:
+    /// Store `image` under `key`, dropping the oldest entry when over the cap.
     void put(const QString &key, const QImage &image);
+    /// Return the image stored for `key`, or a null image.
     QImage get(const QString &key) const;
 
 private:

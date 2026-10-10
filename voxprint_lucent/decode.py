@@ -27,7 +27,9 @@ _CODEC_FALLBACK_SUFFIXES = _MODERN_SUFFIXES | {".webp"}
 
 
 class DecodeError(Exception):
+    """A file could not be decoded into an image."""
     def __init__(self, path: Path, message: str) -> None:
+        """Record `path` and the decoder `message`."""
         self.path = path
         super().__init__(message)
 

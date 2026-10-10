@@ -88,8 +88,58 @@ lucent::LaunchOptions parseArgs(const QStringList &args) {
 
 }  // namespace
 
+static void printHelp() {
+    std::fputs(
+        "voxprint-lucent — image viewer\n"
+        "\n"
+        "Usage:\n"
+        "  voxprint-lucent --help\n"
+        "  voxprint-lucent --version\n"
+        "  voxprint-lucent --dry-run [IMAGE]\n"
+        "  voxprint-lucent --benchmark IMAGE [--navigate-next IMAGE]\n"
+        "  voxprint-lucent [IMAGE]\n"
+        "\n"
+        "--help\n"
+        "    Show this text and exit 0. No window is created.\n"
+        "\n"
+        "--version\n"
+        "    Print the build label and exit 0. No window is created.\n"
+        "    This flag wins over --dry-run, --benchmark, and an image path.\n"
+        "\n"
+        "--dry-run [IMAGE]\n"
+        "    Check startup and the Enlarge hand-off, print one JSON object, and exit.\n"
+        "    No window, no GPU, and no single-instance socket. The tools process is not started.\n"
+        "    Exit 0 when IMAGE is omitted or exists and the Enlarge probe succeeds.\n"
+        "    Exit 3 when IMAGE does not exist.\n"
+        "    Enlarge is LUCENT_ENLARGE_EXE when that program exists, otherwise voxprint-enlarge on PATH.\n"
+        "    When Enlarge is absent, enlarge.installed is false and enlarge.install_url is the releases page.\n"
+        "    When Enlarge is present, Lucent runs: voxprint-enlarge --capabilities --json\n"
+        "    If IMAGE was given and that probe exits 0, Lucent then runs:\n"
+        "    voxprint-enlarge --input IMAGE --scale 2 --preset photo --format avif --json-progress --dry-run\n"
+        "    A non-zero Enlarge status becomes Lucent's status. A missing image still exits 3.\n"
+        "    Combined with --benchmark, --dry-run wins and FIRST_PIXEL is not printed.\n"
+        "\n"
+        "--benchmark IMAGE\n"
+        "    Paint IMAGE, print FIRST_PIXEL, and exit. The tools process is not started.\n"
+        "    --navigate-next IMAGE opens that second image and prints NAVIGATE_PIXEL.\n"
+        "    Exit 2 when IMAGE is missing.\n"
+        "\n"
+        "IMAGE\n"
+        "    Picture to open. A second launch forwards the path to the instance already running.\n"
+        "\n"
+        "Exit status:\n"
+        "    0  the command finished\n"
+        "    2  --benchmark was given without an image\n"
+        "    3  --dry-run was given a path that is not a file\n",
+        stdout);
+}
+
 int main(int argc, char **argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
+    if (lucent::hasFlag(argc, argv, "--help") || lucent::hasFlag(argc, argv, "-h")) {
+        printHelp();
+        return 0;
+    }
     if (lucent::hasFlag(argc, argv, "--version")) {
         std::fputs(LUCENT_BUILD_LABEL, stdout);
         std::fputc('\n', stdout);

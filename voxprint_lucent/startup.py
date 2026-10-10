@@ -14,10 +14,12 @@ from voxprint_lucent.cli import parse_args
 
 
 def prepare_environment() -> None:
+    """Set quiet Qt logging unless the user already chose a rule."""
     os.environ.setdefault("QT_LOGGING_RULES", "*.debug=false")
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Start the viewer or an export and return the process status."""
     prepare_environment()
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.export is not None:
