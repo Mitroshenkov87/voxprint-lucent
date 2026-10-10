@@ -74,12 +74,12 @@ class EnlargeWindow(QWidget):
         return self._status.text()
 
     def run_quick(self) -> CompareWindow:
-        """Enlarge and open the compare view."""
-        return self._run(open_ui=False)
+        """Enlarge at 2x and open the compare view."""
+        return self._run(scale=2)
 
     def run_open(self) -> CompareWindow:
-        """Enlarge and ask Enlarge to show its own window as well."""
-        return self._run(open_ui=True)
+        """Enlarge with the CLI default and open the compare view."""
+        return self._run(scale=None)
 
     def cancel(self) -> None:
         """Cancel the job in progress."""
@@ -94,11 +94,11 @@ class EnlargeWindow(QWidget):
         """Stop a local Enlarge process this window started."""
         self._client.shutdown()
 
-    def _run(self, *, open_ui: bool) -> CompareWindow:
+    def _run(self, *, scale: int | None) -> CompareWindow:
         try:
             result = self._client.enlarge(
                 self._path,
-                open_ui=open_ui,
+                scale=scale,
                 on_event=self._on_event,
             )
         except EnlargeError as exc:

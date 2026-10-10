@@ -113,6 +113,11 @@ def _array_to_qimage(array):  # type: ignore[no-untyped-def]
 
 
 def _to_srgb(image: QImage) -> QImage:
+    """Convert an embedded profile to sRGB. An untagged image is left as decoded.
+
+    A monitor profile is not applied. If Qt cannot convert, the original image
+    is returned.
+    """
     space = image.colorSpace()
     if not space.isValid():
         return image

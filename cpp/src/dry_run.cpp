@@ -179,11 +179,12 @@ int runDryRun(int argc, char **argv) {
             exitCode = caps.code;
         }
         if (!missing && caps.started && caps.code == 0 && !image.isEmpty()) {
-            const CliResult job = runCli(command, {QStringLiteral("--input"), image, QStringLiteral("--scale"),
-                                                    QStringLiteral("2"), QStringLiteral("--preset"),
-                                                    QStringLiteral("photo"), QStringLiteral("--format"),
-                                                    QStringLiteral("avif"), QStringLiteral("--json-progress"),
-                                                    QStringLiteral("--dry-run")});
+            const CliResult job = runCli(
+                command,
+                {QStringLiteral("--input"), image, QStringLiteral("--scale"), QStringLiteral("2"),
+                 QStringLiteral("--preset"), QStringLiteral("photo"), QStringLiteral("--quality-tier"),
+                 QStringLiteral("fast"), QStringLiteral("--format"), QStringLiteral("avif"),
+                 QStringLiteral("--json-progress"), QStringLiteral("--dry-run")});
             enlarge.insert(QStringLiteral("job_exit"), job.code);
             enlarge.insert(QStringLiteral("lines"), parseLines(job.stdoutBytes));
             if (job.code != 0) {

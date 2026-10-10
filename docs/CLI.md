@@ -34,7 +34,7 @@ Usage:
     When Enlarge is absent, enlarge.installed is false and enlarge.install_url is the releases page.
     When Enlarge is present, Lucent runs: voxprint-enlarge --capabilities --json
     If IMAGE was given and that probe exits 0, Lucent then runs:
-    voxprint-enlarge --input IMAGE --scale 2 --preset photo --format avif --json-progress --dry-run
+    voxprint-enlarge --input IMAGE --scale 2 --preset photo --quality-tier fast --format avif --json-progress --dry-run
     A non-zero Enlarge status becomes Lucent's status. A missing image still exits 3.
     Combined with --benchmark, --dry-run wins and FIRST_PIXEL is not printed.
 

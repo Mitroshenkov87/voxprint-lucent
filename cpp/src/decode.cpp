@@ -14,6 +14,7 @@
 namespace lucent {
 namespace {
 
+// Embedded profiles become sRGB here. Float HDR is then 8-bit. No monitor profile.
 QImage toSdr(QImage image) {
     if (image.isNull()) {
         return image;

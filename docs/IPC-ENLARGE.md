@@ -96,20 +96,22 @@ Error codes (open enum):
 | `cancelled` | cancelled by the client | no |
 | `internal` | anything else | no |
 
-**`model_missing`:** with `open_ui:false` the server returns this error instead of downloading silently. The user starts the download in the Enlarge UI (the client may offer "Open in Enlarge..." which sends the same request with `open_ui:true`), then retries.
+**`model_missing`:** a headless job does not download weights. The process prints the error and exits 7. The user installs the model in Enlarge, then retries.
 
 ## 5. Output naming
 
-Default: `<name>.enlarged-<scale>x.<ext>` next to the source (or in `output_dir`), where `<ext>` follows `format` (`avif`, `jxl`, `webp`, `jpg`, `heic`). If the name exists, a numeric suffix is added (`<name>.enlarged-2x-1.avif`, `-2`, ...). The server **never overwrites** an existing file, including an explicit `output`.
+Default: `<name>.enlarged-<scale>x.<ext>` next to the source. `<ext>` is `avif`, `jxl`, `webp`, `jpg`, or `heic`. If that file exists, the next name is `<name>.enlarged-<scale>x-2.<ext>`, then `-3`. An explicit `--output` that exists becomes `<stem>-2<suffix>`, then `-3`. Nothing is overwritten. `--long-side` still names the file with the model scale that was run (2 or 4), not the final pixel size.
 
 ## 6. CLI
 
-Lucent's only enlarge hand-off, and the path for scripts and file managers:
+Lucent's hand-off is the headless command from Enlarge v0.2.0-rc.1. The process does not open a window. `upscale` is an optional alias with the same flags. `--json-progress` is required.
 
+```text
+voxprint-enlarge --input <file> --output <file> (--scale 2|4 | --long-side <px>) [--format avif|jxl|webp|jpeg|heic] [--lossless] [--quality 1-100] [--preset photo|art] [--model <id>] [--quality-tier fast|max] [--lock-timeout <s>] [--parent-lock-pid <pid>] [--dry-run] --json-progress
 ```
-voxprint-enlarge --input <file> --scale 2 --preset photo [--quality fast|max] [--model <id>] [--format avif] [--output <file>] [--output-dir <dir>] [--open-ui] [--dry-run] --json-progress
-```
 
-Streams the same `accepted` / `progress` / `done` / `error` objects (JSON-lines) on stdout. Exit code 0 on success, non-zero on error. Same output naming and no-overwrite rule as section 5.
+Stdout is protocol-1 JSON lines. `op` repeats `type`. Exit 0 is `done`. Otherwise: 1 internal, 2 bad_input, 3 unsupported_format, 4 gpu_unsupported, 5 gpu_busy, 6 oom, 7 model_missing, 8 io_error, 130 cancelled. Exit 2 is also bad arguments before a job id exists.
 
-`--open-ui` asks Enlarge to open its window. The JSON result is still printed. `--dry-run` skips the GPU refusal and does not write the output file; `done.output` is the path that would have been written. Validation errors, including `model_missing`, still apply. `voxprint-lucent --dry-run` is specified in [CLI.md](CLI.md).
+`--preset` is required unless `--model` is set. Omit both `--scale` and `--long-side` and the scale is 4. `--quality-tier` (`fast` or `max`) wins over `--quality fast` or `--quality max`. `--quality` otherwise is an encode quality from 1 to 100. `--lossless` is JPEG XL only. `--dry-run` checks the arguments, the file, the model, and the GPU, then prints `accepted` and `done` with `ms` 0. It does not write the file. A missing GPU is still exit 4.
+
+`voxprint-enlarge --capabilities --json` prints one object and exits 0. Without `--json` it exits 2. `voxprint-lucent --dry-run` is specified in [CLI.md](CLI.md).
