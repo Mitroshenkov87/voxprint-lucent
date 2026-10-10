@@ -27,7 +27,7 @@ Concurrency group is `ci-${{ github.workflow }}-${{ github.ref }}` with cancel-i
 
 The 250 ms check is unchanged. The smoke script still warms one `--benchmark` launch and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250.
 
-The Qt 6.8 job compiles the viewer inside `debian:trixie`, whose Qt is 6.8 and does not ship a `GuiPrivate` CMake package. It does not run the 250 ms check. That check stays on the Qt 6.12 smoke job.
+The Qt 6.8 job compiles the viewer inside `debian:trixie` with `qt6-base-dev` and `qt6-base-private-dev`. CMake links `Qt6::GuiPrivate` only when that target's include directories exist; otherwise it adds the directory that contains `rhi/qrhi.h`. The job does not run the 250 ms check. That check stays on the Qt 6.12 smoke job.
 
 ## Minute estimates
 
