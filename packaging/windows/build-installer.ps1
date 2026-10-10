@@ -9,5 +9,11 @@ if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
     $env:PATH = "$Tools;$env:PATH"
 }
 $Msi = Join-Path $Out "VoxprintAILucent-0.1.0.msi"
-wix build (Join-Path $PSScriptRoot "Package.wxs") -o $Msi
+& wix build -acceptEula wix7 (Join-Path $PSScriptRoot "Package.wxs") -o $Msi
+if ($LASTEXITCODE -ne 0) {
+    throw "wix build failed with exit $LASTEXITCODE"
+}
+if (-not (Test-Path -LiteralPath $Msi)) {
+    throw "wix build did not write $Msi"
+}
 Write-Output "Wrote $Msi"
