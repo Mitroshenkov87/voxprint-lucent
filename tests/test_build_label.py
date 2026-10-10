@@ -10,7 +10,7 @@ from voxprint_lucent.cli import public_build_label
 
 def test_build_json_names_zohar() -> None:
     payload = json.loads(Path("BUILD.json").read_text(encoding="utf-8"))
-    assert payload["codename"] == "Zohar"
+    assert payload["codename"] == "Ner"
     assert isinstance(payload["offset"], int)
 
 

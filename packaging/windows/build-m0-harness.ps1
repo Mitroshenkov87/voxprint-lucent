@@ -7,7 +7,8 @@
     Used by GitHub Actions on windows-latest. Produces dist\lucent-m0-windows.zip
     with the C++/Qt 6.12 viewer, windeployqt runtime, KImageFormats AVIF and
     JPEG XL plugins (HEIF off, no libde265/x265), embeddable Python 3.14 plus
-    PySide6-Essentials, the comparison viewer, 12 MP test images, and Run-M0.ps1.
+    PySide6-Essentials, the comparison viewer, 12 MP test images, Run-M0.ps1,
+    and Run-Checks.ps1 with the hard image set.
 #>
 [CmdletBinding()]
 param()
@@ -32,7 +33,7 @@ function Invoke-Native {
 }
 
 function Invoke-CppSmoke {
-    param([string]$ImagePath)
+    param([string]$ImagePath, [int]$TimeoutMs = 60000)
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = Join-Path $Stage 'voxprint-lucent.exe'
     $psi.Arguments = ('"{0}" --benchmark' -f $ImagePath)
@@ -45,7 +46,7 @@ function Invoke-CppSmoke {
     [void]$proc.Start()
     $outTask = $proc.StandardOutput.ReadToEndAsync()
     $errTask = $proc.StandardError.ReadToEndAsync()
-    if (-not $proc.WaitForExit(60000)) {
+    if (-not $proc.WaitForExit($TimeoutMs)) {
         try { $proc.Kill() } catch { }
         throw "C++ smoke timed out for $ImagePath"
     }
@@ -224,6 +225,7 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy bench failed ($LASTEXITCODE)" }
 if ($LASTEXITCODE -ge 8) { throw "robocopy share failed ($LASTEXITCODE)" }
 $PSNativeCommandUseErrorActionPreference = $nativePref
 Copy-Item (Join-Path $Repo 'bench\Run-M0.ps1') (Join-Path $Stage 'Run-M0.ps1')
+Copy-Item (Join-Path $Repo 'bench\Run-Checks.ps1') (Join-Path $Stage 'Run-Checks.ps1')
 # Embeddable CPython keeps an isolated sys.path while python*._pth exists, so
 # PYTHONPATH is ignored. Paths in that file are relative to the python folder.
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
@@ -255,6 +257,18 @@ root.joinpath('smoke.avif').write_bytes(bytes(imagecodecs.avif_encode(small, spe
 root.joinpath('smoke.jxl').write_bytes(bytes(imagecodecs.jpegxl_encode(small, effort=3)))
 "@
 }
+$HardDir = Join-Path $ImageDir 'hard'
+Invoke-Native {
+    & (Join-Path $PyDir 'python.exe') -c @"
+from pathlib import Path
+from bench.hard_images import write_hard_images
+paths = write_hard_images(Path(r'$HardDir'))
+missing = [name for name, path in paths.items() if not path.is_file() or path.stat().st_size < 32]
+if missing:
+    raise SystemExit('hard images missing: ' + ', '.join(missing))
+print(len(paths), 'hard images')
+"@
+}
 
 Write-Host 'Smoking the C++ viewer (offscreen: proves decode and FIRST_PIXEL, not a monitor measurement)'
 $platforms = Join-Path $Stage 'platforms'
@@ -264,6 +278,10 @@ $env:QT_QPA_PLATFORM = 'offscreen'
 foreach ($name in @('smoke.jpg', 'smoke.webp', 'smoke.avif', 'smoke.jxl')) {
     Invoke-CppSmoke (Join-Path $ImageDir $name)
     Write-Host "smoke $name ok"
+}
+Get-ChildItem $HardDir -File | ForEach-Object {
+    Invoke-CppSmoke $_.FullName 180000
+    Write-Host "hard $($_.Name) ok"
 }
 $env:LUCENT_SHARE = Join-Path $App 'share'
 Invoke-Native { & (Join-Path $PyDir 'python.exe') -m voxprint_lucent.tools_host --ping }
