@@ -35,6 +35,10 @@ The tools window lists dimensions, format, bit depth, colour profile, and an EXI
 
 `--benchmark` still paints one image, prints `FIRST_PIXEL`, and quits. It does not build the folder list, the cache, or the GPU view.
 
+## Enlarge
+
+`voxprint-lucent-tools --enlarge --path photo.jpg` asks Voxprint AI Enlarge to scale that file and then shows a before/after split. The viewer does not start this for a normal open, and `--benchmark` never does. The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). The Enlarge server is not shipped here; tests run the same client against `python -m voxprint_lucent.enlarge_mock`.
+
 ## Network
 
 - An update check against this repository's GitHub releases is allowed, and so is any request you trigger yourself (for example "Check for updates now").

@@ -2,7 +2,7 @@
 
 Draft 2026-10-10. Based on [DECISIONS.md](DECISIONS.md) and the viewer research. M0 is the first code in this repository; measured numbers are in [M0-RESULTS.md](M0-RESULTS.md). Estimates below stay marked (est.) until a later milestone replaces them. Repo: private `Mitroshenkov87/voxprint-lucent`.
 
-**Status 2026-10-10:** Suite Lead approved Plan B. Section 2 below is the original PySide6-as-the-app sketch and is superseded where it conflicts with [DECISIONS.md](DECISIONS.md) items 7 and 8. The `voxprint-lucent` executable is C++/Qt 6. PySide6 is the on-demand tools process. M0 failed for PySide6 and is merged. M1, the core viewer, is in [M1.md](M1.md). M2, the tools and info panel, is in [M2.md](M2.md). The owner's hardware confirmation run is still open and does not block this work.
+**Status 2026-10-10:** Suite Lead approved Plan B. Section 2 below is the original PySide6-as-the-app sketch and is superseded where it conflicts with [DECISIONS.md](DECISIONS.md) items 7 and 8. The `voxprint-lucent` executable is C++/Qt 6. PySide6 is the on-demand tools process. M0 failed for PySide6 and is merged. M1, the core viewer, is in [M1.md](M1.md). M2, the tools and info panel, is in [M2.md](M2.md). M3, the Enlarge client, is in [M3.md](M3.md) and speaks [IPC-ENLARGE.md](IPC-ENLARGE.md) against a mock server. The owner's hardware confirmation run is still open and does not block this work.
 
 ## 1. Goal of v1 (MVP)
 Double-click any image -> it is on screen in <= 250 ms, browsing a folder feels instant, modern formats just work with correct colour, and one click hands the image to Voxprint AI Enlarge and shows a before/after compare. Native, one-button, local; no default-on telemetry (diagnostics only strictly opt-in).

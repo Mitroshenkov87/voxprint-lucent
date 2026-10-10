@@ -1,6 +1,6 @@
 # Voxprint AI Lucent: state
 
-- **Suite coordinator:** Voxprint AI Suite Lead (bot `c0ed1455-a4b5-4f8f-8e87-24a072f7f972`). Cross-bot asks go there.
+- **Suite coordinator:** Voxprint AI Suite Lead. Cross-bot asks go there.
 
 ## 2026-10-10
 - Phase: **onboarding / planning**. Bot created by Aleksandr; name "Voxprint AI Lucent".
@@ -16,8 +16,8 @@
 - The owner's confirmation run is `bench/Run-M0.ps1` against the Windows harness zip from CI. It does not block M1.
 - M1 core viewer is in the tree. Details and the remaining gaps are in [M1.md](M1.md). `--benchmark` is still the M0 raster path.
 - M2 tools and the info panel are in the tools process. Details are in [M2.md](M2.md). `--benchmark` does not start that process.
+- M3 Enlarge client is in the same tools process (`--enlarge --path`). `I` opens the info panel. The contract is [IPC-ENLARGE.md](IPC-ENLARGE.md). Details are in [M3.md](M3.md).
 
 ## Next
 1. Owner runs `bench/Run-M0.ps1` on the reference machine when that session exists. CI's 250 ms check is a warm in-process guard, not that cold sample.
-2. M3: Enlarge hand-off once the shared protocol is the one Lucent codes against.
-3. Settle the Enlarge hand-off with Voxprint AI Enlarge (PLAN-v1 section 4), then move it to a shared spec.
+2. Point the Enlarge client at the real server when that process exists. The mock remains the CI stand-in.
