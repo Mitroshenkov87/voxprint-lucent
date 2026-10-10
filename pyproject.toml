@@ -1,0 +1,52 @@
+[project]
+name = "voxprint-lucent"
+version = "0.1.0"
+description = "Fast, colour-accurate image viewer for the Voxprint AI Media Suite"
+readme = "README.md"
+requires-python = ">=3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Aleksandr Mitroshenkov" }]
+keywords = ["image", "viewer", "avif", "jpegxl", "webp"]
+classifiers = [
+    "Environment :: X11 Applications :: Qt",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "PySide6-Essentials==6.12.0",
+    "imagecodecs==2026.10.10",
+    "numpy>=2.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "ruff>=0.14"]
+nuitka = ["nuitka>=4.2"]
+
+[project.scripts]
+voxprint-lucent = "voxprint_lucent.startup:main"
+voxprint-lucent-tools = "voxprint_lucent.tools_host:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["voxprint_lucent*", "bench*"]
+
+[tool.setuptools.package-data]
+voxprint_lucent = ["shaders/*.qsb", "shaders/*.vert", "shaders/*.frag"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+extend-exclude = [".venv", "bench/fixtures", "bench/results", "dist", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["gui: needs a display and a Qt RHI device"]
+addopts = ["-q"]

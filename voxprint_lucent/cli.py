@@ -1,0 +1,50 @@
+"""Command-line parsing. Stdlib only, so importing it does not load Qt."""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from voxprint_lucent import __version__
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="voxprint-lucent",
+        description="Voxprint AI Lucent, a fast colour-accurate image viewer.",
+    )
+    parser.add_argument("image", nargs="?", type=Path, help="Image file to open")
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Paint the image, print FIRST_PIXEL, then quit",
+    )
+    parser.add_argument(
+        "--navigate-next",
+        type=Path,
+        default=None,
+        help="With --benchmark, time a switch to this already-decoded neighbour",
+    )
+    parser.add_argument(
+        "--export",
+        nargs="?",
+        const="AUTO",
+        default=None,
+        help="Save a copy and quit. Default format is AVIF.",
+    )
+    parser.add_argument(
+        "--format",
+        default=None,
+        help="Output format for --export: avif (default), jxl, webp, jpeg, heic. PNG is rejected.",
+    )
+    parser.add_argument(
+        "--lossless",
+        action="store_true",
+        help="Lossless JPEG XL or WebP when that format is selected",
+    )
+    parser.add_argument("--version", action="version", version=f"voxprint-lucent {__version__}")
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    return build_parser().parse_args(argv)

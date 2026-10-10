@@ -1,0 +1,95 @@
+/* Generated view of share/palette.json. Tokens are @NAME@. */
+QWidget#lucent-window {
+    background-color: @ROOT_PLAIN@;
+    color: @TEXT@;
+    border: 2px solid @SPLASH@;
+}
+QWidget {
+    background-color: @ROOT_PLAIN@;
+    color: @TEXT@;
+    font-size: 13px;
+}
+QLabel {
+    color: @TEXT@;
+    background: transparent;
+}
+QLabel#muted {
+    color: @TEXT_MUTED@;
+}
+QLabel#faint {
+    color: @TEXT_FAINT@;
+}
+QPushButton {
+    background-color: @CONTROL_BG@;
+    color: @TEXT@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+QPushButton:hover {
+    background-color: @CONTROL_HOVER@;
+}
+QPushButton:disabled {
+    color: @TEXT_DISABLED@;
+}
+QPushButton#primary {
+    background-color: @PRIMARY@;
+    color: @TEXT_ON_PRIMARY@;
+    border: 1px solid @PRIMARY_BORDER@;
+    font-weight: 600;
+}
+QPushButton#primary:hover {
+    background-color: @PRIMARY_HOVER@;
+}
+QPushButton#primary:disabled {
+    background-color: @PRIMARY_DISABLED_BG@;
+    color: @PRIMARY_DISABLED_TEXT@;
+}
+QLineEdit, QComboBox, QSpinBox {
+    background-color: @CONTROL_BG@;
+    color: @TEXT@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 4px;
+    padding: 4px 8px;
+    selection-background-color: @ACCENT_STRONG@;
+    selection-color: @TEXT_ON_SELECTION@;
+}
+QLineEdit:hover, QComboBox:hover {
+    background-color: @CONTROL_HOVER@;
+}
+QMenu, QComboBox QAbstractItemView, QListView {
+    background-color: @MENU_BG@;
+    color: @TEXT@;
+    border: 1px solid @CONTROL_BORDER@;
+    selection-background-color: @MENU_SELECTION@;
+    selection-color: @TEXT_ON_SELECTION@;
+}
+QCheckBox::indicator:checked, QSlider::handle {
+    background-color: @ACCENT@;
+}
+QCheckBox::indicator:hover, QSlider::handle:hover {
+    background-color: @ACCENT_HOVER@;
+}
+QProgressBar::chunk {
+    background-color: @ACCENT_STRONG@;
+}
+QFrame#card {
+    background-color: @CARD_PLAIN@;
+    border: 1px solid @CONTROL_BORDER@;
+    border-radius: 8px;
+}
+QFrame#note {
+    background-color: @NOTE_BG@;
+    border: 1px solid @NOTE_BORDER@;
+    color: @AMBER@;
+}
+QLabel#ok {
+    color: @GREEN@;
+}
+QLabel#error {
+    color: @RED@;
+}
+QLabel#on-accent {
+    color: @TEXT_ON_ACCENT@;
+    background-color: @ACCENT@;
+}

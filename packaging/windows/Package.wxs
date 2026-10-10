@@ -1,0 +1,31 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="Voxprint AI Lucent"
+      Manufacturer="Aleksandr Mitroshenkov"
+      Version="0.1.0.0"
+      UpgradeCode="7C2A9E14-6B0F-4E3A-9D55-1A2B3C4D5E6F"
+      Scope="perUser"
+      Compressed="yes">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Voxprint AI Lucent is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="VoxprintFolder" Name="Voxprint">
+        <Directory Id="INSTALLFOLDER" Name="Lucent" />
+      </Directory>
+    </StandardDirectory>
+    <Feature Id="Main" Title="Voxprint AI Lucent" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Component>
+        <File Source="voxprint-lucent.cmd" KeyPath="yes" />
+      </Component>
+      <Component>
+        <File Source="INSTALL.txt" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>
