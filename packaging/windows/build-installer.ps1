@@ -9,7 +9,13 @@ if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
     $env:PATH = "$Tools;$env:PATH"
 }
 $Msi = Join-Path $Out "VoxprintAILucent-0.1.0.msi"
-& wix build -acceptEula wix7 (Join-Path $PSScriptRoot "Package.wxs") -o $Msi
+# File sources in Package.wxs are relative to the working directory.
+Push-Location $PSScriptRoot
+try {
+    & wix build -acceptEula wix7 .\Package.wxs -o $Msi
+} finally {
+    Pop-Location
+}
 if ($LASTEXITCODE -ne 0) {
     throw "wix build failed with exit $LASTEXITCODE"
 }

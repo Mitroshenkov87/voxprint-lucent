@@ -31,6 +31,29 @@ function Invoke-Native {
     }
 }
 
+function Import-VisualStudio {
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path -LiteralPath $vswhere)) {
+        throw 'vswhere.exe was not found'
+    }
+    $install = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+    if (-not $install) {
+        throw 'No Visual Studio C++ toolset was found'
+    }
+    $bat = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat'
+    Write-Host "Importing $bat"
+    cmd /c "`"$bat`" >nul && set" | ForEach-Object {
+        if ($_ -match '^(.*?)=(.*)$') {
+            Set-Item -Path "Env:$($matches[1])" -Value $matches[2]
+        }
+    }
+    if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
+        throw 'ninja was not found after importing the Visual Studio environment'
+    }
+    $env:CC = 'cl'
+    $env:CXX = 'cl'
+}
+
 if (-not $env:VCPKG_ROOT) {
     if ($env:VCPKG_INSTALLATION_ROOT) {
         $env:VCPKG_ROOT = $env:VCPKG_INSTALLATION_ROOT
@@ -61,6 +84,8 @@ $VcpkgInstalled = Join-Path $env:VCPKG_ROOT 'installed\x64-windows'
 $PkgConfig = Get-ChildItem -Path $VcpkgInstalled -Recurse -Filter pkgconf.exe | Select-Object -First 1
 if (-not $PkgConfig) { throw 'pkgconf.exe was not installed by vcpkg' }
 
+Import-VisualStudio
+
 Write-Host 'Building extra-cmake-modules v6.31.0'
 $EcmSrc = Join-Path $Work 'extra-cmake-modules'
 $EcmPrefix = Join-Path $Work 'ecm-install'
@@ -68,9 +93,9 @@ if (-not (Test-Path $EcmSrc)) {
     Invoke-Native { git clone --depth 1 --branch v6.31.0 https://invent.kde.org/frameworks/extra-cmake-modules.git $EcmSrc }
 }
 Invoke-Native {
-    cmake -S $EcmSrc -B (Join-Path $Work 'ecm-build') -G 'Visual Studio 17 2022' -A x64 "-DCMAKE_INSTALL_PREFIX=$EcmPrefix"
+    cmake -S $EcmSrc -B (Join-Path $Work 'ecm-build') -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_INSTALL_PREFIX=$EcmPrefix"
 }
-Invoke-Native { cmake --build (Join-Path $Work 'ecm-build') --config Release --target install }
+Invoke-Native { cmake --build (Join-Path $Work 'ecm-build') --target install }
 
 Write-Host 'Building KImageFormats v6.31.0 (HEIF off)'
 $KSrc = Join-Path $Work 'kimageformats'
@@ -82,7 +107,7 @@ $env:PKG_CONFIG = $PkgConfig.FullName
 $env:PKG_CONFIG_PATH = Join-Path $VcpkgInstalled 'lib\pkgconfig'
 $prefix = "$QtPrefix;$EcmPrefix;$VcpkgInstalled"
 Invoke-Native {
-    cmake -S $KSrc -B (Join-Path $Work 'kimageformats-build') -G 'Visual Studio 17 2022' -A x64 `
+    cmake -S $KSrc -B (Join-Path $Work 'kimageformats-build') -G Ninja -DCMAKE_BUILD_TYPE=Release `
         "-DCMAKE_PREFIX_PATH=$prefix" `
         "-DCMAKE_INSTALL_PREFIX=$KPrefix" `
         "-DPKG_CONFIG_EXECUTABLE=$($PkgConfig.FullName)" `
@@ -90,7 +115,7 @@ Invoke-Native {
         -DKIMAGEFORMATS_HEIF=OFF `
         -DKIMAGEFORMATS_JXL=ON
 }
-Invoke-Native { cmake --build (Join-Path $Work 'kimageformats-build') --config Release --target install }
+Invoke-Native { cmake --build (Join-Path $Work 'kimageformats-build') --target install }
 
 $AvifPlugin = Get-ChildItem -Path $KPrefix, (Join-Path $Work 'kimageformats-build') -Recurse -Filter kimg_avif.dll | Where-Object { $_.FullName -notmatch '\\Debug\\' } | Select-Object -First 1
 $JxlPlugin = Get-ChildItem -Path $KPrefix, (Join-Path $Work 'kimageformats-build') -Recurse -Filter kimg_jxl.dll | Where-Object { $_.FullName -notmatch '\\Debug\\' } | Select-Object -First 1
@@ -102,13 +127,13 @@ if ($Heif) { throw 'kimg_heif.dll was built; HEIF must stay off' }
 Write-Host 'Building voxprint-lucent'
 $CppBuild = Join-Path $Repo 'cpp\build-windows'
 Invoke-Native {
-    cmake -S (Join-Path $Repo 'cpp') -B $CppBuild -G 'Visual Studio 17 2022' -A x64 "-DCMAKE_PREFIX_PATH=$QtPrefix"
+    cmake -S (Join-Path $Repo 'cpp') -B $CppBuild -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=$QtPrefix"
 }
-Invoke-Native { cmake --build $CppBuild --config Release }
-$Exe = Join-Path $CppBuild 'Release\voxprint-lucent.exe'
+Invoke-Native { cmake --build $CppBuild }
+$Exe = Join-Path $CppBuild 'voxprint-lucent.exe'
 if (-not (Test-Path $Exe)) { throw "Missing $Exe" }
 Copy-Item $Exe (Join-Path $Stage 'voxprint-lucent.exe')
-Copy-Item -Recurse (Join-Path $CppBuild 'Release\share') (Join-Path $Stage 'share')
+Copy-Item -Recurse (Join-Path $CppBuild 'share') (Join-Path $Stage 'share')
 
 Write-Host 'Deploying the Qt runtime'
 $Windeploy = Join-Path $QtPrefix 'bin\windeployqt.exe'

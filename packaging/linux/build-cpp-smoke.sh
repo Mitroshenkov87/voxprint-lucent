@@ -10,7 +10,8 @@ QT_ROOT=${RUNNER_TEMP:-/tmp}/lucent-qt
 python -m pip install --upgrade aqtinstall
 # Linux desktop Qt 6.12 is still at qt6_6120/qt6_6120, which aqtinstall 3.3.0 understands.
 # --archives qtbase is enough for the Widgets smoke binary.
-python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 --outputdir "$QT_ROOT" --archives qtbase
+# icu-linux-*.7z is a separate archive in the same package. QtCore links ICU 73.
+python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 --outputdir "$QT_ROOT" --archives qtbase icu
 QT_PREFIX=$(find "$QT_ROOT/$QT_VERSION" -maxdepth 2 -type d -name gcc_64 | head -n 1)
 if [ -z "$QT_PREFIX" ]; then
     echo "Qt prefix not found under $QT_ROOT" >&2
