@@ -6,7 +6,7 @@ While this repository is private, GitHub Actions bills Ubuntu minutes at 1x and 
 
 | Event | Jobs |
 |---|---|
-| Pull request, and a listed path changed | Ubuntu lint and tests, Ubuntu C++ smoke |
+| Pull request, and a listed path changed | Ubuntu lint and tests, Ubuntu C++ smoke, Qt 6.8 compile in a Debian 13 container |
 | Push to `main` | Those two, plus Ubuntu and Windows benchmarks, the skeleton deb, the skeleton WiX package, and the M0 Windows harness |
 | Tag `v*` | [Release](../.github/workflows/release.yml) only: the Windows MSI, the measurement zip, and the Linux package, published as a GitHub release. A tag that contains `-` (such as `v0.1.0-rc1`) is a pre-release. The CI matrix does not also run, so the tag is not billed twice |
 | `workflow_dispatch` | Same as a push to `main` |
@@ -27,6 +27,8 @@ Concurrency group is `ci-${{ github.workflow }}-${{ github.ref }}` with cancel-i
 
 The 250 ms check is unchanged. The smoke script still warms one `--benchmark` launch and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250.
 
+The Qt 6.8 job compiles the viewer inside `debian:trixie` with `qt6-base-dev` and `qt6-base-private-dev`. CMake links `Qt6::GuiPrivate` only when that target's include directories exist; otherwise it adds the directory that contains `rhi/qrhi.h`. The job does not run the 250 ms check. That check stays on the Qt 6.12 smoke job.
+
 ## Minute estimates
 
 These are estimates. The only measured figure from this repo is the M0 Windows harness, about 28 minutes of wall clock on a cold `windows-latest` run (56 billed minutes at 2x). The other jobs failed in a few seconds once the spending limit was hit, so their durations are inferred from what they install and compile.
@@ -35,6 +37,7 @@ A pull request that matches the path filter:
 
 - Ubuntu lint and tests: about 3–5 minutes.
 - Ubuntu C++ smoke: about 8–15 minutes cold (Qt download and a full compile), about 3–6 minutes once the Qt and ccache entries hit.
+- Debian 13 Qt 6.8 compile: about 3–8 minutes, mostly the image pull and `apt-get`.
 - No Windows jobs, so no 2x multiplier.
 
 About **10 billed minutes** for a warm pull request, and about **15–20** for a cold one. A docs-only pull request is **0**.
@@ -45,12 +48,13 @@ A push to `main` or a manual run, warm caches:
 |---|---|---|
 | Ubuntu lint and tests | 4 | 4 |
 | Ubuntu C++ smoke | 5 | 5 |
+| Debian 13 Qt 6.8 compile | 6 | 6 |
 | Ubuntu deb | 1 | 1 |
 | Ubuntu benchmark | 5 | 5 |
 | Windows benchmark | 6 | 12 |
 | Windows WiX package | 3 | 6 |
 | M0 Windows harness | 15 | 30 |
-| **Total** |  | **about 60** |
+| **Total** |  | **about 66** |
 
 Cold, the harness is the measured ~28 minutes of wall clock (56 billed) and the smoke job is about 12, so a cold main push is about **100 billed minutes**. Windows is the whole of that gap.
 
