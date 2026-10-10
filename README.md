@@ -98,6 +98,12 @@ The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). Discovery is [docs/A
 sudo apt remove voxprint-lucent
 ```
 
+## Roadmap
+
+The next version hands the open picture to Enlarge, adds AVIF and JPEG XL to the Linux package, and follows each image's colour profile. Later, the command line will cover every action in the window.
+
+The full list is in [ROADMAP.md](ROADMAP.md). Guides and the API reference are published at <https://mitroshenkov87.github.io/voxprint-lucent/>.
+
 ## ☕ Support the Project
 
 If you find this project useful and would like to support its development, you can buy me a coffee!

@@ -12,17 +12,23 @@
 
 namespace lucent {
 
-// Bottom filmstrip. Thumbnails decode on background threads after setFiles.
+/// Bottom filmstrip. Thumbnails decode on background threads after setFiles.
 class Gallery : public QWidget {
 public:
+    /// Create an empty strip.
     explicit Gallery(QWidget *parent = nullptr);
 
+    /// Show `files`, with `current` highlighted. Thumbnails start loading after this.
     void setFiles(const QStringList &files, int current);
+    /// Highlight `current` without reloading the folder.
     void setCurrent(int current);
+    /// Called with the index the user clicked.
     std::function<void(int)> onChosen;
 
 protected:
+    /// Draw the loaded thumbnails and the current-file marker.
     void paintEvent(QPaintEvent *event) override;
+    /// Select the thumbnail under the cursor.
     void mousePressEvent(QMouseEvent *event) override;
 
 private:

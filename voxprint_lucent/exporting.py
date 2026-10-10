@@ -22,6 +22,7 @@ from voxprint_lucent.formats import (
 
 
 def export_copy(args) -> int:  # type: ignore[no-untyped-def]
+    """Write a copy of the image named by `args` and return the process status."""
     path: Path | None = args.image
     if path is None:
         print("usage: voxprint-lucent IMAGE --export [DEST]", file=sys.stderr)
@@ -58,6 +59,7 @@ def export_copy(args) -> int:  # type: ignore[no-untyped-def]
 
 
 def write_qimage(image: QImage, dest: Path, fmt: OutputFormat, *, lossless: bool) -> Path:
+    """Encode `image` to `dest`."""
     rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
     width, height = rgba.width(), rgba.height()
     stride = rgba.bytesPerLine()

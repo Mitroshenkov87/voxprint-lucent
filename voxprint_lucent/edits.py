@@ -26,15 +26,18 @@ FLIP_V = {1: 4, 2: 3, 3: 2, 4: 1, 5: 8, 6: 7, 7: 6, 8: 5}
 
 
 def next_orientation(current: int, operation: str) -> int:
+    """Return the EXIF orientation after a clockwise turn or a flip."""
     table = {"cw": ROTATE_CW, "flip-h": FLIP_H, "flip-v": FLIP_V}[operation]
     return table[current if current in table else 1]
 
 
 def color_text(red: int, green: int, blue: int) -> tuple[str, str]:
+    """Return the hex and CSS forms of one pixel."""
     return f"#{red:02x}{green:02x}{blue:02x}", f"rgb({red}, {green}, {blue})"
 
 
 def reveal_command(path: Path) -> list[str]:
+    """Return the command that shows `path` in the file manager."""
     if sys.platform == "win32":
         return ["explorer", f"/select,{path}"]
     return ["xdg-open", str(path.parent)]
@@ -83,6 +86,7 @@ def rotate_or_flip(path: Path, operation: str) -> Path:
 
 
 def crop_to_avif(path: Path, x: int, y: int, width: int, height: int, frame_index: int = 0) -> Path:
+    """Crop one frame and write an AVIF file beside the source."""
     image = read_frame(path, frame_index)
     cropped = image.copy(x, y, width, height)
     dest = copy_destination(path, OutputFormat.AVIF)
@@ -90,6 +94,7 @@ def crop_to_avif(path: Path, x: int, y: int, width: int, height: int, frame_inde
 
 
 def export_frame(path: Path, frame_index: int, format_name: str) -> Path:
+    """Write one frame as AVIF, JPEG XL, or WebP beside the source."""
     fmt = parse_output_format(format_name)
     if fmt not in MODERN_OUTPUT_FORMATS:
         raise ValueError("Frame export is AVIF, JPEG XL, or WebP")
@@ -99,6 +104,7 @@ def export_frame(path: Path, frame_index: int, format_name: str) -> Path:
 
 
 def read_frame(path: Path, frame_index: int) -> QImage:
+    """Decode frame `frame_index` of `path`."""
     reader = QImageReader(str(path))
     reader.setAutoTransform(True)
     if frame_index > 0 and not reader.jumpToImage(frame_index):

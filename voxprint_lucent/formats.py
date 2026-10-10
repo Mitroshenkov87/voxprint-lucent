@@ -11,6 +11,7 @@ from numpy.typing import NDArray
 
 
 class OutputFormat(Enum):
+    """Formats Lucent can write. PNG is not one of them."""
     AVIF = "avif"
     JXL = "jxl"
     WEBP = "webp"
@@ -32,6 +33,7 @@ class CodecMissing(RuntimeError):
 
 
 def parse_output_format(name: str) -> OutputFormat:
+    """Return the format named `name`."""
     key = name.lower().strip().lstrip(".")
     if key == "png":
         raise PngRejected("PNG is not an output format")
@@ -44,6 +46,7 @@ def parse_output_format(name: str) -> OutputFormat:
 
 
 def extension_for(fmt: OutputFormat) -> str:
+    """Return the file extension for `fmt`, including the dot."""
     match fmt:
         case OutputFormat.AVIF:
             return ".avif"
@@ -71,6 +74,7 @@ def copy_destination(source: Path, fmt: OutputFormat | None = None) -> Path:
 
 
 def unique_path(path: Path) -> Path:
+    """Return `path`, or a numbered sibling when that file already exists."""
     if not path.exists():
         return path
     stem, ext = path.stem, path.suffix
@@ -120,6 +124,7 @@ def write_raster(
     *,
     lossless: bool = False,
 ) -> Path:
+    """Write an encoded raster to `dest` and return that path."""
     chosen = DEFAULT_OUTPUT_FORMAT if fmt is None else fmt
     if chosen is OutputFormat.HEIC:
         raise CodecMissing(

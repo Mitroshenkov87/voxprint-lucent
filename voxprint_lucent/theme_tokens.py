@@ -24,6 +24,7 @@ def share_dir() -> Path:
 
 
 def load_tokens() -> dict[str, str]:
+    """Read the shared palette from share/palette.json."""
     path = share_dir() / "palette.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -85,6 +86,7 @@ def _parse(hex_colour: str) -> tuple[int, int, int]:
 
 
 def relative_luminance(hex_colour: str) -> float:
+    """Return the relative luminance of a #RRGGBB colour."""
     red, green, blue = _parse(hex_colour)
     return 0.2126 * _channel(red) + 0.7152 * _channel(green) + 0.0722 * _channel(blue)
 

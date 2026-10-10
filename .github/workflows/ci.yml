@@ -47,6 +47,13 @@ jobs:
         run: python -m pip install -e ".[dev]"
       - name: Ruff
         run: python -m ruff check .
+      - name: Doxygen and docs site
+        run: |
+          sudo apt-get install -y --no-install-recommends doxygen
+          python -m pip install -e ".[docs]"
+          mkdir -p build/doxygen
+          doxygen Doxyfile
+          python -m mkdocs build --strict
       - name: Tests
         env:
           VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.json
@@ -188,6 +195,49 @@ jobs:
           name: package-${{ matrix.os }}
           path: dist/*
           if-no-files-found: error
+
+  docs:
+    name: publish docs
+    needs: [lint-test, cpp-smoke]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - uses: actions/configure-pages@v5
+      - name: Qt libraries for the Python API pages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends doxygen \
+            libegl1 libgl1 libglib2.0-0 libxkbcommon0 libxkbcommon-x11-0 \
+            libdbus-1-3 libfontconfig1 libx11-6 libx11-xcb1 libxcb1 \
+            libxcb-cursor0 libxcb-glx0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+            libxcb-xinerama0 libxext6 libxi6 libxrender1
+      - name: Build the site
+        run: |
+          python -m pip install -e ".[docs]"
+          sh packaging/docs/build_site.sh
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
 
   m0-harness:
     name: M0 Windows harness

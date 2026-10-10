@@ -34,7 +34,9 @@ from voxprint_lucent.formats import PngRejected
 
 
 class EnlargeError(RuntimeError):
+    """Enlarge refused the job or the hand-off failed."""
     def __init__(self, code: str, message: str, retryable: bool) -> None:
+        """Store the machine-readable code, message, and whether a retry makes sense."""
         super().__init__(message)
         self.code = code
         self.retryable = retryable
@@ -42,6 +44,7 @@ class EnlargeError(RuntimeError):
 
 @dataclass(frozen=True)
 class EnlargeResult:
+    """A finished Enlarge job: output path, size, format, and timing."""
     output: Path
     width: int
     height: int
@@ -50,7 +53,9 @@ class EnlargeResult:
 
 
 class EnlargeClient:
+    """Talks to an installed Enlarge program on its command line."""
     def __init__(self, command: list[str] | None = None) -> None:
+        """Use `command` when discovery should not choose the executable."""
         if command is None:
             self.install = discover_install()
         else:
@@ -68,15 +73,19 @@ class EnlargeClient:
         return parse_capabilities(data)
 
     def enabled(self) -> bool:
+        """Return whether Enlarge can accept a job on this machine."""
         return action_enabled(self.probe())
 
     def install_offered(self) -> bool:
+        """Return whether the UI should offer to install Enlarge."""
         return install_offered(self.probe())
 
     def releases_url(self) -> str:
+        """Return the page where the user can download Enlarge."""
         return ENLARGE_RELEASES_URL
 
     def tooltip(self) -> str:
+        """Return the Enlarge action's tooltip for the current machine."""
         return action_tooltip(self.probe())
 
     def enlarge(
@@ -161,6 +170,7 @@ class EnlargeClient:
             self._cli.terminate()
 
     def shutdown(self) -> None:
+        """Stop a local Enlarge process this client started."""
         self.cancel()
         self._cli = None
 
@@ -198,6 +208,7 @@ def discover_install() -> AppInstall | None:
 
 
 def discover_command() -> list[str] | None:
+    """Return the argv of an installed Enlarge, or `None`."""
     install = discover_install()
     if install is None:
         return None

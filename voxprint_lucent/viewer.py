@@ -17,6 +17,7 @@ from voxprint_lucent.theme import build_stylesheet
 
 
 class ViewerWindow(QWidget):
+    """Window that presents one image and reports the first frame."""
     def __init__(
         self,
         image: QImage,
@@ -25,6 +26,7 @@ class ViewerWindow(QWidget):
         benchmark: bool = False,
         navigate_next: Path | None = None,
     ) -> None:
+        """Show `image` and record when the first frame was presented."""
         super().__init__()
         self.setObjectName("lucent-window")
         self.setWindowTitle("Voxprint AI Lucent")
@@ -48,6 +50,7 @@ class ViewerWindow(QWidget):
         self.view.set_image(image)
 
     def keyPressEvent(self, event) -> None:  # noqa: N802 - Qt override
+        """Close the window on Escape or Q."""
         if event.key() in (Qt.Key.Key_Escape, Qt.Key.Key_Q):
             self.close()
             return
@@ -91,6 +94,7 @@ class ViewerWindow(QWidget):
 
 
 def run_viewer(args) -> int:  # type: ignore[no-untyped-def]
+    """Decode the requested image, show it, and return the process status."""
     path: Path | None = args.image
     if path is None:
         print("usage: voxprint-lucent IMAGE", file=sys.stderr)

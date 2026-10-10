@@ -20,6 +20,7 @@ def public_build_label() -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the viewer argument parser without loading Qt."""
     parser = argparse.ArgumentParser(
         prog="voxprint-lucent",
         description="Voxprint AI Lucent, a fast colour-accurate image viewer.",
@@ -58,4 +59,5 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse `argv`, or the process arguments when `argv` is omitted."""
     return build_parser().parse_args(argv)

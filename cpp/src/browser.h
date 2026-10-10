@@ -28,22 +28,32 @@ namespace lucent {
 class PreviewCache;
 class RhiSurface;
 
-// Interactive viewer. --benchmark does not construct this class, so the
-// first-pixel measurement path stays in Viewer.
+/// Interactive viewer. `--benchmark` does not construct this class, so the
+/// first-pixel measurement path stays in Viewer.
 class Browser : public QWidget {
 public:
+    /// Open `options.image` and record `started` for the first-pixel line.
     Browser(LaunchOptions options, std::chrono::steady_clock::time_point started, QWidget *parent = nullptr);
+    /// Stop background decodes and destroy the toolbar.
     ~Browser() override;
 
+    /// Open a path forwarded by a second process.
     void openPath(const QString &path);
 
 protected:
+    /// Draw the current image, the crop rectangle, or an error string.
     void paintEvent(QPaintEvent *event) override;
+    /// Run the action bound to this key.
     void keyPressEvent(QKeyEvent *event) override;
+    /// Zoom around the cursor.
     void wheelEvent(QWheelEvent *event) override;
+    /// Start a pan or a crop drag.
     void mousePressEvent(QMouseEvent *event) override;
+    /// Pan, or update the crop rectangle.
     void mouseMoveEvent(QMouseEvent *event) override;
+    /// End a pan or a crop drag.
     void mouseReleaseEvent(QMouseEvent *event) override;
+    /// Refit the image when the window size changes.
     void resizeEvent(QResizeEvent *event) override;
 
 private:

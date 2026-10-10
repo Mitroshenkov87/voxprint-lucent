@@ -1,0 +1,41 @@
+site_name: Voxprint AI Lucent
+site_description: Fast, colour-accurate image viewer
+site_url: https://mitroshenkov87.github.io/voxprint-lucent/
+repo_url: https://github.com/Mitroshenkov87/voxprint-lucent
+repo_name: voxprint-lucent
+docs_dir: packaging/docs/site
+site_dir: site
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: custom
+    accent: custom
+extra_css:
+  - stylesheets/palette.css
+nav:
+  - Home: index.md
+  - Roadmap: roadmap.md
+  - Architecture: ARCHITECTURE.md
+  - Command line: CLI.md
+  - Python API: python.md
+  - C++ API: cpp.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            members_order: source
+markdown_extensions:
+  - toc:
+      permalink: true
+validation:
+  links:
+    not_found: ignore
+watch:
+  - voxprint_lucent
+  - ROADMAP.md

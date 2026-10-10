@@ -18,6 +18,7 @@ from voxprint_lucent.theme_tokens import ACCENT, ROOT_PLAIN, TEXT
 
 @dataclass(frozen=True)
 class ViewState:
+    """Zoom and pan shared by both halves of a compare view."""
     zoom: float
     pan_x: float
     pan_y: float
@@ -40,6 +41,7 @@ def zoom_at(state: ViewState, cursor_x: float, cursor_y: float, factor: float) -
 
 
 def pan_by(state: ViewState, dx: float, dy: float) -> ViewState:
+    """Move the view by `dx` and `dy` pixels."""
     return ViewState(state.zoom, state.pan_x + dx, state.pan_y + dy)
 
 
@@ -81,6 +83,7 @@ def _draw_half(
 
 
 def reveal_command(path: Path) -> list[str]:
+    """Return the command that shows `path` in the file manager."""
     if sys.platform == "win32":
         return ["explorer", f"/select,{path}"]
     return ["xdg-open", str(path.parent)]
@@ -95,7 +98,9 @@ def discard_output(source: Path, output: Path) -> bool:
 
 
 class CompareWindow(QWidget):
+    """Side-by-side view of the original and the enlarged file."""
     def __init__(self, source: Path, output: Path) -> None:
+        """Show `source` beside `output`."""
         super().__init__()
         self.source = source
         self.output = output
@@ -137,10 +142,12 @@ class CompareWindow(QWidget):
         self.resize(720, 480)
 
     def keep(self) -> bool:
+        """Keep the enlarged file and close."""
         self._status.setText(str(self.output))
         return self.output.is_file()
 
     def discard(self) -> bool:
+        """Delete the enlarged file when it is safe to, then close."""
         if not discard_output(self.source, self.output):
             self._status.setText("Discard leaves the original in place.")
             return False
@@ -148,9 +155,11 @@ class CompareWindow(QWidget):
         return True
 
     def reveal(self) -> None:
+        """Show the enlarged file in the file manager."""
         subprocess.Popen(reveal_command(self.output))
 
     def composed(self) -> QImage:
+        """Return the current split view as one image."""
         image = QImage(self._view.width(), self._view.height(), QImage.Format.Format_RGB32)
         painter = QPainter(image)
         paint_split(
@@ -166,14 +175,17 @@ class CompareWindow(QWidget):
         return image
 
     def set_slider(self, slider: float) -> None:
+        """Place the divider at `slider`, from 0 on the left to 1 on the right."""
         self._slider = min(max(slider, 0.0), 1.0)
         self._view.update()
 
     def nudge(self, dx: float, dy: float) -> None:
+        """Pan both halves by `dx` and `dy` pixels."""
         self._state = pan_by(self._state, dx, dy)
         self._view.update()
 
     def zoom(self, cursor_x: float, cursor_y: float, factor: float) -> None:
+        """Zoom both halves around the cursor."""
         self._state = zoom_at(self._state, cursor_x, cursor_y, factor)
         self._view.update()
 

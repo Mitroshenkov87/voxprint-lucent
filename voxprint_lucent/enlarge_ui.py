@@ -25,7 +25,9 @@ from voxprint_lucent.theme import build_stylesheet
 
 
 class EnlargeWindow(QWidget):
+    """Window that starts an Enlarge job for one image."""
     def __init__(self, path: Path, client: EnlargeClient | None = None) -> None:
+        """Bind the window to `path` and an optional client."""
         super().__init__()
         self._path = path
         self._client = client or EnlargeClient()
@@ -68,22 +70,28 @@ class EnlargeWindow(QWidget):
         self.resize(560, 180)
 
     def status_text(self) -> str:
+        """Return the status line currently shown."""
         return self._status.text()
 
     def run_quick(self) -> CompareWindow:
+        """Enlarge and open the compare view."""
         return self._run(open_ui=False)
 
     def run_open(self) -> CompareWindow:
+        """Enlarge and ask Enlarge to show its own window as well."""
         return self._run(open_ui=True)
 
     def cancel(self) -> None:
+        """Cancel the job in progress."""
         self._client.cancel()
 
     @staticmethod
     def open_releases() -> None:
+        """Open the Enlarge releases page in the browser."""
         QDesktopServices.openUrl(QUrl(ENLARGE_RELEASES_URL))
 
     def shutdown(self) -> None:
+        """Stop a local Enlarge process this window started."""
         self._client.shutdown()
 
     def _run(self, *, open_ui: bool) -> CompareWindow:
@@ -112,6 +120,7 @@ class EnlargeWindow(QWidget):
 
 
 def run_enlarge(path: Path) -> int:
+    """Show the Enlarge window for `path` and run until it closes."""
     app = QApplication.instance() or QApplication([])
     window = EnlargeWindow(path)
     window.show()

@@ -33,6 +33,7 @@ def _download(url: str, dest: Path) -> None:
 
 
 def main(argv: list[str]) -> int:
+    """Download Qt into `argv[1]` and return 0, or 2 when the destination is missing."""
     if len(argv) != 2:
         print("usage: fetch_qt.py DEST_PREFIX", file=sys.stderr)
         return 2

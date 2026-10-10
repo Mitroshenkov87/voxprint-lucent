@@ -104,3 +104,6 @@ if [ "$missing" -ne 3 ]; then
   echo "missing image exit $missing, expected 3" >&2
   exit 1
 fi
+"$ROOT/cpp/build-ci/voxprint-lucent" --help | grep -q -- '--dry-run'
+PYTHONPATH="$ROOT" python3 "$ROOT/packaging/docs/generate_cli_md.py" \
+  --viewer "$ROOT/cpp/build-ci/voxprint-lucent" --check

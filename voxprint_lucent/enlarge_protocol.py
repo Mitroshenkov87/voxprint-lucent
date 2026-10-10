@@ -116,12 +116,14 @@ def output_format_name(name: str) -> OutputFormat:
 
 @dataclass(frozen=True)
 class GpuInfo:
+    """GPU status reported by Enlarge."""
     status: str
     reason: str | None
 
 
 @dataclass(frozen=True)
 class Capabilities:
+    """What the installed Enlarge build can do."""
     version: str
     gpu: GpuInfo
     formats: tuple[str, ...]
@@ -129,6 +131,7 @@ class Capabilities:
 
 
 def parse_capabilities(data: dict[str, Any]) -> Capabilities:
+    """Build a Capabilities value from an Enlarge JSON object."""
     gpu = data.get("gpu")
     status = "none"
     reason: str | None = "no_nvidia"
@@ -175,6 +178,7 @@ def install_offered(caps: Capabilities | None) -> bool:
 
 
 def action_tooltip(caps: Capabilities | None) -> str:
+    """Return the tooltip for the Enlarge action."""
     if caps is None:
         return "Enlarge is not installed."
     if caps.gpu.status == "none":

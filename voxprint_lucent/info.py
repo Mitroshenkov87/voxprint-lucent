@@ -15,6 +15,7 @@ from voxprint_lucent.decode import DecodeError
 
 @dataclass(frozen=True)
 class ExifSummary:
+    """The EXIF fields the info panel shows."""
     orientation: int | None
     make: str
     model: str
@@ -23,6 +24,7 @@ class ExifSummary:
 
     @property
     def line(self) -> str:
+        """Return one line of camera, exposure, and location text."""
         parts = [part for part in (self.make, self.model, self.taken) if part]
         if self.orientation is not None:
             parts.append(f"orientation {self.orientation}")
@@ -33,6 +35,7 @@ class ExifSummary:
 
 @dataclass(frozen=True)
 class ImageFacts:
+    """Size, frames, and EXIF for one open image."""
     path: str
     width: int
     height: int
@@ -84,6 +87,7 @@ def orientation_value_span(data: bytes) -> tuple[int, str] | None:
 
 
 def facts_for(path: Path, frame_index: int = 0) -> ImageFacts:
+    """Read size, frames, and EXIF for `path`."""
     reader = QImageReader(str(path))
     reader.setAutoTransform(True)
     frame_count = max(reader.imageCount(), 1)

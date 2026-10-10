@@ -23,6 +23,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.14"]
 nuitka = ["nuitka>=4.2"]
+docs = ["mkdocs-material>=9.6", "mkdocstrings[python]>=0.27"]
 
 [project.scripts]
 voxprint-lucent = "voxprint_lucent.startup:main"
@@ -44,7 +45,14 @@ line-length = 100
 extend-exclude = [".venv", "bench/fixtures", "bench/results", "dist", "build"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "D1"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"bench/**" = ["D"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

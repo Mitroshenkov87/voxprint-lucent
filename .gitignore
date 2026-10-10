@@ -6,6 +6,7 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 build/
+/site/
 cpp/build-windows/
 cpp/build-ci/
 dist/

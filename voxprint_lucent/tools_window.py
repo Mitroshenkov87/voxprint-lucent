@@ -47,7 +47,9 @@ class _Preview(QLabel):
 
 
 class ToolsWindow(QWidget):
+    """Info panel and light edits for the image the viewer opened."""
     def __init__(self, path: Path) -> None:
+        """Open the panel on `path`."""
         super().__init__()
         self._path = path
         self._frame = 0
@@ -92,6 +94,7 @@ class ToolsWindow(QWidget):
         self.reload()
 
     def reload(self) -> None:
+        """Reread the file and refresh the panel."""
         facts = facts_for(self._path, self._frame)
         self._image = read_frame(self._path, self._frame)
         self._info.setText(self._facts_text(facts))
@@ -101,6 +104,7 @@ class ToolsWindow(QWidget):
         self._frame_count = facts.frame_count
 
     def info_text(self) -> str:
+        """Return the text currently shown in the info panel."""
         return self._info.text()
 
     def _facts_text(self, facts: ImageFacts) -> str:
