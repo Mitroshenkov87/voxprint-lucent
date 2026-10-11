@@ -11,7 +11,7 @@
 - Profile title set.
 - Enlarge hand-off was proposed in PLAN-v1 section 4 and agreed on 2026-10-10. The contract in this tree is [IPC-ENLARGE.md](IPC-ENLARGE.md) and [APP-DISCOVERY.md](APP-DISCOVERY.md).
 - Repo `Mitroshenkov87/voxprint-lucent` exists. M0 is in this tree.
-- Suite Lead approved Plan B on 2026-10-10. `voxprint-lucent` is C++/Qt 6. `voxprint-lucent-tools` is the on-demand PySide6 process (settings, tools, info panel, Enlarge UI, updater). Shared theme tokens: `share/palette.json` and `share/lucent.qss.in`.
+- Suite Lead approved Plan B on 2026-10-10. `voxprint-lucent` is C++/Qt 6. `voxprint-lucent-tools` is the on-demand PySide6 process (settings, tools, info panel, Enlarge UI, updater). Shared theme tokens: voxprint-common `tokens.json` (vendored) and `share/lucent.qss.in`.
 - PySide6 missed 250 ms cold. The C++ raster path passed the plan formats on the Linux spike except 12 MP AVIF 4:4:4, which is decode-bound. Details and the independent check are in [M0-RESULTS.md](M0-RESULTS.md).
 - The owner's confirmation run is `bench/Run-M0.ps1` against the Windows harness zip from CI. It does not block M1.
 - M1 core viewer is in the tree. Details and the remaining gaps are in [M1.md](M1.md). `--benchmark` is still the M0 raster path.

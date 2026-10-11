@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
+
 import pytest
 
 from voxprint_lucent.theme import build_stylesheet
@@ -57,4 +61,18 @@ def test_stylesheet_uses_dark_ground_and_splash() -> None:
     assert ROOT_PLAIN in sheet
     assert PRIMARY in sheet
     assert SPLASH in sheet
+    assert SPLASH == "#60a5fa"
     assert "lucent-window" in sheet
+    assert "@SPLASH@" not in sheet
+    assert "@ROOT_PLAIN@" not in sheet
+
+
+def test_vendored_tokens_match_yesod() -> None:
+    pin = json.loads(Path("share/tokens.pin.json").read_text(encoding="utf-8"))
+    body = Path("share/tokens.json").read_bytes()
+    assert pin["version"] == "0.1.0"
+    assert pin["codename"] == "Yesod"
+    assert hashlib.sha256(body).hexdigest() == pin["sha256"]
+    tokens = json.loads(body)
+    assert "SPLASH" not in tokens
+    assert "palette.json" not in {path.name for path in Path("share").iterdir()}

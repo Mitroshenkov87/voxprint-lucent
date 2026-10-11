@@ -161,9 +161,18 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
     endif()
 endif()
 
+find_program(LUCENT_PYTHON NAMES python3 python)
 add_custom_command(TARGET voxprint-lucent POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/../share
         $<TARGET_FILE_DIR:voxprint-lucent>/share
-    COMMENT "Copy shared palette next to voxprint-lucent"
+    COMMENT "Copy suite tokens next to voxprint-lucent"
 )
+if(LUCENT_PYTHON)
+    add_custom_command(TARGET voxprint-lucent POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/..
+            ${LUCENT_PYTHON} -m voxprint_lucent.theme_tokens
+            --share $<TARGET_FILE_DIR:voxprint-lucent>/share
+        COMMENT "Generate lucent.qss from voxprint-common tokens"
+    )
+endif()

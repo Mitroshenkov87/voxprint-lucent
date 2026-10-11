@@ -2,7 +2,7 @@
 
 Approved by Aleksandr, 2026-10-10. This is the **canonical theme for every Voxprint app**: a dark theme on Acrylic (Windows 11), plain dark fallback elsewhere, with **yellow primary actions** and **soft blue menus, lists and accents**.
 
-**Source of truth:** `voxprint-audiobook-builder` `ui/main_window.py` (the token constants, `STYLE_TEMPLATE` and `build_style(glass)`). If this file and that code disagree, the code wins; update this file. WCAG AA contrast pairs are tested there in `tests/test_ui.py::test_theme_contrast`; each app keeps an equivalent test.
+**Source of truth:** voxprint-common 0.1.0 ("Yesod") `src/voxprint_common/ui/tokens.json`, vendored here as `share/tokens.json`. Lucent does not keep a second palette. The splash colour stays this app's accent (`#60a5fa`). WCAG AA pairs are tested in `tests/test_theme_contrast.py`.
 
 Design rules (from the source):
 - Every text colour is opaque (translucent text would pick up the blurred desktop).

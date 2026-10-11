@@ -6,7 +6,7 @@ That reference is behaviour only. It comes from ImageGlass's public docs and scr
 
 ## Clean-room rule
 
-Do not read or copy ImageGlass source, icons, themes, or assets. Toolbar icons are original drawings in `cpp/src/icons.cpp`, credited in `NOTICE`. The save family follows the suite artwork in `icons/` (22×22, 1.7 px stroke). The floppy-disk save mark is not used. Colours come from `share/palette.json`. On Windows 11 the top-level window asks for an acrylic backdrop (`DWMWA_SYSTEMBACKDROP_TYPE`); other systems use the suite glass colour.
+Do not read or copy ImageGlass source, icons, themes, or assets. Toolbar icons are original drawings in `cpp/src/icons.cpp`, credited in `NOTICE`. The save family follows the suite artwork in `icons/` (22×22, 1.7 px stroke). The floppy-disk save mark is not used. Colours come from `share/tokens.json` (voxprint-common 0.1.0, "Yesod"). On Windows 11 the top-level window asks for an acrylic backdrop (`DWMWA_SYSTEMBACKDROP_TYPE`); other systems use the suite glass colour.
 
 ## What we matched, and the small differences
 
