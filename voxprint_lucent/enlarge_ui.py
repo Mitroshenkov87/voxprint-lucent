@@ -6,11 +6,12 @@ usable GPU. A missing install offers an Install Enlarge button.
 
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QImageReader
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from voxprint_lucent.enlarge_client import EnlargeClient, EnlargeError, EnlargeResult
@@ -24,12 +25,50 @@ from voxprint_lucent.enlarge_protocol import (
 from voxprint_lucent.theme import build_stylesheet
 
 
+def frame_count(path: Path) -> int:
+    """How many frames Qt reports. A still image, or an unreadable file, is 1."""
+    count = QImageReader(str(path)).imageCount()
+    return count if count > 1 else 1
+
+
+def still_for_enlarge(path: Path, frame_index: int = 0) -> Path:
+    """Absolute still for Enlarge. A multi-frame file is written as one PNG frame.
+
+    Enlarge rejects a stack of frames. The current frame is written as a PNG
+    under the temp directory, and that file is what the hand-off sends.
+    """
+    source = path.resolve()
+    if frame_count(source) <= 1:
+        return source
+    index = frame_index if frame_index > 0 else 0
+    reader = QImageReader(str(source))
+    reader.setAutoTransform(True)
+    if index > 0 and not reader.jumpToImage(index):
+        raise EnlargeError("io_error", f"Could not read frame {index + 1}.", False)
+    image = reader.read()
+    if image.isNull():
+        raise EnlargeError("io_error", "Could not read the current frame.", False)
+    folder = Path(tempfile.gettempdir()) / "voxprint-lucent"
+    folder.mkdir(parents=True, exist_ok=True)
+    dest = folder / f"{source.stem}-frame-{index + 1}.png"
+    if not image.save(str(dest), "PNG"):
+        raise EnlargeError("io_error", "Could not save the current frame as a still.", False)
+    return dest.resolve()
+
+
 class EnlargeWindow(QWidget):
     """Window that starts an Enlarge job for one image."""
-    def __init__(self, path: Path, client: EnlargeClient | None = None) -> None:
+    def __init__(
+        self,
+        path: Path,
+        client: EnlargeClient | None = None,
+        frame_index: int = 0,
+    ) -> None:
         """Bind the window to `path` and an optional client."""
         super().__init__()
         self._path = path
+        self._frame_index = frame_index if frame_index > 0 else 0
+        self._frames = frame_count(path)
         self._client = client or EnlargeClient()
         self._compare: CompareWindow | None = None
         self.setObjectName("lucent-window")
@@ -42,7 +81,10 @@ class EnlargeWindow(QWidget):
         layout.addWidget(QLabel(path.name))
         layout.addWidget(self._status)
         enabled = action_enabled(self._caps)
-        self._status.setText("Ready." if enabled else action_tooltip(self._caps))
+        status = "Ready." if enabled else action_tooltip(self._caps)
+        if self._frames > 1:
+            status = f"{status} Sending frame {self._frame_index + 1} of {self._frames} as a still."
+        self._status.setText(status)
         row = QHBoxLayout()
         quick = QPushButton("Quick enlarge")
         quick.setObjectName("quick-enlarge")
@@ -96,8 +138,9 @@ class EnlargeWindow(QWidget):
 
     def _run(self, *, scale: int | None) -> CompareWindow:
         try:
+            source = still_for_enlarge(self._path, self._frame_index)
             result = self._client.enlarge(
-                self._path,
+                source,
                 scale=scale,
                 on_event=self._on_event,
             )
@@ -119,9 +162,9 @@ class EnlargeWindow(QWidget):
         return compare
 
 
-def run_enlarge(path: Path) -> int:
+def run_enlarge(path: Path, frame_index: int = 0) -> int:
     """Show the Enlarge window for `path` and run until it closes."""
     app = QApplication.instance() or QApplication([])
-    window = EnlargeWindow(path)
+    window = EnlargeWindow(path, frame_index=frame_index)
     window.show()
     return app.exec()

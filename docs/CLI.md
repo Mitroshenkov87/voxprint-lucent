@@ -30,7 +30,10 @@ Usage:
     No window, no GPU, and no single-instance socket. The tools process is not started.
     Exit 0 when IMAGE is omitted or exists and the Enlarge probe succeeds.
     Exit 3 when IMAGE does not exist.
-    Enlarge is LUCENT_ENLARGE_EXE when that program exists, otherwise voxprint-enlarge on PATH.
+    Enlarge is found in this order: LUCENT_ENLARGE_EXE, HKCU\Software\Voxprint\Enlarge,
+    the per-user App Paths key for voxprint-enlarge.exe (the installed file is VoxprintEnlarge.exe),
+    the shared suite manifest, the per-user installer path, then voxprint-enlarge on PATH.
+    --input is always an absolute path.
     When Enlarge is absent, enlarge.installed is false and enlarge.install_url is the releases page.
     When Enlarge is present, Lucent runs: voxprint-enlarge --capabilities --json
     If IMAGE was given and that probe exits 0, Lucent then runs:
@@ -86,7 +89,7 @@ options:
 
 ```text
 usage: voxprint-lucent-tools [-h] [--ping] [--path PATH] [--enlarge]
-                             [--check-update]
+                             [--frame FRAME] [--check-update]
 
 Voxprint AI Lucent tools host. Not part of viewer startup.
 
@@ -97,6 +100,8 @@ options:
   --path PATH     Image the viewer had open.
   --enlarge       Open the Enlarge hand-off for --path instead of the info
                   panel.
+  --frame FRAME   Frame index to enlarge when the file has more than one. A
+                  still ignores this.
   --check-update  Read this repository's GitHub releases and print a newer
                   tag.
 ```

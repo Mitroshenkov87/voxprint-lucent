@@ -90,6 +90,33 @@ present=$(LUCENT_ENLARGE_EXE="$stub" "$ROOT/cpp/build-ci/voxprint-lucent" --dry-
 printf '%s\n' "$present"
 printf '%s\n' "$present" | grep -q '"installed":true'
 printf '%s\n' "$present" | grep -q '"type":"done"'
+rel=$(cd /tmp && LUCENT_ENLARGE_EXE="$stub" "$ROOT/cpp/build-ci/voxprint-lucent" --dry-run lucent-smoke.jpg)
+printf '%s\n' "$rel"
+printf '%s\n' "$rel" | grep -q '"image":"/tmp/lucent-smoke.jpg"'
+suite=$(mktemp -d)
+mkdir -p "$suite/shared"
+printf '%s\n' "{\"schema\":1,\"apps\":{\"enlarge\":{\"exe\":\"$stub\",\"protocol\":1}}}" > "$suite/shared/manifest.json"
+manifest=$(VOXPRINT_HOME="$suite" "$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
+printf '%s\n' "$manifest"
+printf '%s\n' "$manifest" | grep -q '"installed":true'
+rm -rf "$suite"
+known=$(mktemp -d)
+mkdir -p "$known/enlarge"
+cp "$stub" "$known/enlarge/voxprint-enlarge"
+chmod +x "$known/enlarge/voxprint-enlarge"
+held=$(VOXPRINT_HOME="$known" "$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
+printf '%s\n' "$held"
+printf '%s\n' "$held" | grep -q '"installed":true'
+rm -rf "$known"
+holders=$(mktemp -d)
+mkdir -p "$holders/enlarge" "$holders/shared"
+cp "$stub" "$holders/enlarge/voxprint-enlarge"
+chmod +x "$holders/enlarge/voxprint-enlarge"
+printf '%s\n' '{"schema":1,"components":{"python":{"version":"3.14","holders":["enlarge"]}}}' > "$holders/shared/manifest.json"
+held_manifest=$(VOXPRINT_HOME="$holders" "$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
+printf '%s\n' "$held_manifest"
+printf '%s\n' "$held_manifest" | grep -q '"installed":true'
+rm -rf "$holders"
 both=$("$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark --dry-run)
 printf '%s\n' "$both" | grep -q '"dry_run":true'
 if printf '%s\n' "$both" | grep -q '^FIRST_PIXEL$'; then

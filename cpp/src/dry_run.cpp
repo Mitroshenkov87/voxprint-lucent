@@ -6,6 +6,8 @@
 #include "lucent_build.h"
 
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -16,6 +18,14 @@
 
 #include <cstdio>
 #include <cstring>
+#include <string>
+
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 namespace lucent {
 namespace {
@@ -124,6 +134,190 @@ QString enlargeReleasesUrl() {
     return QStringLiteral("https://github.com/Mitroshenkov87/voxprint-enlarge/releases");
 }
 
+namespace {
+
+QString voxprintHome() {
+    const QString overrideHome = qEnvironmentVariable("VOXPRINT_HOME").trimmed();
+    if (!overrideHome.isEmpty()) {
+        return overrideHome;
+    }
+#ifdef Q_OS_WIN
+    QString local = qEnvironmentVariable("LOCALAPPDATA").trimmed();
+    if (local.isEmpty()) {
+        local = QDir::homePath() + QStringLiteral("/AppData/Local");
+    }
+    return local + QStringLiteral("/Voxprint");
+#else
+    QString data = qEnvironmentVariable("XDG_DATA_HOME").trimmed();
+    if (data.isEmpty()) {
+        data = QDir::homePath() + QStringLiteral("/.local/share");
+    }
+    return data + QStringLiteral("/voxprint");
+#endif
+}
+
+QString knownEnlargeExe() {
+    const QString home = voxprintHome();
+#ifdef Q_OS_WIN
+    return QDir(home).filePath(QStringLiteral("Enlarge/VoxprintEnlarge.exe"));
+#else
+    return QDir(home).filePath(QStringLiteral("enlarge/voxprint-enlarge"));
+#endif
+}
+
+QStringList commandIfFile(const QString &path) {
+    const QString trimmed = path.trimmed();
+    if (trimmed.isEmpty()) {
+        return {};
+    }
+    const QFileInfo info(trimmed);
+    if (info.isFile()) {
+        return {info.absoluteFilePath()};
+    }
+    const QString found = QStandardPaths::findExecutable(trimmed);
+    if (found.isEmpty()) {
+        return {};
+    }
+    return {found};
+}
+
+bool manifestHoldsEnlarge(const QJsonObject &root) {
+    const QJsonObject components = root.value(QStringLiteral("components")).toObject();
+    for (auto it = components.constBegin(); it != components.constEnd(); ++it) {
+        const QJsonArray holders = it.value().toObject().value(QStringLiteral("holders")).toArray();
+        for (const QJsonValue &holder : holders) {
+            if (holder.toString() == QStringLiteral("enlarge")) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int jsonProtocol(const QJsonValue &value) {
+    if (value.isString()) {
+        bool ok = false;
+        const int parsed = value.toString().toInt(&ok);
+        return ok ? parsed : 0;
+    }
+    return value.toInt(0);
+}
+
+QString exeFromManifestValue(const QJsonValue &entry, int *protocol) {
+    *protocol = 1;
+    if (entry.isString()) {
+        return entry.toString();
+    }
+    if (!entry.isObject()) {
+        return {};
+    }
+    const QJsonObject object = entry.toObject();
+    QString exe = object.value(QStringLiteral("exe")).toString();
+    if (exe.isEmpty()) {
+        exe = object.value(QStringLiteral("Exe")).toString();
+    }
+    if (object.contains(QStringLiteral("protocol"))) {
+        *protocol = jsonProtocol(object.value(QStringLiteral("protocol")));
+    } else if (object.contains(QStringLiteral("ProtocolVersion"))) {
+        *protocol = jsonProtocol(object.value(QStringLiteral("ProtocolVersion")));
+    }
+    return exe;
+}
+
+QStringList fromSharedManifest() {
+    const QString path = QDir(voxprintHome()).filePath(QStringLiteral("shared/manifest.json"));
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+    const QJsonObject root = QJsonDocument::fromJson(file.readAll()).object();
+    const QJsonObject apps = root.value(QStringLiteral("apps")).toObject();
+    if (apps.contains(QStringLiteral("enlarge"))) {
+        int protocol = 1;
+        const QString exe = exeFromManifestValue(apps.value(QStringLiteral("enlarge")), &protocol);
+        if (protocol == 1) {
+            const QStringList command = commandIfFile(exe);
+            if (!command.isEmpty()) {
+                return command;
+            }
+        }
+    }
+    if (manifestHoldsEnlarge(root)) {
+        return commandIfFile(knownEnlargeExe());
+    }
+    return {};
+}
+
+#ifdef Q_OS_WIN
+QString registryString(HKEY key, const wchar_t *name) {
+    DWORD type = 0;
+    DWORD size = 0;
+    if (RegQueryValueExW(key, name, nullptr, &type, nullptr, &size) != ERROR_SUCCESS || type != REG_SZ
+        || size < sizeof(wchar_t)) {
+        return {};
+    }
+    std::wstring buffer(size / sizeof(wchar_t), L'\0');
+    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<LPBYTE>(buffer.data()), &size) != ERROR_SUCCESS) {
+        return {};
+    }
+    while (!buffer.empty() && buffer.back() == L'\0') {
+        buffer.pop_back();
+    }
+    return QString::fromWCharArray(buffer.c_str());
+}
+
+bool registryDword(HKEY key, const wchar_t *name, DWORD *value) {
+    DWORD type = 0;
+    DWORD size = sizeof(DWORD);
+    DWORD stored = 0;
+    if (RegQueryValueExW(key, name, nullptr, &type, reinterpret_cast<LPBYTE>(&stored), &size) != ERROR_SUCCESS) {
+        return false;
+    }
+    if (type != REG_DWORD) {
+        return false;
+    }
+    *value = stored;
+    return true;
+}
+
+QStringList fromWindowsRegistry() {
+    HKEY key = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Voxprint\\Enlarge", 0, KEY_READ, &key) == ERROR_SUCCESS) {
+        DWORD protocol = 0;
+        const bool haveProtocol = registryDword(key, L"ProtocolVersion", &protocol);
+        const QString exe = registryString(key, L"Exe");
+        const QString installPath = registryString(key, L"InstallPath");
+        RegCloseKey(key);
+        if (haveProtocol && protocol == 1 && !exe.isEmpty()) {
+            const QString full = QFileInfo(exe).isAbsolute() || installPath.isEmpty()
+                ? exe
+                : QDir(installPath).filePath(exe);
+            const QStringList command = commandIfFile(full);
+            if (!command.isEmpty()) {
+                return command;
+            }
+        }
+    }
+    HKEY appPaths = nullptr;
+    const wchar_t *appKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\voxprint-enlarge.exe";
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, appKey, 0, KEY_READ, &appPaths) != ERROR_SUCCESS) {
+        return {};
+    }
+    const QString exe = registryString(appPaths, L"");
+    RegCloseKey(appPaths);
+    return commandIfFile(exe);
+}
+#endif
+
+QString absoluteImagePath(const QString &image) {
+    if (image.isEmpty()) {
+        return {};
+    }
+    return QFileInfo(image).absoluteFilePath();
+}
+
+}  // namespace
+
 QStringList enlargeCliCommand() {
     const QString raw = qEnvironmentVariable("LUCENT_ENLARGE_EXE").trimmed();
     if (!raw.isEmpty()) {
@@ -137,16 +331,42 @@ QStringList enlargeCliCommand() {
         }
         return {};
     }
-    const QString found = QStandardPaths::findExecutable(QStringLiteral("voxprint-enlarge"));
-    if (found.isEmpty()) {
-        return {};
+#ifdef Q_OS_WIN
+    {
+        const QStringList registry = fromWindowsRegistry();
+        if (!registry.isEmpty()) {
+            return registry;
+        }
     }
-    return {found};
+#endif
+    {
+        const QStringList manifest = fromSharedManifest();
+        if (!manifest.isEmpty()) {
+            return manifest;
+        }
+    }
+    {
+        const QStringList known = commandIfFile(knownEnlargeExe());
+        if (!known.isEmpty()) {
+            return known;
+        }
+    }
+    const QString found = QStandardPaths::findExecutable(QStringLiteral("voxprint-enlarge"));
+    if (!found.isEmpty()) {
+        return {found};
+    }
+#ifdef Q_OS_WIN
+    const QString branded = QStandardPaths::findExecutable(QStringLiteral("VoxprintEnlarge.exe"));
+    if (!branded.isEmpty()) {
+        return {branded};
+    }
+#endif
+    return {};
 }
 
 int runDryRun(int argc, char **argv) {
     QCoreApplication app(argc, argv);
-    const QString image = positionalImage(argc, argv);
+    const QString image = absoluteImagePath(positionalImage(argc, argv));
     const bool missing = !image.isEmpty() && !QFileInfo::exists(image);
 
     QJsonObject root;
