@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <thread>
 
 #if defined(LUCENT_HAS_LIBAVIF)
 #include <avif/avif.h>
@@ -23,6 +24,17 @@ namespace lucent {
 namespace {
 
 #if defined(LUCENT_HAS_LIBAVIF)
+int codecThreads() {
+    unsigned count = std::thread::hardware_concurrency();
+    if (count < 1) {
+        count = 1;
+    }
+    if (count > 64) {
+        count = 64;
+    }
+    return static_cast<int>(count);
+}
+
 QImage readAvif(const QString &path) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -36,9 +48,19 @@ QImage readAvif(const QString &path) {
         avifDecoderDestroy(decoder);
         return {};
     }
+    const int threads = codecThreads();
+    decoder->maxThreads = threads;
     const avifResult read = avifDecoderReadMemory(
         decoder, image, reinterpret_cast<const uint8_t *>(bytes.constData()), static_cast<size_t>(bytes.size()));
     if (read != AVIF_RESULT_OK) {
+        avifDecoderDestroy(decoder);
+        avifImageDestroy(image);
+        return {};
+    }
+    // PQ and HLG need tone mapping. An 8-bit convert clips them, so leave those files
+    // to the image plugin until the display path maps them.
+    if (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084
+        || image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_HLG) {
         avifDecoderDestroy(decoder);
         avifImageDestroy(image);
         return {};
@@ -47,6 +69,8 @@ QImage readAvif(const QString &path) {
     avifRGBImageSetDefaults(&rgb, image);
     rgb.depth = 8;
     rgb.format = AVIF_RGB_FORMAT_RGBA;
+    rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_FASTEST;
+    rgb.maxThreads = threads;
     if (avifRGBImageAllocatePixels(&rgb) != AVIF_RESULT_OK || avifImageYUVToRGB(image, &rgb) != AVIF_RESULT_OK) {
         avifRGBImageFreePixels(&rgb);
         avifDecoderDestroy(decoder);
