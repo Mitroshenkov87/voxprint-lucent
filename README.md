@@ -61,7 +61,7 @@ These are the Windows viewer, cropped from a 1920×1032 desktop.
 
 Release files are on this repository's GitHub releases. `v0.1.0-rc7` is a pre-release. The release title is `0.1.0 RC · build 8 "Orah"`. Check `SHA256SUMS` against the download.
 
-**Windows.** Run `VoxprintAILucent-0.1.0-rc7-win64.msi`. It installs for the machine under `C:\Program Files\VOXPrint AI Suite\Lucent` and asks for an administrator. The Start menu folder is `VOXPrint AI Suite` and the shortcut is `VOXPrint AI Lucent`. If an older per-user install is still present, run `remove-legacy-user.ps1` from the new install folder, or uninstall `Voxprint AI Lucent` in Settings, first. Files under `%LOCALAPPDATA%\Voxprint` stay.
+**Windows.** Run `VoxprintAILucent-0.1.0-rc7-win64.msi`. It installs for the machine under `C:\Program Files\VOXPrint AI Suite\Lucent` and asks for an administrator. The Start menu folder is `VOXPrint AI Suite` and the shortcut is `VOXPrint AI Lucent`. The first time you open the installed viewer, it removes an older per-user install in the background and does not wait. Files under `%LOCALAPPDATA%\Voxprint` stay. `remove-legacy-user.ps1` in the install folder does the same uninstall if you want to run it yourself.
 
 The zip `lucent-0.1.0-rc7-windows.zip` is the measurement bundle (the viewer, `Run-M0.ps1`, and `Run-Checks.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
 

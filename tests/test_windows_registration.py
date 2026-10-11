@@ -43,6 +43,24 @@ def test_cold_task_unregisters_on_failure() -> None:
     assert "outcome=left-registered" not in text
 
 
+def test_viewer_spawns_legacy_uninstall_without_waiting() -> None:
+    text = Path("cpp/src/main.cpp").read_text(encoding="utf-8")
+    assert "spawnLegacyPerUserUninstall" in text
+    assert "msiexec.exe /x " in text
+    assert "Voxprint AI Lucent" in text
+    assert "legacy-uninstall.log" in text
+    assert "DETACHED_PROCESS" in text
+    assert "CREATE_NO_WINDOW" in text
+    assert ".detach()" in text
+    assert "WaitForSingleObject" not in text
+    interactive = text.split("lucent::Browser browser", 1)[1]
+    before_show, after_show = interactive.split("browser.show();", 1)
+    assert "spawnLegacyPerUserUninstall" not in before_show
+    assert "spawnLegacyPerUserUninstall();" in after_show
+    benchmark = text.split("if (options.benchmark)", 1)[1].split("lucent::Browser browser", 1)[0]
+    assert "spawnLegacyPerUserUninstall" not in benchmark
+
+
 def test_vm_test_finds_an_msi_and_times_out() -> None:
     text = VM_TEST.read_text(encoding="utf-8")
     assert r"VOXPrint AI Suite\Lucent" in text

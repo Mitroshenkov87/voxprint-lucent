@@ -1,5 +1,5 @@
+# Manual fallback. The installed viewer does this once, detached, on first launch.
 # Uninstall the v0.1.0-rc6 per-user MSI. Settings under %LOCALAPPDATA%\Voxprint stay.
-# Windows Installer cannot run this from inside the new per-machine MSI.
 $ErrorActionPreference = 'Stop'
 $root = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
 if (-not (Test-Path -LiteralPath $root)) { exit 0 }

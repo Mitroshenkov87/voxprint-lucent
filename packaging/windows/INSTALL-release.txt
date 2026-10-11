@@ -12,8 +12,9 @@ viewer, or run voxprint-lucent-tools.cmd --path IMAGE.
 Enlarge itself is a separate app. This install only contains the client.
 
 An older per-user install (display name "Voxprint AI Lucent", under
-%LOCALAPPDATA%\Voxprint\Lucent) is not removed by this package. Run
-remove-legacy-user.ps1 before installing, or uninstall that app in Settings.
+%LOCALAPPDATA%\Voxprint\Lucent) is removed the first time you open the
+installed viewer. That uninstall runs in the background and does not wait.
+remove-legacy-user.ps1 does the same thing if you want to run it yourself.
 Files under %LOCALAPPDATA%\Voxprint that you created stay either way.
 
 Uninstall from Windows Settings, Apps, VOXPrint AI Lucent.
