@@ -65,7 +65,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/lucent-qt
-          key: qt-6.12.0-linux-gcc_64-qtbase-icu-v1
+          key: qt-6.12.0-linux-gcc_64-qtbase-icu-imageformats-v1
       - name: Compiler and Qt runtime libraries
         run: |
           sudo apt-get update
