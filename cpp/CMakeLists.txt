@@ -41,6 +41,7 @@ qt_add_executable(voxprint-lucent
     src/splash.cpp
     src/chrome.cpp
     src/selftest.cpp
+    src/display_hdr.cpp
 )
 
 target_compile_definitions(voxprint-lucent PRIVATE LUCENT_VERSION="${LUCENT_VERSION}")
@@ -128,7 +129,7 @@ if(Qt6_VERSION VERSION_GREATER_EQUAL 6.7.0)
 endif()
 
 if(WIN32)
-    target_link_libraries(voxprint-lucent PRIVATE shlwapi)
+    target_link_libraries(voxprint-lucent PRIVATE shlwapi dxgi)
 endif()
 
 find_package(PkgConfig QUIET)
