@@ -153,6 +153,11 @@ jpeg = next(item for item in payload["checks"] if item["name"] == "jpeg")
 if not jpeg["required"] or not jpeg["ok"]:
     raise SystemExit("jpeg check failed")
 '
+qss="$ROOT/cpp/build-ci/share/lucent.qss"
+test -f "$qss"
+grep -q '#60a5fa' "$qss"
+grep -q '#17171c' "$qss"
+test ! -e "$ROOT/cpp/build-ci/share/palette.json"
 PYTHONPATH="$ROOT" python3 "$ROOT/packaging/docs/generate_cli_md.py" \
   --viewer "$ROOT/cpp/build-ci/voxprint-lucent" --check
 sh "$ROOT/scripts/vm_test.sh" --smoke --json \

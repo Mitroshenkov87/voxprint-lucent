@@ -39,4 +39,4 @@ Lucent reads the JSON lines Enlarge prints. `--dry-run` on Lucent checks this pa
 
 ## Theme
 
-Both programs read `share/palette.json`. The keys (`ACCENT`, `ROOT_PLAIN`, and the rest) are the colour tokens. The C++ viewer fills `share/lucent.qss.in` with those tokens at startup. The tools process builds the same stylesheet from the same file, so the two windows use the same colours.
+Both programs use `share/tokens.json`, the palette from voxprint-common 0.1.0 ("Yesod"). The C++ build writes `lucent.qss` from `share/lucent.qss.in` and those tokens. The tools process builds the same stylesheet, so the two windows use the same colours. The splash border is Lucent's accent; that colour is not a suite token.

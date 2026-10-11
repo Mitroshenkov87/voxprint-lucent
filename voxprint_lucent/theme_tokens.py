@@ -1,14 +1,22 @@
-"""Palette tokens loaded from the shared ``share/palette.json`` file."""
+"""Palette tokens from voxprint-common's ``tokens.json``.
+
+The vendored file is Yesod (voxprint-common 0.1.0). Splash colour and
+selection text are not suite tokens: the splash colour is this app's accent,
+and selection text is white, matching the suite stylesheet.
+"""
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
 
+SELECTION_TEXT = "#ffffff"
+
 
 def share_dir() -> Path:
-    """Directory that holds palette.json and lucent.qss.in."""
+    """Directory that holds tokens.json and lucent.qss.in."""
     override = os.environ.get("LUCENT_SHARE")
     if override:
         return Path(override)
@@ -18,14 +26,18 @@ def share_dir() -> Path:
         module_dir / "share",
     )
     for candidate in candidates:
-        if (candidate / "palette.json").is_file():
+        if (candidate / "tokens.json").is_file():
             return candidate
     return candidates[0]
 
 
-def load_tokens() -> dict[str, str]:
-    """Read the shared palette from share/palette.json."""
-    path = share_dir() / "palette.json"
+def load_tokens(directory: Path | None = None) -> dict[str, str]:
+    """Read the vendored suite palette.
+
+    Args:
+        directory: Share directory. Defaults to :func:`share_dir`.
+    """
+    path = (directory or share_dir()) / "tokens.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise TypeError(f"{path} must be a JSON object")
@@ -47,12 +59,12 @@ ACCENT_HOVER = _TOKENS["ACCENT_HOVER"]
 ACCENT_SOFT = _TOKENS["ACCENT_SOFT"]
 ACCENT_STRONG = _TOKENS["ACCENT_STRONG"]
 TEXT_ON_ACCENT = _TOKENS["TEXT_ON_ACCENT"]
-SPLASH = _TOKENS["SPLASH"]
+SPLASH = _TOKENS["ACCENT"]
 TEXT = _TOKENS["TEXT"]
 TEXT_MUTED = _TOKENS["TEXT_MUTED"]
 TEXT_FAINT = _TOKENS["TEXT_FAINT"]
 TEXT_DISABLED = _TOKENS["TEXT_DISABLED"]
-TEXT_ON_SELECTION = _TOKENS["TEXT_ON_SELECTION"]
+TEXT_ON_SELECTION = SELECTION_TEXT
 ROOT_PLAIN = _TOKENS["ROOT_PLAIN"]
 ROOT_GLASS = _TOKENS["ROOT_GLASS"]
 ROOT_GLASS_MORE = _TOKENS["ROOT_GLASS_MORE"]
@@ -100,10 +112,41 @@ def contrast_ratio(foreground: str, background: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def render_stylesheet(tokens: dict[str, str] | None = None) -> str:
-    """Substitute palette tokens into ``share/lucent.qss.in``."""
-    values = _TOKENS if tokens is None else tokens
-    sheet = (share_dir() / "lucent.qss.in").read_text(encoding="utf-8")
+def render_stylesheet(directory: Path | None = None) -> str:
+    """Substitute suite tokens into ``lucent.qss.in``.
+
+    Args:
+        directory: Share directory. Defaults to :func:`share_dir`.
+
+    Returns:
+        The Lucent stylesheet. ``@SPLASH@`` is the accent. ``@TEXT_ON_SELECTION@``
+        is white.
+    """
+    folder = directory or share_dir()
+    values = load_tokens(folder)
+    values["SPLASH"] = values["ACCENT"]
+    values["TEXT_ON_SELECTION"] = SELECTION_TEXT
+    sheet = (folder / "lucent.qss.in").read_text(encoding="utf-8")
     for name, value in values.items():
         sheet = sheet.replace(f"@{name}@", value)
     return sheet
+
+
+def write_stylesheet(directory: Path) -> Path:
+    """Write ``lucent.qss`` into `directory` for the C++ viewer."""
+    destination = directory / "lucent.qss"
+    destination.write_text(render_stylesheet(directory), encoding="utf-8")
+    return destination
+
+
+def main() -> int:
+    """Write ``lucent.qss`` for ``--share``."""
+    parser = argparse.ArgumentParser(description="Generate lucent.qss from tokens.json")
+    parser.add_argument("--share", type=Path, default=share_dir())
+    args = parser.parse_args()
+    write_stylesheet(args.share)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

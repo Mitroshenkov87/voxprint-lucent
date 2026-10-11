@@ -1,4 +1,4 @@
-"""Qt stylesheet built from the shared palette files."""
+"""Qt stylesheet built from the vendored suite tokens."""
 
 from __future__ import annotations
 

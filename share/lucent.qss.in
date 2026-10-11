@@ -1,4 +1,5 @@
-/* Generated view of share/palette.json. Tokens are @NAME@. */
+/* Lucent stylesheet. Colour names are filled from share/tokens.json.
+   The splash border is this app's accent. Selection text is white. */
 QWidget#lucent-window {
     background-color: @ROOT_PLAIN@;
     color: @TEXT@;
