@@ -1,4 +1,4 @@
-# Build the per-user MSI from a harness stage that is already on disk.
+# Build the per-machine MSI from a harness stage that is already on disk.
 # Run packaging/windows/build-m0-harness.ps1 first.
 $ErrorActionPreference = 'Stop'
 
@@ -10,7 +10,7 @@ if (-not (Test-Path -LiteralPath $Exe)) {
 }
 
 $Tag = $env:LUCENT_RELEASE_TAG
-if (-not $Tag) { $Tag = 'v0.1.0-rc6' }
+if (-not $Tag) { $Tag = 'v0.1.0-rc7' }
 $VersionName = $Tag -replace '^v', ''
 
 $Out = Join-Path $Root 'dist'
@@ -36,6 +36,12 @@ foreach ($name in @('vcruntime140.dll', 'msvcp140.dll', 'qjpeg.dll', 'qwebp.dll'
 }
 Copy-Item (Join-Path $PSScriptRoot 'voxprint-lucent-tools.cmd') (Join-Path $Payload 'voxprint-lucent-tools.cmd')
 Copy-Item (Join-Path $PSScriptRoot 'INSTALL-release.txt') (Join-Path $Payload 'INSTALL.txt')
+Copy-Item (Join-Path $PSScriptRoot 'remove-legacy-user.ps1') (Join-Path $Payload 'remove-legacy-user.ps1')
+$smokeSrc = Join-Path $Stage 'images\smoke.jpg'
+if (-not (Test-Path -LiteralPath $smokeSrc)) { $smokeSrc = Join-Path $PSScriptRoot 'smoke.jpg' }
+if (-not (Test-Path -LiteralPath $smokeSrc)) { throw "Missing images\smoke.jpg" }
+New-Item -ItemType Directory -Force -Path (Join-Path $Payload 'images') | Out-Null
+Copy-Item $smokeSrc (Join-Path $Payload 'images\smoke.jpg')
 
 $HarnessZip = Join-Path $Out 'lucent-m0-windows.zip'
 $VersionedZip = Join-Path $Out "lucent-$VersionName-windows.zip"
@@ -52,7 +58,7 @@ $Msi = Join-Path $Out "VoxprintAILucent-$VersionName-win64.msi"
 $PayloadArg = ((Resolve-Path $Payload).Path) -replace '\\', '/'
 Push-Location $PSScriptRoot
 try {
-    & wix build -acceptEula wix7 -d "Payload=$PayloadArg" .\Package.release.wxs -o $Msi
+    & wix build -acceptEula wix7 -arch x64 -d "Payload=$PayloadArg" .\Package.release.wxs -o $Msi
 } finally {
     Pop-Location
 }

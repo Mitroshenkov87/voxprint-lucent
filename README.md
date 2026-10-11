@@ -1,7 +1,7 @@
-# Voxprint AI Lucent
+# VOXPrint AI Lucent
 
 <p align="center">
-  <img src="packaging/docs/site/assets/banner.webp" alt="Voxprint AI Lucent" width="960">
+  <img src="packaging/docs/site/assets/banner.webp" alt="VOXPrint AI Lucent" width="960">
 </p>
 
 <p align="center">A fast image viewer that keeps the colour you expect.</p>
@@ -59,16 +59,16 @@ These are the Windows viewer, cropped from a 1920×1032 desktop.
 
 ## Install
 
-Release files are on this repository's GitHub releases. `v0.1.0-rc6` is a pre-release. The release title is `0.1.0 RC · build 7 "Tov"`. Check `SHA256SUMS` against the download.
+Release files are on this repository's GitHub releases. `v0.1.0-rc7` is a pre-release. The release title is `0.1.0 RC · build 8 "Orah"`. Check `SHA256SUMS` against the download.
 
-**Windows.** Run `VoxprintAILucent-0.1.0-rc6-win64.msi`. It installs for your user only, under `%LOCALAPPDATA%\Voxprint\Lucent`, and does not ask for an administrator. A Start menu shortcut is created.
+**Windows.** Run `VoxprintAILucent-0.1.0-rc7-win64.msi`. It installs for the machine under `C:\Program Files\VOXPrint AI Suite\Lucent` and asks for an administrator. The Start menu folder is `VOXPrint AI Suite` and the shortcut is `VOXPrint AI Lucent`. If an older per-user install is still present, run `remove-legacy-user.ps1` from the new install folder, or uninstall `Voxprint AI Lucent` in Settings, first. Files under `%LOCALAPPDATA%\Voxprint` stay.
 
-The zip `lucent-0.1.0-rc6-windows.zip` is the measurement bundle (the viewer, `Run-M0.ps1`, and `Run-Checks.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
+The zip `lucent-0.1.0-rc7-windows.zip` is the measurement bundle (the viewer, `Run-M0.ps1`, and `Run-Checks.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
 
 **Linux.**
 
 ```bash
-sudo apt install ./voxprint-lucent_0.1.0.rc6_amd64.deb
+sudo apt install ./voxprint-lucent_0.1.0~rc7_amd64.deb
 ```
 
 ## Quick start
@@ -135,7 +135,7 @@ The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). Discovery is [docs/A
 
 ## Uninstall
 
-**Windows.** Settings, Apps, Voxprint AI Lucent. That removes the per-user install.
+**Windows.** Settings, Apps, VOXPrint AI Lucent. That removes the per-machine install.
 
 **Linux.**
 

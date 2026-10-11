@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Measure Voxprint AI Lucent M0 startup on Windows.
+    Measure VOXPrint AI Lucent M0 startup on Windows.
 
 .DESCRIPTION
     One command for the owner machine (Windows 11 or Windows Server 2025).
@@ -19,10 +19,11 @@
     -ScheduleCold registers a one-shot AtLogOn task named
     VoxprintLucent-M0-Cold, then tells you to reboot. The task runs as the
     user who registered it, with its working directory set to this script's
-    folder. It runs -ColdResume once and unregisters itself only after a
-    results file exists. A start and outcome line is always appended to
-    results\m0-task.log next to this script, and to
-    %LOCALAPPDATA%\Voxprint\Lucent\m0-task.log.
+    folder.     It runs -ColdResume once. The trigger expires, and Task Scheduler
+    deletes the task after that. -ColdResume also unregisters the task,
+    including when the run fails before it writes a result. A start and
+    outcome line is always appended to results\m0-task.log next to this
+    script, and to %LOCALAPPDATA%\Voxprint\Lucent\m0-task.log.
 
     If you reboot and start this script yourself while uptime is still under
     -ColdUptimeSeconds (default 180), that invocation is treated as the cold
@@ -362,9 +363,11 @@ function Register-ColdTask {
     $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
     $action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $arg -WorkingDirectory $workdir
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    $trigger.EndBoundary = (Get-Date).AddDays(2).ToString('yyyy-MM-ddTHH:mm:ss')
     $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
-    Write-TaskLog "registered task=$TaskName user=$user workdir=$workdir"
+    $settings = New-ScheduledTaskSettingsSet -DeleteExpiredTaskAfter (New-TimeSpan -Minutes 1) -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+    Write-TaskLog "registered task=$TaskName user=$user workdir=$workdir end=$($trigger.EndBoundary)"
 }
 
 function Get-SampleReason([object]$Summary) {
@@ -380,8 +383,9 @@ function Get-SampleReason([object]$Summary) {
 }
 
 function Unregister-ColdTask {
-    # The script is the running task, so Unregister-ScheduledTask throws until
-    # this process exits. Log that, then ask a second process to remove it.
+    # Unregister-ScheduledTask is denied while this process is the running
+    # task. A one-shot task started by Task Scheduler is not a child of that
+    # job, so it still runs after this process exits.
     $logPaths = @()
     if ($PSScriptRoot) { $logPaths += (Join-Path $PSScriptRoot 'results\m0-task.log') }
     if ($env:LOCALAPPDATA) { $logPaths += (Join-Path $env:LOCALAPPDATA 'Voxprint\Lucent\m0-task.log') }
@@ -401,22 +405,30 @@ function Unregister-ColdTask {
     try {
         Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
         Write-TaskLog "outcome=unregistered task=$TaskName"
+        return
     } catch {
         $detail = ($_.Exception.Message -replace '[\r\n]+', ' ')
         Write-TaskLog "outcome=unregister task=$TaskName detail=deferred error=$detail"
-        $helper = Join-Path $env:TEMP 'lucent-m0-unregister.ps1'
-        $lines = @(
-            'Start-Sleep -Seconds 5',
-            "Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false -ErrorAction SilentlyContinue",
-            "if (Get-ScheduledTask -TaskName '$TaskName' -ErrorAction SilentlyContinue) { exit 1 }"
-        )
-        foreach ($path in $logPaths) {
-            $escaped = $path.Replace("'", "''")
-            $lines += "Add-Content -LiteralPath '$escaped' -Value ((Get-Date).ToString('o') + ' outcome=unregistered task=$TaskName detail=deferred-helper') -Encoding ASCII"
-        }
-        $lines += 'exit 0'
-        Set-Content -LiteralPath $helper -Value ($lines -join "`r`n") -Encoding ASCII
-        Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $helper) -WindowStyle Hidden
+    }
+    $helper = Join-Path $env:TEMP 'lucent-m0-unregister.ps1'
+    $lines = @(
+        "Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false -ErrorAction SilentlyContinue",
+        "Unregister-ScheduledTask -TaskName 'VoxprintLucent-M0-Cold-Cleanup' -Confirm:`$false -ErrorAction SilentlyContinue"
+    )
+    foreach ($path in $logPaths) {
+        $escaped = $path.Replace("'", "''")
+        $lines += "Add-Content -LiteralPath '$escaped' -Value ((Get-Date).ToString('o') + ' outcome=unregistered task=$TaskName detail=deferred-helper') -Encoding ASCII"
+    }
+    $lines += 'exit 0'
+    Set-Content -LiteralPath $helper -Value ($lines -join "`r`n") -Encoding ASCII
+    $when = (Get-Date).AddMinutes(2)
+    $hhmm = $when.ToString('HH:mm')
+    $tr = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + $helper + '"'
+    & schtasks.exe /Create /F /TN 'VoxprintLucent-M0-Cold-Cleanup' /SC ONCE /ST $hhmm /RL LIMITED /TR $tr | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-TaskLog "outcome=deferred-helper task=VoxprintLucent-M0-Cold-Cleanup at=$hhmm"
+    } else {
+        Write-TaskLog "outcome=deferred-helper task=VoxprintLucent-M0-Cold-Cleanup detail=schtasks-failed exit=$LASTEXITCODE"
     }
 }
 
@@ -442,6 +454,8 @@ if ($ScheduleCold) {
     exit 0
 }
 
+$ResultsWritten = $false
+try {
 $uptime = Get-UptimeSeconds
 $coldBoot = $false
 if (-not $WarmOnly) {
@@ -501,8 +515,6 @@ function Invoke-Profile([hashtable]$Target, [hashtable]$FormatInfo, [bool]$Warmu
 $environment = Get-EnvironmentReport
 $reportTargets = @()
 $firstExecutable = $true
-$ResultsWritten = $false
-try {
     foreach ($target in $targets) {
         $formatReports = @()
         foreach ($fmt in $formats) {
@@ -593,7 +605,7 @@ $logPath = Join-Path $layout.Results "m0-$stamp.log"
 Write-Utf8NoBom $jsonPath (($payload | ConvertTo-Json -Depth 8) + "`n")
 
 $lines = New-Object System.Collections.Generic.List[string]
-$lines.Add("Voxprint AI Lucent M0")
+$lines.Add("VOXPrint AI Lucent M0")
 $lines.Add("created: $($payload.created_local)")
 $lines.Add("cold boot: $coldBoot")
 $lines.Add("budget: first visible pixel <= $BudgetMs ms; full-res AVIF and JXL warm <= $FullResBudgetMs ms; cached navigate <= $NavigateBudgetMs ms")
@@ -641,7 +653,7 @@ Write-Host "Wrote $logPath"
 Write-Host "Wrote $jsonPath"
 } catch {
     $message = $_.Exception.Message
-    Write-TaskLog "failed: $message"
+    Write-TaskLog "outcome=failed error=$message"
     try {
         $errDir = $layout.Results
         if (-not $errDir) { $errDir = Join-Path $PSScriptRoot 'results' }
@@ -662,10 +674,8 @@ Write-Host "Wrote $jsonPath"
     }
     throw
 } finally {
-    if ($ColdResume -and $ResultsWritten) {
+    if ($ColdResume) {
         Unregister-ColdTask
-    } elseif ($ColdResume) {
-        Write-TaskLog "outcome=left-registered task=$TaskName detail=no-results-file"
     }
 }
 exit 0

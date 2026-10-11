@@ -8,10 +8,10 @@ from pathlib import Path
 from voxprint_lucent.cli import load_build_payload, public_build_label
 
 
-def test_build_json_names_tov() -> None:
+def test_build_json_names_orah() -> None:
     payload = json.loads(Path("BUILD.json").read_text(encoding="utf-8"))
-    assert payload["codename"] == "Tov"
-    assert payload["number"] == 7
+    assert payload["codename"] == "Orah"
+    assert payload["number"] == 8
     assert isinstance(payload["offset"], int)
 
 
@@ -24,12 +24,12 @@ def test_label_ignores_workflow_run_number(monkeypatch) -> None:
 
 def test_label_walks_up_to_build_json(tmp_path: Path) -> None:
     (tmp_path / "BUILD.json").write_text(
-        '{"number": 7, "offset": 0, "codename": "Tov"}\n',
+        '{"number": 8, "offset": 0, "codename": "Orah"}\n',
         encoding="utf-8",
     )
     nested = tmp_path / "app" / "voxprint_lucent" / "cli.py"
     nested.parent.mkdir(parents=True)
     nested.write_text("", encoding="utf-8")
     payload = load_build_payload(nested)
-    assert payload["codename"] == "Tov"
-    assert payload["number"] == 7
+    assert payload["codename"] == "Orah"
+    assert payload["number"] == 8

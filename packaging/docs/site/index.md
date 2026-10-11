@@ -1,7 +1,7 @@
-# Voxprint AI Lucent
+# VOXPrint AI Lucent
 
 <p align="center">
-  <img src="assets/banner.webp" alt="Voxprint AI Lucent" width="960">
+  <img src="assets/banner.webp" alt="VOXPrint AI Lucent" width="960">
 </p>
 
 Lucent opens a picture quickly and keeps the colour you expect.

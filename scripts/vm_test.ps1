@@ -57,14 +57,42 @@ if ($nvsmi) {
     if ($LASTEXITCODE -eq 0) { $gpuPresent = $true }
 }
 
+function Test-ViewerFile([string]$Path) {
+    return ($Path -and (Test-Path -LiteralPath $Path))
+}
+
 if (-not $Viewer) {
     $candidates = @(
         (Join-Path $Root 'cpp\build-ci\voxprint-lucent.exe'),
         (Join-Path $PSScriptRoot 'voxprint-lucent.exe'),
         (Join-Path (Split-Path -Parent $PSScriptRoot) 'voxprint-lucent.exe')
     )
+    if ($env:ProgramFiles) {
+        $candidates += (Join-Path $env:ProgramFiles 'VOXPrint AI Suite\Lucent\voxprint-lucent.exe')
+    }
+    if ($env:LOCALAPPDATA) {
+        $candidates += (Join-Path $env:LOCALAPPDATA 'Voxprint\Lucent\voxprint-lucent.exe')
+    }
+    foreach ($reg in @(
+            'HKLM:\Software\VOXPrint\Lucent',
+            'HKCU:\Software\VOXPrint\Lucent',
+            'HKCU:\Software\Voxprint\Lucent'
+        )) {
+        try {
+            $props = Get-ItemProperty -LiteralPath $reg -ErrorAction Stop
+            $install = [string]$props.InstallPath
+            $exe = [string]$props.Exe
+            if ($install -and $exe) {
+                if ([System.IO.Path]::IsPathRooted($exe)) { $candidates += $exe }
+                else { $candidates += (Join-Path $install.TrimEnd('\') $exe) }
+            } elseif ($install) {
+                $candidates += (Join-Path $install.TrimEnd('\') 'voxprint-lucent.exe')
+            }
+        } catch {
+        }
+    }
     foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) { $Viewer = $candidate; break }
+        if (Test-ViewerFile $candidate) { $Viewer = $candidate; break }
     }
 }
 if (-not $Viewer -or -not (Test-Path -LiteralPath $Viewer)) {
@@ -96,8 +124,16 @@ if (-not $number -or -not $codename) {
 }
 
 if (-not $Image) {
-    $nextToViewer = Join-Path (Split-Path -Parent $Viewer) 'images\smoke.jpg'
-    if (Test-Path -LiteralPath $nextToViewer) { $Image = $nextToViewer }
+    $imageCandidates = @(
+        (Join-Path (Split-Path -Parent $Viewer) 'images\smoke.jpg'),
+        (Join-Path $PSScriptRoot 'images\smoke.jpg'),
+        (Join-Path $Root 'images\smoke.jpg'),
+        (Join-Path $Root 'packaging\windows\smoke.jpg'),
+        (Join-Path $PSScriptRoot 'smoke.jpg')
+    )
+    foreach ($candidate in $imageCandidates) {
+        if (Test-Path -LiteralPath $candidate) { $Image = $candidate; break }
+    }
 }
 if (-not $Image -or -not (Test-Path -LiteralPath $Image)) {
     Write-Result $false 2 'smoke image missing' $gpuPresent
@@ -105,6 +141,7 @@ if (-not $Image -or -not (Test-Path -LiteralPath $Image)) {
 }
 
 function Invoke-Viewer([string[]]$ArgumentList) {
+    $timeoutMs = 120000
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $Viewer
     $quoted = @(foreach ($part in $ArgumentList) {
@@ -119,32 +156,50 @@ function Invoke-Viewer([string[]]$ArgumentList) {
     $proc = New-Object System.Diagnostics.Process
     $proc.StartInfo = $psi
     [void]$proc.Start()
-    $stdout = $proc.StandardOutput.ReadToEnd()
-    $null = $proc.StandardError.ReadToEnd()
-    $null = $proc.WaitForExit(120000)
-    if (-not $proc.HasExited) {
+    $outTask = $proc.StandardOutput.ReadToEndAsync()
+    $errTask = $proc.StandardError.ReadToEndAsync()
+    if (-not $proc.WaitForExit($timeoutMs)) {
         try { $proc.Kill() } catch { }
-        return ''
+        try { $proc.WaitForExit(5000) | Out-Null } catch { }
+        $joined = ($ArgumentList -join ' ')
+        return "TIMEOUT after ${timeoutMs} ms: $joined"
     }
-    return [string]$stdout
+    try { $null = $errTask.Result } catch { }
+    return [string]$outTask.Result
 }
 
 $version = Invoke-Viewer @('--version')
+if ($version -match '^TIMEOUT') {
+    Write-Result $false 1 $version $gpuPresent
+    exit 1
+}
 if ($version -notmatch [regex]::Escape("build $number") -or $version -notmatch [regex]::Escape($codename)) {
     Write-Result $false 1 'version' $gpuPresent
     exit 1
 }
 $selftest = Invoke-Viewer @('--selftest', '--json')
+if ($selftest -match '^TIMEOUT') {
+    Write-Result $false 1 $selftest $gpuPresent
+    exit 1
+}
 if ($selftest -notmatch '"ok"\s*:\s*true') {
     Write-Result $false 1 'selftest' $gpuPresent
     exit 1
 }
 $dry = Invoke-Viewer @('--dry-run', $Image)
+if ($dry -match '^TIMEOUT') {
+    Write-Result $false 1 $dry $gpuPresent
+    exit 1
+}
 if ($dry -notmatch '"dry_run"\s*:\s*true') {
     Write-Result $false 1 'dry-run' $gpuPresent
     exit 1
 }
 $bench = Invoke-Viewer @($Image, '--benchmark')
+if ($bench -match '^TIMEOUT') {
+    Write-Result $false 1 $bench $gpuPresent
+    exit 1
+}
 if ($bench -notmatch '(?m)^FIRST_PIXEL\s*$') {
     Write-Result $false 1 'first pixel' $gpuPresent
     exit 1

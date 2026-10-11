@@ -29,7 +29,7 @@ class ViewerWindow(QWidget):
         """Show `image` and record when the first frame was presented."""
         super().__init__()
         self.setObjectName("lucent-window")
-        self.setWindowTitle("Voxprint AI Lucent")
+        self.setWindowTitle("VOXPrint AI Lucent")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
         self.setStyleSheet(build_stylesheet())
         self.resize(1280, 720)

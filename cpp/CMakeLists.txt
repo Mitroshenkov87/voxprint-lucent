@@ -17,7 +17,7 @@ string(JSON LUCENT_BUILD_NUMBER ERROR_VARIABLE LUCENT_NUMBER_ERROR GET "${LUCENT
 if(LUCENT_NUMBER_ERROR)
     set(LUCENT_BUILD_NUMBER "${LUCENT_BUILD_OFFSET}")
 endif()
-set(LUCENT_VERSION "0.1.0-rc6")
+set(LUCENT_VERSION "0.1.0-rc7")
 configure_file(src/lucent_build.h.in "${CMAKE_CURRENT_BINARY_DIR}/lucent_build.h" @ONLY)
 
 qt_add_executable(voxprint-lucent
@@ -128,6 +128,11 @@ endif()
 
 if(WIN32)
     target_link_libraries(voxprint-lucent PRIVATE shlwapi dxgi)
+    add_executable(voxprint-lucent-cli src/cli_stub_win.cpp)
+    target_link_libraries(voxprint-lucent-cli PRIVATE shell32)
+    if(MSVC)
+        target_compile_options(voxprint-lucent-cli PRIVATE /O2)
+    endif()
 endif()
 
 find_package(PkgConfig QUIET)

@@ -103,7 +103,7 @@ QString runtimeWarning() {
     }
     lines.prepend(QStringLiteral("Lucent can't show pictures yet."));
     lines.append(QStringLiteral(
-        "Reinstall Voxprint AI Lucent. The installer copies these files next to the program."));
+        "Reinstall VOXPrint AI Lucent. The installer copies these files next to the program."));
     return lines.join(QStringLiteral("\n"));
 }
 

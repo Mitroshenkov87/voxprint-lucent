@@ -88,7 +88,7 @@ Browser::Browser(LaunchOptions options, std::chrono::steady_clock::time_point st
     : QWidget(parent), options_(std::move(options)) {
     Q_UNUSED(started);
     setObjectName(QStringLiteral("lucent-window"));
-    setWindowTitle(QStringLiteral("Voxprint AI Lucent"));
+    setWindowTitle(QStringLiteral("VOXPrint AI Lucent"));
     setStyleSheet(loadStyleSheet());
     resize(1600, 1000);
     setAttribute(Qt::WA_OpaquePaintEvent);

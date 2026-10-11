@@ -280,32 +280,69 @@ bool registryDword(HKEY key, const wchar_t *name, DWORD *value) {
     return true;
 }
 
-QStringList fromWindowsRegistry() {
+QStringList fromAppKey(HKEY root, const wchar_t *subkey) {
     HKEY key = nullptr;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Voxprint\\Enlarge", 0, KEY_READ, &key) == ERROR_SUCCESS) {
-        DWORD protocol = 0;
-        const bool haveProtocol = registryDword(key, L"ProtocolVersion", &protocol);
-        const QString exe = registryString(key, L"Exe");
-        const QString installPath = registryString(key, L"InstallPath");
-        RegCloseKey(key);
-        if (haveProtocol && protocol == 1 && !exe.isEmpty()) {
-            const QString full = QFileInfo(exe).isAbsolute() || installPath.isEmpty()
-                ? exe
-                : QDir(installPath).filePath(exe);
-            const QStringList command = commandIfFile(full);
-            if (!command.isEmpty()) {
-                return command;
-            }
-        }
+    if (RegOpenKeyExW(root, subkey, 0, KEY_READ, &key) != ERROR_SUCCESS) {
+        return {};
     }
+    DWORD protocol = 0;
+    const bool haveProtocol = registryDword(key, L"ProtocolVersion", &protocol);
+    const QString exe = registryString(key, L"Exe");
+    const QString installPath = registryString(key, L"InstallPath");
+    RegCloseKey(key);
+    if (!haveProtocol || protocol != 1 || exe.isEmpty()) {
+        return {};
+    }
+    const QString full = QFileInfo(exe).isAbsolute() || installPath.isEmpty() ? exe : QDir(installPath).filePath(exe);
+    return commandIfFile(full);
+}
+
+QStringList fromAppPaths(HKEY root) {
     HKEY appPaths = nullptr;
     const wchar_t *appKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\voxprint-enlarge.exe";
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, appKey, 0, KEY_READ, &appPaths) != ERROR_SUCCESS) {
+    if (RegOpenKeyExW(root, appKey, 0, KEY_READ, &appPaths) != ERROR_SUCCESS) {
         return {};
     }
     const QString exe = registryString(appPaths, L"");
     RegCloseKey(appPaths);
     return commandIfFile(exe);
+}
+
+QStringList fromWindowsRegistry() {
+    const QStringList machine = fromAppKey(HKEY_LOCAL_MACHINE, L"Software\\VOXPrint\\Enlarge");
+    if (!machine.isEmpty()) {
+        return machine;
+    }
+    const QStringList user = fromAppKey(HKEY_CURRENT_USER, L"Software\\VOXPrint\\Enlarge");
+    if (!user.isEmpty()) {
+        return user;
+    }
+    const QStringList machinePaths = fromAppPaths(HKEY_LOCAL_MACHINE);
+    if (!machinePaths.isEmpty()) {
+        return machinePaths;
+    }
+    const QStringList userPaths = fromAppPaths(HKEY_CURRENT_USER);
+    if (!userPaths.isEmpty()) {
+        return userPaths;
+    }
+    QString programFiles = qEnvironmentVariable("ProgramFiles");
+    if (programFiles.isEmpty()) {
+        programFiles = QStringLiteral("C:/Program Files");
+    }
+    const QString suite = QDir(programFiles).filePath(QStringLiteral("VOXPrint AI Suite/Enlarge/voxprint-enlarge.exe"));
+    const QStringList suiteCommand = commandIfFile(suite);
+    if (!suiteCommand.isEmpty()) {
+        return suiteCommand;
+    }
+    const QString local = qEnvironmentVariable("LOCALAPPDATA");
+    if (!local.isEmpty()) {
+        const QString legacy = QDir(local).filePath(QStringLiteral("Programs/Voxprint/Enlarge/voxprint-enlarge.exe"));
+        const QStringList legacyCommand = commandIfFile(legacy);
+        if (!legacyCommand.isEmpty()) {
+            return legacyCommand;
+        }
+    }
+    return {};
 }
 #endif
 

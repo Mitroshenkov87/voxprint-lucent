@@ -177,8 +177,11 @@ Invoke-Native {
 }
 Invoke-Native { cmake --build $CppBuild }
 $Exe = Join-Path $CppBuild 'voxprint-lucent.exe'
+$Cli = Join-Path $CppBuild 'voxprint-lucent-cli.exe'
 if (-not (Test-Path $Exe)) { throw "Missing $Exe" }
+if (-not (Test-Path $Cli)) { throw "Missing $Cli" }
 Copy-Item $Exe (Join-Path $Stage 'voxprint-lucent.exe')
+Copy-Item $Cli (Join-Path $Stage 'voxprint-lucent-cli.exe')
 Copy-Item -Recurse (Join-Path $CppBuild 'share') (Join-Path $Stage 'share')
 
 Write-Host 'Deploying the Qt runtime'

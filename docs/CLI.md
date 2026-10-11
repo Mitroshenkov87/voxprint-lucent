@@ -31,8 +31,8 @@ Usage:
     No window, no GPU, and no single-instance socket. The tools process is not started.
     Exit 0 when IMAGE is omitted or exists and the Enlarge probe succeeds.
     Exit 3 when IMAGE does not exist.
-    Enlarge is found in this order: LUCENT_ENLARGE_EXE, HKCU\Software\Voxprint\Enlarge,
-    the per-user App Paths key for voxprint-enlarge.exe (the installed file is VoxprintEnlarge.exe),
+    Enlarge is found in this order: LUCENT_ENLARGE_EXE, HKLM\Software\VOXPrint\Enlarge,
+    HKCU\Software\VOXPrint\Enlarge, App Paths, Program Files\VOXPrint AI Suite\Enlarge,
     the shared suite manifest, the per-user installer path, then voxprint-enlarge on PATH.
     --input is always an absolute path.
     When Enlarge is absent, enlarge.installed is false and enlarge.install_url is the releases page.
@@ -50,6 +50,8 @@ Usage:
 
 --benchmark IMAGE
     Paint IMAGE, print FIRST_PIXEL, and exit. The tools process is not started.
+    On Windows session 0 (no interactive desktop) this exits with an error.
+    A paint that has not finished in 60 seconds exits with an error.
     --navigate-next IMAGE opens that second image and prints NAVIGATE_PIXEL.
     Exit 2 when IMAGE is missing.
 
@@ -60,7 +62,7 @@ Exit status:
     0  the command finished
     2  --benchmark was given without an image
     3  --dry-run was given a path that is not a file
-    1  --selftest found a required runtime file missing
+    1  --selftest found a required file, or --benchmark is session 0 or timed out
 ```
 
 ## Python module
@@ -73,7 +75,7 @@ usage: voxprint-lucent [-h] [--benchmark] [--navigate-next NAVIGATE_NEXT]
                        [--version]
                        [image]
 
-Voxprint AI Lucent, a fast colour-accurate image viewer.
+VOXPrint AI Lucent, a fast colour-accurate image viewer.
 
 positional arguments:
   image                 Image file to open
@@ -99,7 +101,7 @@ options:
 usage: voxprint-lucent-tools [-h] [--ping] [--path PATH] [--enlarge]
                              [--frame FRAME] [--check-update]
 
-Voxprint AI Lucent tools host. Not part of viewer startup.
+VOXPrint AI Lucent tools host. Not part of viewer startup.
 
 options:
   -h, --help      show this help message and exit

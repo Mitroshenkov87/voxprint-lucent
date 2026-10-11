@@ -1,29 +1,33 @@
 # Suite app discovery
 
-Status: draft spec v1, 2026-10-10 (written by Voxprint AI Lucent; owner of the spec: Voxprint AI Suite Lead). How every Voxprint app registers itself and finds the others, the same way on every platform. App-specific protocols build on it (first one: [IPC-ENLARGE.md](IPC-ENLARGE.md)).
+Status: **spec v2, 2026-10-11**. v1 was 2026-10-10. Installs are per-machine. Readers still accept a legacy per-user key. App-specific protocols build on it (first one: [IPC-ENLARGE.md](IPC-ENLARGE.md)).
 
-`<App>` = the app name in PascalCase (`Enlarge`, `Lucent`, `Clarity`, `MovieDubber`, `AudiobookBuilder`, `Plotweaver`); `<app>` = kebab-case (`enlarge`, `lucent`, `movie-dubber`, ...). Executable: `voxprint-<app>` (`voxprint-<app>.exe` on Windows).
+`<App>` = the app name in PascalCase (`Enlarge`, `Lucent`). `<app>` = kebab-case (`enlarge`, `lucent`). Executables: `voxprint-<app>.exe` and `voxprint-<app>-cli.exe`.
 
 ## 1. Registration (done by each app's installer; other apps only read)
 
-**Windows** (per user, no admin): `HKCU\Software\Voxprint\<App>`
+**Windows** (per machine): `HKLM\Software\VOXPrint\<App>`
 
 | Value | Type | Example |
 |---|---|---|
-| `InstallPath` | REG_SZ | `C:\Users\...\AppData\Local\Programs\Voxprint\Enlarge` |
-| `Exe` | REG_SZ | `voxprint-enlarge.exe` |
-| `Version` | REG_SZ | `0.1.0` |
-| `IpcName` | REG_SZ | `voxprint-enlarge` (base name, see section 3; empty if the app has no IPC server) |
-| `ProtocolVersion` | REG_DWORD | `1` (highest supported; 0 if no IPC) |
+| `InstallPath` | REG_SZ | `C:\Program Files\VOXPrint AI Suite\Lucent` |
+| `Exe` | REG_SZ | `voxprint-lucent.exe` |
+| `CliExe` | REG_SZ | `voxprint-lucent-cli.exe` |
+| `Version` | REG_SZ | `0.1.0-rc7` |
+| `Build` | REG_DWORD | `8` |
+| `IpcName` | REG_SZ | `voxprint-lucent` |
+| `ProtocolVersion` | REG_DWORD | `1` |
 
-Plus the App Paths key `HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-<app>.exe` so `start voxprint-<app>` works; it is also the fallback when the Voxprint key is missing. Uninstall removes both.
+Plus HKLM App Paths for `voxprint-<app>.exe` and `voxprint-<app>-cli.exe`. Readers stop at the first hit whose executable exists: HKLM `Software\VOXPrint\<App>`, then HKCU (the v1 `Software\Voxprint\<App>` key is the same hive entry), then HKLM and HKCU App Paths, then `%ProgramFiles%\VOXPrint AI Suite\<App Name>\`. Uninstall removes the keys the installer wrote.
 
-**Linux:** `ai.voxprint.<App>.desktop` in `$XDG_DATA_HOME/applications` (default `~/.local/share/applications`) or `$XDG_DATA_DIRS/*/applications`, with the custom keys:
+**Linux:** `ai.voxprint.<App>.desktop` in `/usr/share/applications` for an install under `/opt/voxprint-ai-suite/<app>/`, and in `$XDG_DATA_HOME/applications` for a user install. Custom keys:
 
 ```
 X-Voxprint-Ipc=voxprint-<app>
 X-Voxprint-Protocol=1
-X-Voxprint-Version=0.1.0
+X-Voxprint-Version=0.1.0-rc7
+X-Voxprint-Build=8
+X-Voxprint-Cli=voxprint-<app>-cli
 ```
 
 `Exec=` gives the executable. Fallback: `voxprint-<app>` on `PATH`. Flatpak exports are optional and not planned.

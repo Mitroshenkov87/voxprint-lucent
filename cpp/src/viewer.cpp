@@ -51,7 +51,7 @@ private:
 Viewer::Viewer(LaunchOptions options, std::chrono::steady_clock::time_point started, QWidget *parent)
     : QWidget(parent), options_(std::move(options)), started_(started) {
     setObjectName(QStringLiteral("lucent-window"));
-    setWindowTitle(QStringLiteral("Voxprint AI Lucent"));
+    setWindowTitle(QStringLiteral("VOXPrint AI Lucent"));
     setStyleSheet(loadStyleSheet());
     resize(1600, 1000);
     setAttribute(Qt::WA_OpaquePaintEvent);

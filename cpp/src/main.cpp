@@ -17,10 +17,18 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMessageBox>
+#include <QTimer>
 
 #include <chrono>
 #include <cstdio>
 #include <functional>
+
+#ifdef Q_OS_WIN
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#endif
 
 namespace {
 
@@ -115,8 +123,8 @@ static void printHelp() {
         "    No window, no GPU, and no single-instance socket. The tools process is not started.\n"
         "    Exit 0 when IMAGE is omitted or exists and the Enlarge probe succeeds.\n"
         "    Exit 3 when IMAGE does not exist.\n"
-        "    Enlarge is found in this order: LUCENT_ENLARGE_EXE, HKCU\\Software\\Voxprint\\Enlarge,\n"
-        "    the per-user App Paths key for voxprint-enlarge.exe (the installed file is VoxprintEnlarge.exe),\n"
+        "    Enlarge is found in this order: LUCENT_ENLARGE_EXE, HKLM\\Software\\VOXPrint\\Enlarge,\n"
+        "    HKCU\\Software\\VOXPrint\\Enlarge, App Paths, Program Files\\VOXPrint AI Suite\\Enlarge,\n"
         "    the shared suite manifest, the per-user installer path, then voxprint-enlarge on PATH.\n"
         "    --input is always an absolute path.\n"
         "    When Enlarge is absent, enlarge.installed is false and enlarge.install_url is the releases page.\n"
@@ -134,6 +142,8 @@ static void printHelp() {
         "\n"
         "--benchmark IMAGE\n"
         "    Paint IMAGE, print FIRST_PIXEL, and exit. The tools process is not started.\n"
+        "    On Windows session 0 (no interactive desktop) this exits with an error.\n"
+        "    A paint that has not finished in 60 seconds exits with an error.\n"
         "    --navigate-next IMAGE opens that second image and prints NAVIGATE_PIXEL.\n"
         "    Exit 2 when IMAGE is missing.\n"
         "\n"
@@ -144,7 +154,7 @@ static void printHelp() {
         "    0  the command finished\n"
         "    2  --benchmark was given without an image\n"
         "    3  --dry-run was given a path that is not a file\n"
-        "    1  --selftest found a required runtime file missing\n",
+        "    1  --selftest found a required file, or --benchmark is session 0 or timed out\n",
         stdout);
 }
 
@@ -166,9 +176,18 @@ int main(int argc, char **argv) {
         QGuiApplication probe(argc, argv);
         return lucent::runSelfTest();
     }
+#ifdef Q_OS_WIN
+    if (lucent::hasFlag(argc, argv, "--benchmark")) {
+        DWORD sessionId = 0;
+        if (!ProcessIdToSessionId(GetCurrentProcessId(), &sessionId) || sessionId == 0) {
+            std::fprintf(stderr, "voxprint-lucent: --benchmark needs an interactive desktop (session 0)\n");
+            return 1;
+        }
+    }
+#endif
     const auto started = std::chrono::steady_clock::now();
     QApplication app(argc, argv);
-    QApplication::setApplicationName(QStringLiteral("Voxprint AI Lucent"));
+    QApplication::setApplicationName(QStringLiteral("VOXPrint AI Lucent"));
     QApplication::setOrganizationName(QStringLiteral("Voxprint"));
     QImageReader::setAllocationLimit(512);
 
@@ -189,11 +208,15 @@ int main(int argc, char **argv) {
     const QString warning = lucent::runtimeWarning();
     if (!warning.isEmpty()) {
         std::fprintf(stderr, "%s\n", qPrintable(warning));
-        QMessageBox::critical(nullptr, QStringLiteral("Voxprint AI Lucent"), warning);
+        QMessageBox::critical(nullptr, QStringLiteral("VOXPrint AI Lucent"), warning);
         return 1;
     }
 
     if (options.benchmark) {
+        QTimer::singleShot(60000, &app, [] {
+            std::fprintf(stderr, "voxprint-lucent: --benchmark timed out after 60 s\n");
+            QCoreApplication::exit(1);
+        });
         lucent::Viewer viewer(options, started);
         viewer.show();
         return app.exec();

@@ -16,7 +16,7 @@ def main(argv: list[str] | None = None) -> int:
     """Run the tools host and return the process status."""
     parser = argparse.ArgumentParser(
         prog="voxprint-lucent-tools",
-        description="Voxprint AI Lucent tools host. Not part of viewer startup.",
+        description="VOXPrint AI Lucent tools host. Not part of viewer startup.",
     )
     parser.add_argument(
         "--ping",

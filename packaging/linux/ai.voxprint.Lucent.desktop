@@ -1,11 +1,16 @@
 [Desktop Entry]
 Type=Application
-Name=Voxprint AI Lucent
+Name=VOXPrint AI Lucent
 GenericName=Image viewer
 Comment=Fast, colour-accurate image viewer
-Exec=voxprint-lucent %F
+Exec=/usr/local/bin/voxprint-lucent %F
 Icon=ai.voxprint.Lucent
 Terminal=false
 Categories=Graphics;Viewer;
 MimeType=image/avif;image/jxl;image/webp;image/jpeg;image/png;image/gif;image/tiff;image/bmp;image/heif;image/heic;
 StartupWMClass=voxprint-lucent
+X-Voxprint-Ipc=voxprint-lucent
+X-Voxprint-Protocol=1
+X-Voxprint-Version=0.1.0-rc7
+X-Voxprint-Build=8
+X-Voxprint-Cli=voxprint-lucent-cli
