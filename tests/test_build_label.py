@@ -8,9 +8,9 @@ from pathlib import Path
 from voxprint_lucent.cli import public_build_label
 
 
-def test_build_json_names_zohar() -> None:
+def test_build_json_names_yashar() -> None:
     payload = json.loads(Path("BUILD.json").read_text(encoding="utf-8"))
-    assert payload["codename"] == "Ner"
+    assert payload["codename"] == "Yashar"
     assert isinstance(payload["offset"], int)
 
 

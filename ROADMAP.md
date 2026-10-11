@@ -2,9 +2,8 @@
 
 ## Next version
 
-- Hand the picture you are viewing to Enlarge, then compare the result with the original.
 - Ship AVIF and JPEG XL in the Linux package. The Windows package already includes them.
-- Honour each image's colour profile, instead of treating every picture as sRGB.
+- Apply a separate monitor profile. Pictures that carry a profile are already converted for an sRGB screen, and PQ and HLG are tone-mapped for that screen.
 - Keep the command line the same on Windows and Linux, matching the command-line reference.
 - Open more of the formats those codecs already support. Saving still does not offer PNG.
 

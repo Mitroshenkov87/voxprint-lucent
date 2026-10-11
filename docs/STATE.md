@@ -24,3 +24,4 @@
 3. `v0.1.0-rc1` is the keyboard-only build. `v0.1.0-rc2` adds the viewer chrome. Notes are in [release-notes/v0.1.0-rc2.md](release-notes/v0.1.0-rc2.md).
 4. `v0.1.0-rc3` ("Zohar") replaces the save icons, reads the build label from `BUILD.json`, calls Enlarge through its CLI, and adds `--dry-run`. Notes are in [release-notes/v0.1.0-rc3.md](release-notes/v0.1.0-rc3.md).
 5. `v0.1.0-rc4` ("Ner") is the docs site, the Enlarge v0.2.0-rc.1 hand-off, and the measurement zip's hard images. Notes are in [release-notes/v0.1.0-rc4.md](release-notes/v0.1.0-rc4.md).
+6. `v0.1.0-rc5` ("Yashar") finds an installed Enlarge, tone-maps PQ and HLG for an SDR screen, and checks the image readers at startup. Notes are in [release-notes/v0.1.0-rc5.md](release-notes/v0.1.0-rc5.md).

@@ -1,9 +1,9 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <?define LucentVersion="0.1.0-rc4"?>
+  <?define LucentVersion="0.1.0-rc5"?>
   <Package
       Name="Voxprint AI Lucent"
       Manufacturer="Aleksandr Mitroshenkov"
-      Version="0.1.0.4"
+      Version="0.1.0.5"
       UpgradeCode="7C2A9E14-6B0F-4E3A-9D55-1A2B3C4D5E6F"
       Scope="perUser"
       Compressed="yes">

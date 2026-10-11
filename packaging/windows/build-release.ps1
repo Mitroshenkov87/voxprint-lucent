@@ -10,7 +10,7 @@ if (-not (Test-Path -LiteralPath $Exe)) {
 }
 
 $Tag = $env:LUCENT_RELEASE_TAG
-if (-not $Tag) { $Tag = 'v0.1.0-rc4' }
+if (-not $Tag) { $Tag = 'v0.1.0-rc5' }
 $VersionName = $Tag -replace '^v', ''
 
 $Out = Join-Path $Root 'dist'
