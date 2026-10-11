@@ -17,6 +17,8 @@ namespace lucent {
 QImage decodeForView(const QString &path, const QSize &box);
 
 /// Smaller decode used for thumbnails and the next-file lookahead.
+///
+/// PQ and HLG are tone-mapped to sRGB unless the desktop is already HDR.
 QImage decodePreview(const QString &path, const QSize &box);
 
 /// Number of frames in `path`. A still image returns 1.

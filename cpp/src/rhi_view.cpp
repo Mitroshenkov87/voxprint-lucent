@@ -3,6 +3,7 @@
 
 #include "rhi_view.h"
 
+#include "display_hdr.h"
 #include "theme.h"
 
 #include <QResizeEvent>
@@ -86,7 +87,11 @@ public:
     }
 
     void setImage(const QImage &image) {
-        image_ = image.convertToFormat(QImage::Format_RGBA8888);
+        if (image.format() == QImage::Format_RGBA16FPx4 || image.format() == QImage::Format_RGBX16FPx4) {
+            image_ = image.convertToFormat(QImage::Format_RGBA16FPx4);
+        } else {
+            image_ = image.convertToFormat(QImage::Format_RGBA8888);
+        }
         imageDirty_ = true;
         textureDirty_ = true;
         update();
@@ -181,7 +186,8 @@ private:
             releaseResources();
             rhiToken_ = device;
         }
-        texture_ = device->newTexture(QRhiTexture::RGBA8, image_.size());
+        const bool half = image_.format() == QImage::Format_RGBA16FPx4;
+        texture_ = device->newTexture(half ? QRhiTexture::RGBA16F : QRhiTexture::RGBA8, image_.size());
         if (!texture_->create()) {
             return;
         }
@@ -251,6 +257,9 @@ RhiSurface *RhiSurface::tryCreate(QWidget *parent) {
     }
     auto *surface = new RhiSurface(parent);
     auto *canvas = new Canvas(surface, vertex, fragment);
+    if (displayPrefersHdr()) {
+        canvas->setColorBufferFormat(QRhiWidget::TextureFormat::RGBA16F);
+    }
     canvas->setAttribute(Qt::WA_TransparentForMouseEvents);
     canvas->setGeometry(surface->rect());
     surface->canvas_ = canvas;

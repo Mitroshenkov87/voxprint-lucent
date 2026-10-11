@@ -12,6 +12,11 @@ c++ -std=c++20 -I "$ROOT/cpp/src" \
     -o /tmp/m1_logic
 /tmp/m1_logic
 
+c++ -std=c++20 -I "$ROOT/cpp/src" \
+    "$ROOT/cpp/tests/tone_curve_test.cpp" \
+    -o /tmp/tone_curve_test
+/tmp/tone_curve_test
+
 QT_VERSION=6.12.0
 QT_ROOT=${RUNNER_TEMP:-/tmp}/lucent-qt
 QT_PREFIX="$QT_ROOT/$QT_VERSION/gcc_64"
