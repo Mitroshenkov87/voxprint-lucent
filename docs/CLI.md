@@ -15,6 +15,7 @@ Usage:
   voxprint-lucent --help
   voxprint-lucent --version
   voxprint-lucent --dry-run [IMAGE]
+  voxprint-lucent --selftest --json
   voxprint-lucent --benchmark IMAGE [--navigate-next IMAGE]
   voxprint-lucent [IMAGE]
 
@@ -41,6 +42,12 @@ Usage:
     A non-zero Enlarge status becomes Lucent's status. A missing image still exits 3.
     Combined with --benchmark, --dry-run wins and FIRST_PIXEL is not printed.
 
+--selftest --json
+    Print one JSON object naming the JPEG, WebP, AVIF, JPEG XL, and Visual C++
+    runtime checks, then exit. No window is created. JPEG is required.
+    WebP, AVIF, and JPEG XL are reported and do not fail this command when
+    the install does not include them. Exit 1 when a required check fails.
+
 --benchmark IMAGE
     Paint IMAGE, print FIRST_PIXEL, and exit. The tools process is not started.
     --navigate-next IMAGE opens that second image and prints NAVIGATE_PIXEL.
@@ -53,6 +60,7 @@ Exit status:
     0  the command finished
     2  --benchmark was given without an image
     3  --dry-run was given a path that is not a file
+    1  --selftest found a required runtime file missing
 ```
 
 ## Python module

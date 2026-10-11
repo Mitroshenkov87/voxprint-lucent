@@ -17,6 +17,10 @@ if [ ! -e "$QT_PREFIX/lib/libQt6Core.so" ] && [ ! -e "$QT_PREFIX/lib/libQt6Core.
     python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 \
         --outputdir "$QT_ROOT" --archives qtbase icu
 fi
+if [ ! -e "$QT_PREFIX/plugins/imageformats/libqwebp.so" ]; then
+    python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 \
+        --outputdir "$QT_ROOT" --noarchives -m qtimageformats
+fi
 if [ ! -d "$QT_PREFIX" ]; then
     QT_PREFIX=$(find "$QT_ROOT/$QT_VERSION" -maxdepth 2 -type d -name gcc_64 | head -n 1)
 fi
@@ -45,6 +49,12 @@ cp -a "$QT_PREFIX/plugins/platforms/"*.so "$LIB/platforms/"
 if [ -d "$QT_PREFIX/plugins/imageformats" ]; then
     cp -a "$QT_PREFIX/plugins/imageformats/"*.so "$LIB/imageformats/" || true
 fi
+for plugin in libqjpeg.so libqwebp.so; do
+    if [ ! -e "$LIB/imageformats/$plugin" ]; then
+        echo "release package is missing $plugin" >&2
+        exit 1
+    fi
+done
 cp -a "$ROOT/share/." "$LIB/share/"
 cp -a "$ROOT/voxprint_lucent" "$LIB/voxprint_lucent"
 find "$LIB" -type d -name __pycache__ -exec rm -rf {} + || true

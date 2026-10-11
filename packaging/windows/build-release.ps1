@@ -28,6 +28,12 @@ foreach ($relative in @('Run-M0.ps1', 'Run-Checks.ps1', 'app\bench')) {
     $path = Join-Path $Payload $relative
     if (Test-Path $path) { Remove-Item -Recurse -Force $path }
 }
+foreach ($name in @('vcruntime140.dll', 'msvcp140.dll', 'qjpeg.dll', 'qwebp.dll', 'kimg_avif.dll', 'kimg_jxl.dll')) {
+    $found = Get-ChildItem -Path $Payload -Recurse -Filter $name -File -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $found) {
+        throw "The installer is missing $name. Those files are copied while the package is built."
+    }
+}
 Copy-Item (Join-Path $PSScriptRoot 'voxprint-lucent-tools.cmd') (Join-Path $Payload 'voxprint-lucent-tools.cmd')
 Copy-Item (Join-Path $PSScriptRoot 'INSTALL-release.txt') (Join-Path $Payload 'INSTALL.txt')
 
