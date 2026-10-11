@@ -63,8 +63,9 @@ Viewer::Viewer(LaunchOptions options, std::chrono::steady_clock::time_point star
 
 void Viewer::openPath(const QString &path) {
     auto *self = this;
-    std::thread worker([self, path] {
-        QImage decoded = decodeForView(path, self->size());
+    const QSize box = size();
+    std::thread worker([self, path, box] {
+        QImage decoded = decodeForView(path, box);
         QMetaObject::invokeMethod(
             self, [self, decoded = std::move(decoded)] { self->present(decoded, false); },
             Qt::QueuedConnection);

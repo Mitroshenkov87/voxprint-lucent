@@ -14,7 +14,10 @@ namespace lucent {
 /// The benchmark path never calls this.
 QImage readShareImage(const QString &fileName);
 
-/// Decode an AVIF file with libavif. Returns a null image when the build has no libavif.
+/// Decode an AVIF file with libavif, using every core and the fastest chroma upsample.
+///
+/// Returns a null image when the build has no libavif, the file is not AVIF, or the
+/// transfer is PQ or HLG. Those HDR files stay on the plugin path.
 QImage decodeAvifFile(const QString &path);
 
 /// Painted cover shown over the viewer until the first image is ready.
