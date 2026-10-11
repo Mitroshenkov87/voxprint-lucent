@@ -18,6 +18,7 @@ if [ ! -e "$QT_PREFIX/lib/libQt6Core.so" ] && [ ! -e "$QT_PREFIX/lib/libQt6Core.
         --outputdir "$QT_ROOT" --archives qtbase icu
 fi
 if [ ! -e "$QT_PREFIX/plugins/imageformats/libqwebp.so" ]; then
+    python -m pip install --upgrade aqtinstall
     python -m aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 \
         --outputdir "$QT_ROOT" --noarchives -m qtimageformats
 fi
