@@ -24,4 +24,4 @@ Save writes `<name>.saved.avif` beside the file. Save a copy writes `<name>-copy
 
 ## Startup
 
-`--benchmark` still constructs only `Viewer`. The interactive window creates the toolbar, menus, settings, and thumbnail strip in `armAfterFirstPaint`, after the first image is presented. The 250 ms check is unchanged.
+`--benchmark` still constructs only `Viewer`. The interactive window creates the toolbar, menus, settings, and thumbnail strip in `armAfterFirstPaint`, after the first image is presented. The CI guard for that first visible pixel stays at 250 ms.

@@ -166,7 +166,7 @@ Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Develop
 
-Build instructions, the 250 ms check, and the milestone notes live in `docs/`. A checkout uses Python 3.14:
+Build instructions, the first-pixel budgets, and the milestone notes live in `docs/`. A checkout uses Python 3.14:
 
 ```bash
 python3.14 -m venv .venv

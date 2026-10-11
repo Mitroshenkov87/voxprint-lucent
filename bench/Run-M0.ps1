@@ -12,6 +12,10 @@
     independent cold medians would need ten reboots, so this script records
     run 1 on its own and also the median and nearest-rank p95 of the N runs.
 
+    Warm medians use 250 ms for JPEG and WebP, and 350 ms for AVIF and JPEG XL
+    at 12 megapixels or larger. That result is warm_gate. The cold JPEG
+    first-launch gate stays 250 ms. Cached next/previous stays 30 ms.
+
     -ScheduleCold registers a one-shot AtLogOn task named
     VoxprintLucent-M0-Cold, then tells you to reboot. The task runs as the
     user who registered it, with its working directory set to this script's
@@ -67,6 +71,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $TaskName = 'VoxprintLucent-M0-Cold'
 $BudgetMs = 250.0
+$FullResBudgetMs = 350.0
 $NavigateBudgetMs = 30.0
 $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
 try { [Console]::InputEncoding = $Utf8NoBom } catch { }
@@ -341,6 +346,16 @@ function Get-Gate([object]$Summary, [bool]$ColdBoot) {
     if ([double]$Summary.run_1_ms -le $BudgetMs) { return 'pass' } else { return 'fail' }
 }
 
+function Get-WarmBudgetMs([string]$FormatName) {
+    if ($FormatName -eq 'avif' -or $FormatName -eq 'jxl') { return $FullResBudgetMs }
+    return $BudgetMs
+}
+
+function Get-WarmGate([object]$Summary, [string]$FormatName) {
+    if ($null -eq $Summary.median_ms) { return $null }
+    if ([double]$Summary.median_ms -le (Get-WarmBudgetMs $FormatName)) { return 'pass' } else { return 'fail' }
+}
+
 function Register-ColdTask {
     $arg = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ColdResume"
     $workdir = $PSScriptRoot
@@ -531,6 +546,8 @@ try {
                 warm_runs_ms = @($warm.samples | ForEach-Object { $_.first_pixel_ms })
                 warm_median_ms = $warm.median_ms
                 warm_p95_ms = $warm.p95_ms
+                warm_budget_ms = (Get-WarmBudgetMs $fmt.name)
+                warm_gate = (Get-WarmGate $warm $fmt.name)
                 warm_errors = @($warm.errors)
                 navigate_median_ms = $warm.navigate_median_ms
                 navigate_gate = $navVerdict
@@ -557,6 +574,7 @@ $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $payload = @{
     created_local = (Get-Date).ToString('o')
     budget_first_pixel_ms = $BudgetMs
+    budget_full_res_warm_ms = $FullResBudgetMs
     budget_navigate_ms = $NavigateBudgetMs
     runs = $Runs
     cold_boot = $coldBoot
@@ -565,7 +583,7 @@ $payload = @{
         'Only the first launch of the C++ executable in that boot is a cold start of voxprint-lucent. The pass/fail field cold_gate uses that sample (jpeg, run 1), not the median.',
         'N runs in the same boot are session numbers. Runs after the first are warm in the Windows file cache. A median of 10 independent cold starts would need 10 reboots.',
         'p95 is nearest-rank (for N=10 that is the maximum). The median of an even count is the average of the two middle values.',
-        'Warm numbers follow one unmeasured warmup launch. PySide6 is the comparison harness and is expected to miss 250 ms.'
+        'Warm numbers follow one unmeasured warmup launch. JPEG and WebP warm median must be at most 250 ms. AVIF and JPEG XL at 12 megapixels or larger must be at most 350 ms warm. That field is warm_gate. PySide6 is the comparison harness and is expected to miss both.'
     )
     environment = $environment
     targets = $reportTargets
@@ -578,7 +596,7 @@ $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add("Voxprint AI Lucent M0")
 $lines.Add("created: $($payload.created_local)")
 $lines.Add("cold boot: $coldBoot")
-$lines.Add("budget: first pixel <= $BudgetMs ms; cached navigate <= $NavigateBudgetMs ms")
+$lines.Add("budget: first visible pixel <= $BudgetMs ms; full-res AVIF and JXL warm <= $FullResBudgetMs ms; cached navigate <= $NavigateBudgetMs ms")
 $envr = $payload.environment
 $lines.Add("OS: $($envr.os_product) $($envr.os_display_version) build $($envr.os_build) $($envr.os_arch)")
 $lines.Add("CPU: $($envr.cpu) cores=$($envr.cpu_cores) logical=$($envr.cpu_logical)")
@@ -599,9 +617,9 @@ foreach ($target in $reportTargets) {
             $lines.Add("$($fmt.name): $($fmt.error)")
             continue
         }
-        $lines.Add(("{0}: cold_run_1={1} cold_gate={2} basis={3} session_median={4} session_p95={5} warm_median={6} warm_p95={7} navigate_median={8} navigate_gate={9}" -f `
+        $lines.Add(("{0}: cold_run_1={1} cold_gate={2} basis={3} session_median={4} session_p95={5} warm_median={6} warm_p95={7} warm_budget={8} warm_gate={9} navigate_median={10} navigate_gate={11}" -f `
                     $fmt.name, $fmt.cold_run_1_ms, $fmt.cold_gate, $fmt.cold_basis, $fmt.session_median_ms, $fmt.session_p95_ms, `
-                    $fmt.warm_median_ms, $fmt.warm_p95_ms, $fmt.navigate_median_ms, $fmt.navigate_gate))
+                    $fmt.warm_median_ms, $fmt.warm_p95_ms, $fmt.warm_budget_ms, $fmt.warm_gate, $fmt.navigate_median_ms, $fmt.navigate_gate))
         $lines.Add("  session_ms: $($fmt.session_runs_ms -join ', ')")
         $lines.Add("  warm_ms: $($fmt.warm_runs_ms -join ', ')")
         if ($fmt.status -eq 'skipped' -and $fmt.reason) {

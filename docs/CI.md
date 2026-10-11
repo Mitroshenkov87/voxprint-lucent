@@ -14,7 +14,7 @@ While this repository is private, GitHub Actions bills Ubuntu minutes at 1x and 
 
 Feature-branch pushes do not start a run. A pull request used to start two full matrices, one for the branch push and one for the pull request.
 
-Path filter for pull requests: `.github/workflows/**`, `bench/**`, `cpp/**`, `packaging/**`, `pyproject.toml`, `share/**`, `tests/**`, `voxprint_lucent/**`.
+Path filter for pull requests: `.github/workflows/**`, `bench/**`, `cpp/**`, `packaging/**`, `pyproject.toml`, `scripts/**`, `share/**`, `tests/**`, `voxprint_lucent/**`.
 
 Concurrency group is `ci-${{ github.workflow }}-${{ github.ref }}` with cancel-in-progress. A new push to the same branch or pull request stops the previous run.
 
@@ -25,11 +25,15 @@ Concurrency group is `ci-${{ github.workflow }}-${{ github.ref }}` with cancel-i
 - ccache for that gcc/g++ smoke build. The key includes `cpp/**` and the smoke script, with restore prefix `ccache-linux-`. ccache does not apply to the MSVC harness.
 - Windows harness: `C:\Qt\6.12.0` and `C:\vcpkg\installed`, `downloads`, and `packages`, key `m0-win-qt-6.12.0-vcpkg-libavif-dav1d-libjxl-v1`. The harness skips the Qt download when `windeployqt.exe` is already present. `vcpkg install` is incremental when those directories are restored. The C++ build directory is not cached.
 
-The 250 ms check is unchanged. The smoke script still warms one `--benchmark` launch and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250. After that measurement it runs `--version` and `--dry-run`, including a stand-in Enlarge CLI, so the hand-off is exercised without a GPU. It then runs `voxprint-lucent --help` and fails if `docs/CLI.md` is not the page that command generates.
+The smoke script warms one `--benchmark` launch of a tiny JPEG and fails the job when `LUCENT_PHASE first_image_presented_ms` is missing or above 250. That file has no embedded preview, so the check is the full decode. The owner-accepted budget (2026-10-11) splits the old single number: a first visible pixel is at most 250 ms, whether that pixel is a preview or the full image, and a warm full-resolution decode of a 12 megapixel or larger AVIF or JPEG XL is at most 350 ms. JPEG and WebP warm stay at 250 ms. The cold JPEG first-launch gate stays 250 ms, and cached next/previous stays 30 ms. `bench/Run-M0.ps1` writes `warm_gate` against 350 ms for AVIF and JPEG XL and against 250 ms for JPEG and WebP. CI does not encode a 12 megapixel fixture.
+
+A preview painted before the full decode was measured once. libavif 1.0.4 documents `AVIF_DECODER_SOURCE_THUMBNAIL_ITEM` as unimplemented. The 4000×3000 `large.jxl` fixture reports `have_preview` 0. The matching JPEG has no Exif APP1 thumbnail. `avifCodecName(AVIF_CODEC_CHOICE_AUTO)` is already dav1d. One decode of that AVIF with 4 threads: AUTO 184.6 ms, explicit dav1d 181.3 ms, libgav1 263.2 ms, aom 352.9 ms. Naming dav1d is noise, and frame threads past `maxThreads` are not a decoder switch. The decode path is unchanged. The rc6 reference numbers (AVIF warm median 296 ms, JPEG XL 253 ms, p95 338 ms) sit inside 350 ms. They were not remeasured on the test machine.
+
+After that measurement the smoke script runs `--version` and `--dry-run`, including a stand-in Enlarge CLI, so the hand-off is exercised without a GPU. It then runs `voxprint-lucent --help` and fails if `docs/CLI.md` is not the page that command generates.
 
 The lint job also runs Doxygen with `WARN_AS_ERROR` (public headers only) and `mkdocs build --strict`. Ruff's `D1` rules require a docstring on every public Python module, class, and function, using the Google convention. Tests and `bench/` are excluded. Those checks stay on the pull-request lint job. Publishing the site is a separate job that runs only when `main` moves or someone starts the workflow by hand, and only after lint and the C++ smoke succeed. It uses `actions/deploy-pages`. A docs-only pull request still starts no runner.
 
-The Qt 6.8 job compiles the viewer inside `debian:trixie` with `qt6-base-dev` and `qt6-base-private-dev`. CMake links `Qt6::GuiPrivate` only when that target's include directories exist; otherwise it adds the directory that contains `rhi/qrhi.h`. The job does not run the 250 ms check. That check stays on the Qt 6.12 smoke job.
+The Qt 6.8 job compiles the viewer inside `debian:trixie` with `qt6-base-dev` and `qt6-base-private-dev`. CMake links `Qt6::GuiPrivate` only when that target's include directories exist; otherwise it adds the directory that contains `rhi/qrhi.h`. The job does not run the first-visible-pixel check. That check stays on the Qt 6.12 smoke job.
 
 ## Minute estimates
 
