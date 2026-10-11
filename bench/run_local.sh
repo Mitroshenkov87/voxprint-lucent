@@ -1,7 +1,8 @@
 #!/bin/sh
 # One command for the reference laptop (and any other machine).
-# CI numbers are indicative. Pass/fail against 250 ms needs --reference-laptop
-# on the owner's Windows 11 24H2 laptop, ideally after a reboot for a true cold run.
+# CI numbers are indicative. --reference-laptop records the cold 250 ms and
+# 30 ms rules on the owner's Windows 11 24H2 laptop, ideally after a reboot.
+# Warm AVIF and JPEG XL at 12 megapixels use 350 ms in Run-M0.ps1.
 #
 #   ./bench/run_local.sh
 #   ./bench/run_local.sh --reference-laptop

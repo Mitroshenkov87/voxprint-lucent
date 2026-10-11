@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-from bench.stats import evaluate, median, percentile, summarise
+from bench.stats import (
+    FIRST_PIXEL_BUDGET_MS,
+    FULL_RES_WARM_BUDGET_MS,
+    NAVIGATE_BUDGET_MS,
+    evaluate,
+    median,
+    percentile,
+    summarise,
+    warm_budget_ms,
+)
 
 
 def test_median_odd_and_even() -> None:
@@ -31,6 +40,16 @@ def test_pass_rule_requires_the_reference_laptop() -> None:
     indicative = evaluate(cold_median_ms=200, navigate_median_ms=10, reference_laptop=False)
     assert indicative == "indicative"
     assert evaluate(cold_median_ms=None, navigate_median_ms=10, reference_laptop=True) == "fail"
+
+
+def test_warm_budget_splits_full_res_avif_and_jxl() -> None:
+    assert FIRST_PIXEL_BUDGET_MS == 250
+    assert NAVIGATE_BUDGET_MS == 30
+    assert FULL_RES_WARM_BUDGET_MS == 350
+    assert warm_budget_ms("jpeg") == 250
+    assert warm_budget_ms("webp") == 250
+    assert warm_budget_ms("avif") == 350
+    assert warm_budget_ms("jxl") == 350
 
 
 def test_percentile_rejects_empty() -> None:

@@ -1,8 +1,17 @@
-"""Sample statistics for the cold-start harness."""
+"""Sample statistics for the cold-start harness.
+
+The cold pass rule stays at 250 ms, with cached next/previous at 30 ms.
+A warm full-resolution AVIF or JPEG XL at 12 megapixels or larger uses
+350 ms. That figure is ``warm_budget_ms`` and is recorded by Run-M0.
+"""
 
 from __future__ import annotations
 
 import math
+
+FIRST_PIXEL_BUDGET_MS = 250
+NAVIGATE_BUDGET_MS = 30
+FULL_RES_WARM_BUDGET_MS = 350
 
 
 def median(samples: list[float]) -> float:
@@ -40,6 +49,17 @@ def summarise(samples: list[float]) -> dict[str, float | int]:
     }
 
 
+def warm_budget_ms(image_format: str) -> int:
+    """Warm median budget for one full-resolution image.
+
+    AVIF and JPEG XL at 12 megapixels or larger use 350 ms. Every other
+    format uses the 250 ms first-visible-pixel budget.
+    """
+    if image_format in {"avif", "jxl"}:
+        return FULL_RES_WARM_BUDGET_MS
+    return FIRST_PIXEL_BUDGET_MS
+
+
 def evaluate(
     *,
     cold_median_ms: float | None,
@@ -48,12 +68,13 @@ def evaluate(
 ) -> str:
     """Plan rule: pass only on the reference laptop, cold median <= 250 and cached nav <= 30.
 
-    Other machines, including CI, are ``indicative``.
+    Other machines, including CI, are ``indicative``. The 350 ms warm
+    full-resolution budget is separate and does not change this verdict.
     """
     if not reference_laptop:
         return "indicative"
     if cold_median_ms is None or navigate_median_ms is None:
         return "fail"
-    if cold_median_ms <= 250 and navigate_median_ms <= 30:
+    if cold_median_ms <= FIRST_PIXEL_BUDGET_MS and navigate_median_ms <= NAVIGATE_BUDGET_MS:
         return "pass"
     return "fail"

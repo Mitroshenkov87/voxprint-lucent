@@ -7,6 +7,10 @@ on the reference laptop. CI virtual machines are indicative only.
 Pass rule (PLAN-v1): on the reference laptop, cold median <= 250 ms and cached
 next/previous <= 30 ms. ``--reference-laptop`` is how that machine records a pass
 or a fail. Every other machine is reported as indicative.
+
+A warm full-resolution AVIF or JPEG XL at 12 megapixels or larger has a
+separate budget of 350 ms (``target_full_res_warm_ms``). Run-M0 records that
+as ``warm_gate``. This harness does not fail on it.
 """
 
 from __future__ import annotations
@@ -22,10 +26,13 @@ from queue import Empty, Queue
 from threading import Thread
 
 from bench.fixtures import ensure_fixtures
-from bench.stats import evaluate, summarise
-
-FIRST_PIXEL_BUDGET_MS = 250
-NAVIGATE_BUDGET_MS = 30
+from bench.stats import (
+    FIRST_PIXEL_BUDGET_MS,
+    FULL_RES_WARM_BUDGET_MS,
+    NAVIGATE_BUDGET_MS,
+    evaluate,
+    summarise,
+)
 
 
 def _fadvise(path: Path) -> None:
@@ -186,6 +193,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
     )
     return {
         "target_first_pixel_ms": FIRST_PIXEL_BUDGET_MS,
+        "target_full_res_warm_ms": FULL_RES_WARM_BUDGET_MS,
         "target_navigate_ms": NAVIGATE_BUDGET_MS,
         "runs": args.runs,
         "reference_laptop": bool(args.reference_laptop),
@@ -195,7 +203,9 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
         "formats": per_format,
         "note": (
             "Pass/fail applies only with --reference-laptop "
-            "(RTX 4090 Laptop, Windows 11 24H2, Nuitka onedir). "
+            "(RTX 4090 Laptop, Windows 11 24H2, Nuitka onedir) and uses the "
+            "cold 250 ms and cached 30 ms rules. target_full_res_warm_ms (350) "
+            "is the warm AVIF and JPEG XL budget recorded by Run-M0. "
             "CI and other machines are indicative."
         ),
     }
@@ -222,7 +232,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reference-laptop",
         action="store_true",
-        help="Record a pass/fail against the 250 ms rule. Omit on CI and other machines.",
+        help=(
+            "Record a pass/fail against the cold 250 ms and 30 ms rules. "
+            "Omit on CI and other machines."
+        ),
     )
     return parser
 

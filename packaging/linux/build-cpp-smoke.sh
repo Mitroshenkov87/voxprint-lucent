@@ -56,15 +56,16 @@ export LD_LIBRARY_PATH="$QT_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_QPA_PLATFORM=xcb
 export LIBGL_ALWAYS_SOFTWARE=1
 # One unmeasured launch warms the loader. The timed launch is the regression gate
-# for the benchmark path: in-process first pixel stays within 250 ms. It is not a
-# cold-boot sample; that still belongs on the reference machine.
+# for the first visible pixel: at most 250 ms. This JPEG has no embedded preview,
+# so that pixel is the full decode. It is not a cold-boot sample. The 350 ms warm
+# budget for a 12 megapixel AVIF or JPEG XL is recorded by bench/Run-M0.ps1.
 xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark >/dev/null
 out=$(xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark)
 printf '%s\n' "$out"
 printf '%s\n' "$out" | grep -q '^FIRST_PIXEL$'
 phase=$(printf '%s\n' "$out" | awk '/^LUCENT_PHASE first_image_presented_ms /{print $3}')
 if [ -z "$phase" ] || [ "$phase" -gt 250 ]; then
-    echo "first-pixel regression: ${phase:-missing} ms (budget 250)" >&2
+    echo "first visible pixel regression: ${phase:-missing} ms (budget 250)" >&2
     exit 1
 fi
 
