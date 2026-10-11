@@ -4,19 +4,38 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
+from typing import Any
+
+
+def load_build_payload(start: Path | None = None) -> dict[str, Any]:
+    """Read the nearest ``BUILD.json`` at or above `start`.
+
+    A checkout keeps the file at the repository root. The Windows measurement
+    harness copies it next to the staged package, which is the parent of this
+    module, so the search starts there and walks upward.
+    """
+    origin = (start or Path(__file__)).resolve()
+    directories = [origin] if origin.is_dir() else []
+    directories.extend(origin.parents)
+    for directory in directories:
+        candidate = directory / "BUILD.json"
+        if candidate.is_file():
+            loaded = json.loads(candidate.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                return loaded
+    raise FileNotFoundError(f"BUILD.json not found from {origin}")
 
 
 def public_build_label() -> str:
-    """``0.1.0 RC · build N "Codename"``. N is ``GITHUB_RUN_NUMBER`` plus ``BUILD.json`` offset."""
-    root = Path(__file__).resolve().parents[1]
-    payload = json.loads((root / "BUILD.json").read_text(encoding="utf-8"))
-    offset = int(payload["offset"])
-    raw = os.environ.get("GITHUB_RUN_NUMBER", "").strip()
-    run = int(raw) if raw else 0
+    """``0.1.0 RC · build N "Codename"``. N is ``BUILD.json`` ``number``."""
+    payload = load_build_payload()
+    if "number" in payload:
+        number = int(payload["number"])
+    else:
+        number = int(payload["offset"])
     codename = str(payload["codename"])
-    return f'0.1.0 RC · build {run + offset} "{codename}"'
+    return f'0.1.0 RC · build {number} "{codename}"'
 
 
 def build_parser() -> argparse.ArgumentParser:

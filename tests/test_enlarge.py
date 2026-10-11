@@ -182,6 +182,23 @@ def test_capabilities_json_reports_no_gpu(monkeypatch: pytest.MonkeyPatch) -> No
     assert dat2["installed"] is False
 
 
+def test_capabilities_drop_duplicate_model_ids() -> None:
+    parsed = parse_capabilities(
+        {
+            "version": "0.2.0-rc.3",
+            "gpu": {"status": "ok"},
+            "models": [
+                {"id": "realesrgan-x4plus-anime6b", "installed": True, "quality": "fast"},
+                {"id": "realesrgan-x4plus-anime6b", "installed": True, "quality": "max"},
+                {"id": "4x-nomos2-hq-dat2", "installed": True},
+            ],
+        }
+    )
+    ids = [item["id"] for item in parsed.raw["models"]]
+    assert ids == ["realesrgan-x4plus-anime6b", "4x-nomos2-hq-dat2"]
+    assert parsed.raw["models"][0]["quality"] == "fast"
+
+
 def test_cli_json_progress_writes_avif(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
     _app()

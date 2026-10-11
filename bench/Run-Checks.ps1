@@ -12,6 +12,10 @@
 param()
 
 $ErrorActionPreference = 'Stop'
+$Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+try { [Console]::InputEncoding = $Utf8NoBom } catch { }
+try { [Console]::OutputEncoding = $Utf8NoBom } catch { }
+$OutputEncoding = $Utf8NoBom
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Exe = Join-Path $Root 'voxprint-lucent.exe'
 $Python = Join-Path $Root 'python\python.exe'
@@ -41,6 +45,8 @@ function Invoke-Capture {
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = $Utf8NoBom
+    $psi.StandardErrorEncoding = $Utf8NoBom
     $proc = New-Object System.Diagnostics.Process
     $proc.StartInfo = $psi
     [void]$proc.Start()
@@ -61,7 +67,7 @@ function Invoke-Capture {
 $failures = New-Object System.Collections.Generic.List[string]
 $version = Invoke-Capture $Exe @('--version') 30000
 $label = $version.stdout
-if ($version.exit -ne 0 -or $label -notmatch '0\.1\.0 RC' -or $label -notmatch '"Yashar"') {
+if ($version.exit -ne 0 -or $label -notmatch '0\.1\.0 RC' -or $label -notmatch '"Tov"') {
     $failures.Add('version')
 }
 $capabilities = Invoke-Capture $Python @('-m', 'voxprint_lucent.enlarge_mock', '--capabilities', '--json') 60000
@@ -98,7 +104,7 @@ $report = [ordered]@{
     failures = @($failures)
 }
 $destination = Join-Path $OutDir 'checks.json'
-$report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $destination -Encoding utf8
+[System.IO.File]::WriteAllText($destination, (($report | ConvertTo-Json -Depth 5) + "`n"), $Utf8NoBom)
 Write-Host "Wrote $destination"
 if ($failures.Count -gt 0) {
     throw ("Checks failed: " + ($failures -join ', '))

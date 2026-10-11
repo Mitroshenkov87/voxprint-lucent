@@ -316,6 +316,36 @@ QString absoluteImagePath(const QString &image) {
     return QFileInfo(image).absoluteFilePath();
 }
 
+QJsonValue dedupeCapabilityModels(const QJsonValue &value) {
+    if (!value.isObject()) {
+        return value;
+    }
+    QJsonObject object = value.toObject();
+    const QJsonValue modelsValue = object.value(QStringLiteral("models"));
+    if (!modelsValue.isArray()) {
+        return value;
+    }
+    QJsonArray kept;
+    QStringList seen;
+    const QJsonArray models = modelsValue.toArray();
+    for (const QJsonValue &item : models) {
+        if (!item.isObject()) {
+            kept.append(item);
+            continue;
+        }
+        const QString id = item.toObject().value(QStringLiteral("id")).toString();
+        if (!id.isEmpty()) {
+            if (seen.contains(id)) {
+                continue;
+            }
+            seen.append(id);
+        }
+        kept.append(item);
+    }
+    object.insert(QStringLiteral("models"), kept);
+    return object;
+}
+
 }  // namespace
 
 QStringList enlargeCliCommand() {
@@ -393,7 +423,7 @@ int runDryRun(int argc, char **argv) {
         bool capsOk = false;
         const QJsonValue capsJson = parseJson(caps.stdoutBytes.trimmed(), &capsOk);
         if (capsOk) {
-            enlarge.insert(QStringLiteral("capabilities"), capsJson);
+            enlarge.insert(QStringLiteral("capabilities"), dedupeCapabilityModels(capsJson));
         }
         if (!missing && caps.code != 0) {
             exitCode = caps.code;

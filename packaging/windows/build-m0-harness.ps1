@@ -230,8 +230,11 @@ if ($LASTEXITCODE -ge 8) { throw "robocopy bench failed ($LASTEXITCODE)" }
 & robocopy (Join-Path $Repo 'share') (Join-Path $App 'share') /E /NFL /NDL /NJH /NJS | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy share failed ($LASTEXITCODE)" }
 $PSNativeCommandUseErrorActionPreference = $nativePref
+Copy-Item (Join-Path $Repo 'BUILD.json') (Join-Path $App 'BUILD.json')
+Copy-Item (Join-Path $Repo 'BUILD.json') (Join-Path $Stage 'BUILD.json')
 Copy-Item (Join-Path $Repo 'bench\Run-M0.ps1') (Join-Path $Stage 'Run-M0.ps1')
 Copy-Item (Join-Path $Repo 'bench\Run-Checks.ps1') (Join-Path $Stage 'Run-Checks.ps1')
+Copy-Item (Join-Path $Repo 'scripts\vm_test.ps1') (Join-Path $Stage 'vm_test.ps1')
 # Embeddable CPython keeps an isolated sys.path while python*._pth exists, so
 # PYTHONPATH is ignored. Paths in that file are relative to the python folder.
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
