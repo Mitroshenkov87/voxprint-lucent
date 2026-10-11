@@ -68,6 +68,14 @@ $ErrorActionPreference = 'Stop'
 $TaskName = 'VoxprintLucent-M0-Cold'
 $BudgetMs = 250.0
 $NavigateBudgetMs = 30.0
+$Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+try { [Console]::InputEncoding = $Utf8NoBom } catch { }
+try { [Console]::OutputEncoding = $Utf8NoBom } catch { }
+$OutputEncoding = $Utf8NoBom
+
+function Write-Utf8NoBom([string]$Path, [string]$Text) {
+    [System.IO.File]::WriteAllText($Path, $Text, $Utf8NoBom)
+}
 
 function Write-TaskLog([string]$Message) {
     $line = '{0} {1}' -f (Get-Date).ToString('o'), $Message
@@ -243,6 +251,8 @@ function Measure-Launch {
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = $Utf8NoBom
+    $psi.StandardErrorEncoding = $Utf8NoBom
     $psi.CreateNoWindow = $true
     if ($ExtraEnv) {
         foreach ($key in @($ExtraEnv.Keys)) {
@@ -342,10 +352,56 @@ function Register-ColdTask {
     Write-TaskLog "registered task=$TaskName user=$user workdir=$workdir"
 }
 
+function Get-SampleReason([object]$Summary) {
+    foreach ($text in @($Summary.errors)) {
+        if (-not $text) { continue }
+        $lines = @(([string]$text) -split '\r?\n' | Where-Object { $_.Trim() })
+        if ($lines.Count -eq 0) { continue }
+        $line = $lines[-1].Trim()
+        if ($line.Length -gt 240) { $line = $line.Substring(0, 240) }
+        return $line
+    }
+    return 'no first-pixel sample'
+}
+
 function Unregister-ColdTask {
-    $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-    if ($existing) {
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    # The script is the running task, so Unregister-ScheduledTask throws until
+    # this process exits. Log that, then ask a second process to remove it.
+    $logPaths = @()
+    if ($PSScriptRoot) { $logPaths += (Join-Path $PSScriptRoot 'results\m0-task.log') }
+    if ($env:LOCALAPPDATA) { $logPaths += (Join-Path $env:LOCALAPPDATA 'Voxprint\Lucent\m0-task.log') }
+    Write-TaskLog "outcome=unregister-attempt task=$TaskName"
+    $existing = $null
+    try {
+        $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    } catch {
+        $detail = ($_.Exception.Message -replace '[\r\n]+', ' ')
+        Write-TaskLog "outcome=unregister task=$TaskName detail=query-failed error=$detail"
+        return
+    }
+    if (-not $existing) {
+        Write-TaskLog "outcome=unregistered task=$TaskName detail=already-absent"
+        return
+    }
+    try {
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction Stop
+        Write-TaskLog "outcome=unregistered task=$TaskName"
+    } catch {
+        $detail = ($_.Exception.Message -replace '[\r\n]+', ' ')
+        Write-TaskLog "outcome=unregister task=$TaskName detail=deferred error=$detail"
+        $helper = Join-Path $env:TEMP 'lucent-m0-unregister.ps1'
+        $lines = @(
+            'Start-Sleep -Seconds 5',
+            "Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false -ErrorAction SilentlyContinue",
+            "if (Get-ScheduledTask -TaskName '$TaskName' -ErrorAction SilentlyContinue) { exit 1 }"
+        )
+        foreach ($path in $logPaths) {
+            $escaped = $path.Replace("'", "''")
+            $lines += "Add-Content -LiteralPath '$escaped' -Value ((Get-Date).ToString('o') + ' outcome=unregistered task=$TaskName detail=deferred-helper') -Encoding ASCII"
+        }
+        $lines += 'exit 0'
+        Set-Content -LiteralPath $helper -Value ($lines -join "`r`n") -Encoding ASCII
+        Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $helper) -WindowStyle Hidden
     }
 }
 
@@ -436,7 +492,7 @@ try {
         $formatReports = @()
         foreach ($fmt in $formats) {
             if (-not $fmt.file) {
-                $formatReports += @{ name = $fmt.name; error = 'image missing' }
+                $formatReports += @{ name = $fmt.name; status = 'skipped'; reason = 'image missing'; error = 'image missing' }
                 continue
             }
             Write-Host ("{0} {1}: {2} x {3}" -f $target.name, $fmt.name, $(if ($coldBoot) { 'session-after-boot' } else { 'session' }), $Runs)
@@ -453,8 +509,17 @@ try {
             if ($null -ne $warm.navigate_median_ms) {
                 if ([double]$warm.navigate_median_ms -le $NavigateBudgetMs) { $navVerdict = 'pass' } else { $navVerdict = 'fail' }
             }
+            $status = 'measured'
+            $reason = $null
+            if ($null -eq $session.median_ms -and $null -eq $warm.median_ms) {
+                $status = 'skipped'
+                $reason = Get-SampleReason $session
+                if ($reason -eq 'no first-pixel sample') { $reason = Get-SampleReason $warm }
+            }
             $formatReports += @{
                 name = $fmt.name
+                status = $status
+                reason = $reason
                 image = [string]$fmt.file
                 cold_basis = $basis
                 cold_run_1_ms = $session.run_1_ms
@@ -471,7 +536,20 @@ try {
                 navigate_gate = $navVerdict
             }
         }
-        $reportTargets += @{ name = $target.name; executable = $target.file; formats = $formatReports }
+        $allSkipped = $true
+        $targetReason = $null
+        foreach ($fmt in $formatReports) {
+            if ($fmt.status -ne 'skipped') { $allSkipped = $false }
+            elseif (-not $targetReason -and $fmt.reason) { $targetReason = [string]$fmt.reason }
+        }
+        if (-not $allSkipped) { $targetReason = $null }
+        $reportTargets += @{
+            name = $target.name
+            executable = $target.file
+            status = $(if ($allSkipped) { 'skipped' } else { 'measured' })
+            reason = $targetReason
+            formats = $formatReports
+        }
         $firstExecutable = $false
     }
 
@@ -494,7 +572,7 @@ $payload = @{
 }
 $jsonPath = Join-Path $layout.Results "m0-$stamp.json"
 $logPath = Join-Path $layout.Results "m0-$stamp.log"
-($payload | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath $jsonPath -Encoding UTF8
+Write-Utf8NoBom $jsonPath (($payload | ConvertTo-Json -Depth 8) + "`n")
 
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add("Voxprint AI Lucent M0")
@@ -526,6 +604,9 @@ foreach ($target in $reportTargets) {
                     $fmt.warm_median_ms, $fmt.warm_p95_ms, $fmt.navigate_median_ms, $fmt.navigate_gate))
         $lines.Add("  session_ms: $($fmt.session_runs_ms -join ', ')")
         $lines.Add("  warm_ms: $($fmt.warm_runs_ms -join ', ')")
+        if ($fmt.status -eq 'skipped' -and $fmt.reason) {
+            $lines.Add("  status=skipped reason=$($fmt.reason)")
+        }
         if (@($fmt.session_errors).Count -gt 0) {
             $lines.Add("  session_errors: $($fmt.session_errors -join ' | ')")
         }
@@ -533,10 +614,10 @@ foreach ($target in $reportTargets) {
 }
 $lines.Add("")
 $lines.Add("json: $jsonPath")
-$lines | Set-Content -LiteralPath $logPath -Encoding UTF8
+Write-Utf8NoBom $logPath (($lines -join "`r`n") + "`r`n")
 if ((Test-Path -LiteralPath $jsonPath) -and (Test-Path -LiteralPath $logPath)) {
     $ResultsWritten = $true
-    Write-TaskLog "wrote $jsonPath"
+    Write-TaskLog "outcome=wrote path=$jsonPath"
 }
 Write-Host "Wrote $logPath"
 Write-Host "Wrote $jsonPath"
@@ -565,9 +646,8 @@ Write-Host "Wrote $jsonPath"
 } finally {
     if ($ColdResume -and $ResultsWritten) {
         Unregister-ColdTask
-        Write-TaskLog "unregistered $TaskName"
     } elseif ($ColdResume) {
-        Write-TaskLog "left $TaskName registered because no results file was written"
+        Write-TaskLog "outcome=left-registered task=$TaskName detail=no-results-file"
     }
 }
 exit 0

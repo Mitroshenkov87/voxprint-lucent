@@ -124,9 +124,11 @@ jobs:
             cat "$assets/SHA256SUMS"
             printf '```\n'
           } >> "$body"
-          offset=$(sed -n 's/.*"offset" *: *\([0-9][0-9]*\).*/\1/p' BUILD.json)
           codename=$(sed -n 's/.*"codename" *: *"\([^"]*\)".*/\1/p' BUILD.json)
-          build_n=$((GITHUB_RUN_NUMBER + offset))
+          build_n=$(sed -n 's/.*"number" *: *\([0-9][0-9]*\).*/\1/p' BUILD.json)
+          if [ -z "$build_n" ]; then
+            build_n=$(sed -n 's/.*"offset" *: *\([0-9][0-9]*\).*/\1/p' BUILD.json)
+          fi
           title="0.1.0 RC · build ${build_n} \"${codename}\""
           set -- release create "$GITHUB_REF_NAME" \
             --title "$title" \

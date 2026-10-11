@@ -8,6 +8,7 @@ on:
       - "cpp/**"
       - "packaging/**"
       - "pyproject.toml"
+      - "scripts/**"
       - "share/**"
       - "tests/**"
       - "voxprint_lucent/**"

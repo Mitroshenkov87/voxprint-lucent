@@ -43,23 +43,74 @@ inline float bt2020Luma(float r, float g, float b) {
     return 0.2627F * r + 0.6780F * g + 0.0593F * b;
 }
 
-/// Map luminance so 203 nits (diffuse white) lands at 0.8 and 10000 nits at 1.
-///
-/// The roll-off is a smooth shoulder above diffuse white. BT.2390's hermite
-/// EETF is for a target brighter than about 3333 nits, so an SDR desktop uses
-/// this shoulder instead of clipping the highlights.
-inline float sdrShoulder(float nits) {
-    constexpr float paper = 203.0F;
-    constexpr float peak = 10000.0F;
-    constexpr float diffuseOut = 0.80F;
-    if (nits <= paper) {
-        return std::max(nits, 0.0F) / paper * diffuseOut;
+/// Inverse of `pqToNits`. Nits are not clamped to 10000, so a value past the
+/// PQ peak stays above 1 instead of being flattened first.
+inline float nitsToPq(float nits) {
+    if (!(nits > 0.0F)) {
+        return 0.0F;
     }
-    const float h = std::clamp((nits - paper) / (peak - paper), 0.0F, 1.0F);
-    // Square root, not a flat hermite start, so a 1000 nit highlight is not
-    // the same code as diffuse white.
-    const float s = std::sqrt(h);
-    return diffuseOut + (1.0F - diffuseOut) * s;
+    constexpr float m1 = 0.1593017578125F;
+    constexpr float m2 = 78.84375F;
+    constexpr float c1 = 0.8359375F;
+    constexpr float c2 = 18.8515625F;
+    constexpr float c3 = 18.6875F;
+    const float yp = std::pow(nits / 10000.0F, m1);
+    return std::pow((c1 + c2 * yp) / (1.0F + c3 * yp), m2);
+}
+
+/// SDR desktop peak used by the BT.2390 roll-off, in nits.
+///
+/// PQ(100) is about 0.508, so the knee `1.5 * maxPq - 0.5` stays positive.
+/// A 203 nit target puts diffuse white on the shoulder and piles the chart
+/// into one code.
+inline constexpr float kSdrTargetNits = 100.0F;
+
+/// BT.2390 EETF in PQ. `signal` and `maxLum` are PQ codes (1.0 is 10000 nits).
+///
+/// The hermite runs from the knee to 1 and lands on `maxLum` with a zero
+/// slope, so the highlight ramp bends instead of cutting off. `signal` is not
+/// clamped to 1 before that polynomial.
+inline float bt2390Eetf(float signal, float maxLum) {
+    const float lw = std::clamp(maxLum, 0.0F, 1.0F);
+    if (!(signal > 0.0F) || !(lw > 0.0F)) {
+        return 0.0F;
+    }
+    const float ks = 1.5F * lw - 0.5F;
+    if (ks >= 1.0F || signal < ks) {
+        return signal;
+    }
+    const float span = 1.0F - ks;
+    const float t = (signal - ks) / span;
+    const float t2 = t * t;
+    const float t3 = t2 * t;
+    return (2.0F * t3 - 3.0F * t2 + 1.0F) * ks + (t3 - 2.0F * t2 + t) * span
+        + (-2.0F * t3 + 3.0F * t2) * lw;
+}
+
+/// PQ or HLG channels to linear light relative to `kSdrTargetNits`.
+///
+/// The curve is applied to max(R, G, B) in PQ and the same ratio scales the
+/// other two channels, which keeps the hue. Nothing is clamped to the display
+/// peak before the EETF.
+inline void toneMapToSdrLinear(float &r, float &g, float &b, bool pq) {
+    if (!pq) {
+        const float sceneY = std::max(bt2020Luma(r, g, b), 1.0e-6F);
+        r = nitsToPq(hlgToNits(r, sceneY));
+        g = nitsToPq(hlgToNits(g, sceneY));
+        b = nitsToPq(hlgToNits(b, sceneY));
+    }
+    const float maxPq = nitsToPq(kSdrTargetNits);
+    const float peak = std::max(r, std::max(g, b));
+    if (!(peak > 0.0F)) {
+        r = 0.0F;
+        g = 0.0F;
+        b = 0.0F;
+        return;
+    }
+    const float scale = bt2390Eetf(peak, maxPq) / peak;
+    r = pqToNits(r * scale) / kSdrTargetNits;
+    g = pqToNits(g * scale) / kSdrTargetNits;
+    b = pqToNits(b * scale) / kSdrTargetNits;
 }
 
 /// Linear BT.2020 to linear sRGB, same scale (nits or relative).
@@ -82,9 +133,13 @@ inline void mapGamut(float &r, float &g, float &b, float hi) {
         return;
     }
     if (y >= hi) {
-        r = hi;
-        g = hi;
-        b = hi;
+        const float top = std::max(r, std::max(g, b));
+        if (top > hi && top > 0.0F) {
+            const float s = hi / top;
+            r *= s;
+            g *= s;
+            b *= s;
+        }
         return;
     }
     const float lo = std::min(r, std::min(g, b));

@@ -146,8 +146,35 @@ class Capabilities:
     raw: dict[str, Any]
 
 
+def dedupe_models(data: dict[str, Any]) -> dict[str, Any]:
+    """Drop later ``models`` entries that repeat an id. The first one stays.
+
+    Enlarge can list the same id twice. Lucent shows the list it was given,
+    so the duplicate is removed here before anything displays ``raw``.
+    """
+    models = data.get("models")
+    if not isinstance(models, list):
+        return data
+    seen: set[str] = set()
+    kept: list[Any] = []
+    for item in models:
+        if isinstance(item, dict):
+            model_id = item.get("id")
+            if isinstance(model_id, str) and model_id:
+                if model_id in seen:
+                    continue
+                seen.add(model_id)
+        kept.append(item)
+    if len(kept) == len(models):
+        return data
+    cleaned = dict(data)
+    cleaned["models"] = kept
+    return cleaned
+
+
 def parse_capabilities(data: dict[str, Any]) -> Capabilities:
     """Build a Capabilities value from an Enlarge JSON object."""
+    data = dedupe_models(data)
     gpu = data.get("gpu")
     status = "none"
     reason: str | None = "no_nvidia"

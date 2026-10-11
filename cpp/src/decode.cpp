@@ -64,12 +64,7 @@ QImage hdrToSdr8(const QImage &image, bool pq) {
             float r = in[x * 4];
             float g = in[x * 4 + 1];
             float b = in[x * 4 + 2];
-            encodedToNits(r, g, b, pq);
-            const float luma = bt2020Luma(r, g, b);
-            const float scale = luma > 1.0e-3F ? sdrShoulder(luma) / luma : 0.0F;
-            r *= scale;
-            g *= scale;
-            b *= scale;
+            toneMapToSdrLinear(r, g, b, pq);
             bt2020ToSrgb(r, g, b);
             mapGamut(r, g, b, 1.0F);
             pixels[x] = qRgb(static_cast<int>(std::lround(srgbEncode(r) * 255.0F)),
