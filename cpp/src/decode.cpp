@@ -22,6 +22,7 @@
 #include <jxl/decode.h>
 #include <jxl/encode.h>
 #include <jxl/thread_parallel_runner.h>
+#include <jxl/version.h>
 #endif
 
 namespace lucent {
@@ -227,9 +228,15 @@ QImage readJxl(const QString &path) {
         }
         if (status == JXL_DEC_COLOR_ENCODING) {
             JxlColorEncoding original{};
-            if (JxlDecoderGetColorAsEncodedProfile(
-                    decoder, nullptr, JXL_COLOR_PROFILE_TARGET_ORIGINAL, &original)
-                == JXL_DEC_SUCCESS) {
+            // libjxl 0.9 dropped the unused pixel-format argument.
+#if JPEGXL_NUMERIC_VERSION >= JPEGXL_COMPUTE_NUMERIC_VERSION(0, 9, 0)
+            const JxlDecoderStatus colorStatus = JxlDecoderGetColorAsEncodedProfile(
+                decoder, JXL_COLOR_PROFILE_TARGET_ORIGINAL, &original);
+#else
+            const JxlDecoderStatus colorStatus = JxlDecoderGetColorAsEncodedProfile(
+                decoder, nullptr, JXL_COLOR_PROFILE_TARGET_ORIGINAL, &original);
+#endif
+            if (colorStatus == JXL_DEC_SUCCESS) {
                 if (original.transfer_function == JXL_TRANSFER_FUNCTION_PQ
                     || original.transfer_function == JXL_TRANSFER_FUNCTION_HLG) {
                     hdr = true;
