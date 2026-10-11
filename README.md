@@ -1,10 +1,53 @@
 # Voxprint AI Lucent
 
-Fast, colour-accurate image viewer for the [Voxprint AI Media Suite](https://github.com/Mitroshenkov87).
+<p align="center">
+  <img src="packaging/docs/site/assets/banner.webp" alt="Voxprint AI Lucent" width="960">
+</p>
 
-Double-click an image and it should be on screen immediately, including JPEG, WebP, and, on Windows, AVIF and JPEG XL. Lucent does not use the network to show a picture. One later action can hand the file to Voxprint AI Enlarge.
+<p align="center">A fast image viewer that keeps the colour you expect.</p>
+
+<p align="center">
+  <a href="https://github.com/Mitroshenkov87/voxprint-lucent/releases"><img src="https://img.shields.io/github/v/release/Mitroshenkov87/voxprint-lucent?include_prereleases&amp;label=release" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-Apache--2.0-blue" alt="Apache-2.0"></a>
+  <a href="https://github.com/Mitroshenkov87/voxprint-lucent/actions/workflows/ci.yml"><img src="https://github.com/Mitroshenkov87/voxprint-lucent/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://mitroshenkov87.github.io/voxprint-lucent/"><img src="https://img.shields.io/badge/docs-pages-blue" alt="Docs"></a>
+</p>
+
+Lucent is the image viewer in the [Voxprint AI Media Suite](https://github.com/Mitroshenkov87). Double-click a picture and it should be on screen immediately. Opening an image does not use the network. One later action can hand the file to Voxprint AI Enlarge.
 
 Lucent is a clean-room project. No ImageGlass code, assets, themes, icons, or config formats are used. ImageGlass is GPL-3.0. This repository is Apache-2.0.
+
+## Features
+
+- JPEG, WebP, PNG, GIF, TIFF, and BMP. The Windows installer also includes AVIF and JPEG XL.
+- Embedded colour profiles are converted for an sRGB screen. A photo stored on its side is shown upright.
+- A slim toolbar, a folder strip, slideshow, fullscreen, and keys you can remap.
+- A tools window for dimensions, format, bit depth, colour profile, and a JPEG EXIF summary.
+- An optional hand-off to Voxprint AI Enlarge. Lucent still opens pictures when Enlarge is not installed.
+
+## Screenshots
+
+These are the Windows viewer, cropped from a 1920×1032 desktop.
+
+<p align="center">
+  <img src="packaging/docs/site/assets/screen-photo.webp" alt="A photograph open in Lucent" width="800"><br>
+  A photograph
+</p>
+
+<p align="center">
+  <img src="packaging/docs/site/assets/screen-orient.webp" alt="A portrait stored sideways, shown upright" width="800"><br>
+  A portrait stored on its side, shown upright
+</p>
+
+<p align="center">
+  <img src="packaging/docs/site/assets/screen-wide.webp" alt="A wide-gamut still open in Lucent" width="800"><br>
+  A wide-gamut still
+</p>
+
+<p align="center">
+  <img src="packaging/docs/site/assets/screen-jxl.webp" alt="A JPEG XL still open in Lucent" width="800"><br>
+  A JPEG XL still
+</p>
 
 ## System requirements
 
@@ -28,7 +71,7 @@ The zip `lucent-0.1.0-rc4-windows.zip` is the measurement bundle (the viewer, `R
 sudo apt install ./voxprint-lucent_0.1.0~rc4_amd64.deb
 ```
 
-## First run
+## Quick start
 
 Open an image from the Start menu shortcut, from a file association, or from a terminal:
 
@@ -60,6 +103,10 @@ All of these can be remapped with Ctrl+K.
 - Ctrl+L cycles English, Russian, and German
 - `Q` or Esc quits. Esc leaves fullscreen, then stops a slideshow, before it quits
 
+## Command line
+
+`voxprint-lucent --version` prints the build label. `voxprint-lucent --dry-run` checks startup and the Enlarge hand-off without a window or a GPU. The full reference, generated from each program's own `--help`, is [docs/CLI.md](docs/CLI.md). The same page is on the [docs site](https://mitroshenkov87.github.io/voxprint-lucent/CLI/).
+
 ## Formats
 
 Lucent reads JPEG, WebP, PNG, GIF, TIFF, BMP, and, when the plugin is installed, AVIF, JPEG XL, HEIF, RAW, and EXR. The Windows installer includes AVIF and JPEG XL. HEIF uses the system codec only. libde265 and x265 are not shipped.
@@ -77,8 +124,6 @@ voxprint-lucent-tools --enlarge --path photo.jpg
 ```
 
 Lucent finds Enlarge from its install registration and runs `voxprint-enlarge` with `--json-progress`. It sends the file path, not the pixels, and does not open Enlarge's socket. The tools window opens a before/after split. Keep leaves the result. Reveal opens the folder. Discard deletes the result and leaves the original. If Enlarge is not installed, the action stays disabled and Install Enlarge opens the Enlarge releases page. If Enlarge reports no usable GPU, the action stays disabled and that button is not shown. A GPU that is usable but below an RTX 40 stays available and shows Enlarge's warning on the button.
-
-`voxprint-lucent --dry-run` checks startup and this hand-off without a window or a GPU. `voxprint-lucent --version` prints the build label. Both are described in [docs/CLI.md](docs/CLI.md).
 
 The protocol is [docs/IPC-ENLARGE.md](docs/IPC-ENLARGE.md). Discovery is [docs/APP-DISCOVERY.md](docs/APP-DISCOVERY.md). This repository does not ship the Enlarge server. Tests use `python -m voxprint_lucent.enlarge_mock`.
 
