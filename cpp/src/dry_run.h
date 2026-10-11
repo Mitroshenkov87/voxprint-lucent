@@ -14,7 +14,11 @@ bool hasFlag(int argc, char **argv, const char *flag);
 /// Check startup and the Enlarge hand-off. No window, no RHI, no single-instance socket.
 int runDryRun(int argc, char **argv);
 
-/// Command used to launch Enlarge: `LUCENT_ENLARGE_EXE` when that program exists, else `voxprint-enlarge` on PATH.
+/// Command used to launch Enlarge.
+///
+/// Order: `LUCENT_ENLARGE_EXE`, the HKCU Enlarge key, App Paths (`voxprint-enlarge.exe`,
+/// file `VoxprintEnlarge.exe`), the shared suite manifest, the per-user installer path,
+/// then `voxprint-enlarge` on PATH.
 QStringList enlargeCliCommand();
 
 /// Page where the user can download Enlarge.

@@ -584,9 +584,11 @@ void Browser::openTools(bool enlarge) {
     QStringList arguments{QStringLiteral("-m"), QStringLiteral("voxprint_lucent.tools_host")};
     if (enlarge) {
         arguments.append(QStringLiteral("--enlarge"));
+        arguments.append(QStringLiteral("--frame"));
+        arguments.append(QString::number(frame_));
     }
     arguments.append(QStringLiteral("--path"));
-    arguments.append(currentPath_);
+    arguments.append(QFileInfo(currentPath_).absoluteFilePath());
     process.setArguments(arguments);
     process.setWorkingDirectory(appDir);
     process.setProcessEnvironment(env);

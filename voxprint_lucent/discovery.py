@@ -48,14 +48,22 @@ def socket_path(app: str, ipc_base: str) -> str:
 
 
 def find_app(pascal: str, kebab: str) -> AppInstall | None:
-    """Registry or desktop entry, then App Paths, then ``voxprint-<kebab>`` on PATH.
+    """Registry or desktop entry, App Paths, the shared manifest, the installer path, then PATH.
 
-    The executable must exist. Flatpak is not planned.
+    The executable must exist. Flatpak is not planned. On Windows the Enlarge
+    installer writes ``VoxprintEnlarge.exe`` and registers it as
+    ``voxprint-enlarge.exe`` under App Paths.
     """
     if sys.platform == "win32":
         found = _from_windows_registry(pascal, kebab)
     else:
         found = _from_desktop_dirs(pascal, kebab)
+    if found is not None:
+        return found
+    found = _from_shared_manifest(pascal, kebab)
+    if found is not None:
+        return found
+    found = _from_known_install(kebab)
     if found is not None:
         return found
     program = f"voxprint-{kebab}.exe" if sys.platform == "win32" else f"voxprint-{kebab}"
@@ -190,6 +198,104 @@ def _desktop_fields(text: str) -> tuple[list[str], str, str] | None:
     if not command:
         return None
     return command, version, ipc
+
+
+def _shared_dir() -> Path:
+    """``VOXPRINT_HOME/shared``, else the suite folder for this platform."""
+    env = os.environ.get("VOXPRINT_HOME", "").strip()
+    if env:
+        return Path(env) / "shared"
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA", "").strip()
+        root = Path(local) if local else Path.home() / "AppData" / "Local"
+        return root / "Voxprint" / "shared"
+    data = os.environ.get("XDG_DATA_HOME", "").strip()
+    base = Path(data) if data else Path.home() / ".local" / "share"
+    return base / "voxprint" / "shared"
+
+
+def _known_install_exe(kebab: str) -> Path:
+    """Path the per-user installer uses. Enlarge's Windows file is ``VoxprintEnlarge.exe``."""
+    home = _shared_dir().parent
+    if sys.platform == "win32" and kebab == "enlarge":
+        return home / "Enlarge" / "VoxprintEnlarge.exe"
+    if sys.platform == "win32":
+        folder = "".join(part.capitalize() for part in kebab.split("-"))
+        return home / folder / f"voxprint-{kebab}.exe"
+    return home / kebab / f"voxprint-{kebab}"
+
+
+def _install_from_app_entry(entry: object, kebab: str) -> AppInstall | None:
+    if isinstance(entry, str):
+        return install_from_values(
+            install_path="",
+            exe=entry,
+            protocol=1,
+            version="",
+            ipc_name=f"voxprint-{kebab}",
+            kebab=kebab,
+        )
+    if not isinstance(entry, dict):
+        return None
+    exe = entry.get("exe", entry.get("Exe", ""))
+    protocol = entry.get("protocol", entry.get("ProtocolVersion", 1))
+    version = entry.get("version", entry.get("Version", ""))
+    ipc_name = entry.get("ipc", entry.get("IpcName", ""))
+    install_path = entry.get("install_path", entry.get("InstallPath", ""))
+    return install_from_values(
+        install_path=str(install_path or ""),
+        exe=str(exe or ""),
+        protocol=protocol,
+        version=str(version or ""),
+        ipc_name=str(ipc_name or ""),
+        kebab=kebab,
+    )
+
+
+def _manifest_holds(data: dict[str, Any], kebab: str) -> bool:
+    components = data.get("components")
+    if not isinstance(components, dict):
+        return False
+    for value in components.values():
+        if not isinstance(value, dict):
+            continue
+        holders = value.get("holders")
+        if isinstance(holders, list) and kebab in {str(item) for item in holders}:
+            return True
+    return False
+
+
+def _from_shared_manifest(pascal: str, kebab: str) -> AppInstall | None:
+    """``manifest.json`` in the shared suite folder. Schema 1, as Enlarge writes it.
+
+    An ``apps`` entry wins. Otherwise a holder named ``kebab`` selects the
+    installer path when that file exists.
+    """
+    path = _shared_dir() / "manifest.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    apps = data.get("apps")
+    if isinstance(apps, dict):
+        entry = apps.get(kebab)
+        if entry is None:
+            entry = apps.get(pascal)
+        found = _install_from_app_entry(entry, kebab)
+        if found is not None:
+            return found
+    if _manifest_holds(data, kebab):
+        return _from_known_install(kebab)
+    return None
+
+
+def _from_known_install(kebab: str) -> AppInstall | None:
+    known = _known_install_exe(kebab)
+    if not known.is_file():
+        return None
+    return AppInstall([str(known.resolve())], "", f"voxprint-{kebab}")
 
 
 def _from_desktop_dirs(pascal: str, kebab: str) -> AppInstall | None:

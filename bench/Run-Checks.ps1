@@ -68,7 +68,11 @@ $capabilities = Invoke-Capture $Python @('-m', 'voxprint_lucent.enlarge_mock', '
 if ($capabilities.exit -ne 0 -or $capabilities.stdout -notmatch '"protocol"\s*:\s*1') {
     $failures.Add('capabilities')
 }
-$sample = Get-ChildItem -LiteralPath $Images -File | Sort-Object Name | Select-Object -First 1
+# animated.webp sorts first and is a multi-frame file. The dry-run needs a still.
+$sample = Get-ChildItem -LiteralPath $Images -File |
+    Where-Object { $_.Name -notlike 'animated.*' } |
+    Sort-Object Name |
+    Select-Object -First 1
 if (-not $sample) { throw "No files in $Images" }
 $dry = Invoke-Capture $Exe @('--dry-run', $sample.FullName) 60000
 if ($dry.exit -ne 0 -or $dry.stdout -notmatch '"dry_run"\s*:\s*true') {

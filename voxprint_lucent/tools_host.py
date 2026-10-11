@@ -30,6 +30,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Open the Enlarge hand-off for --path instead of the info panel.",
     )
     parser.add_argument(
+        "--frame",
+        type=int,
+        default=0,
+        help="Frame index to enlarge when the file has more than one. A still ignores this.",
+    )
+    parser.add_argument(
         "--check-update",
         action="store_true",
         help="Read this repository's GitHub releases and print a newer tag.",
@@ -68,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.enlarge:
         from voxprint_lucent.enlarge_ui import run_enlarge
 
-        return run_enlarge(path)
+        return run_enlarge(path, frame_index=args.frame)
     app = QApplication([])
     _ = build_stylesheet()
     window = ToolsWindow(path)

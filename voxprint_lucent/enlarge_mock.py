@@ -561,6 +561,8 @@ def _load_rgb(path: Path) -> np.ndarray[Any, np.dtype[np.uint8]]:
     else:
         raise ValueError(f"Unsupported input format: {suffix or path.name}")
     array = np.asarray(decoded)
+    if array.ndim == 4 and array.shape[0] >= 1:
+        array = array[0]
     if array.ndim == 2:
         array = np.repeat(array[:, :, None], 3, axis=2)
     if array.ndim != 3 or array.shape[2] < 3:

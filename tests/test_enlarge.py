@@ -11,10 +11,13 @@ import time
 import uuid
 from pathlib import Path
 
+import imagecodecs
+import numpy as np
 import pytest
-from PySide6.QtGui import QColor, QImage, QPainter
+from PySide6.QtGui import QColor, QImage, QImageReader, QPainter
 from PySide6.QtWidgets import QApplication, QPushButton
 
+from bench.hard_images import _animated_webp
 from voxprint_lucent.discovery import (
     AppInstall,
     command_from_desktop,
@@ -46,7 +49,7 @@ from voxprint_lucent.enlarge_protocol import (
     parse_capabilities,
     pipe_name_for_sid,
 )
-from voxprint_lucent.enlarge_ui import EnlargeWindow
+from voxprint_lucent.enlarge_ui import EnlargeWindow, still_for_enlarge
 from voxprint_lucent.formats import PngRejected
 from voxprint_lucent.theme_tokens import ACCENT, ROOT_PLAIN
 from voxprint_lucent.tools_host import main
@@ -765,3 +768,48 @@ def test_long_side_uses_the_model_scale(tmp_path: Path, monkeypatch: pytest.Monk
 def test_tools_host_enlarge_needs_an_image(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["--enlarge"]) == 2
     assert "usage:" in capsys.readouterr().out
+
+
+def test_animated_webp_dry_run_uses_the_first_frame(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    image = np.zeros((8, 8, 3), dtype=np.uint8)
+    image[:, :, 0] = 255
+    path = tmp_path / "animated.webp"
+    path.write_bytes(_animated_webp(image))
+    monkeypatch.setenv("LUCENT_ENLARGE_GPU", "ok")
+    code = enlarge_main(
+        [
+            "--input",
+            str(path.resolve()),
+            "--scale",
+            "2",
+            "--preset",
+            "photo",
+            "--quality-tier",
+            "fast",
+            "--format",
+            "avif",
+            "--json-progress",
+            "--dry-run",
+        ]
+    )
+    assert code == 0
+
+
+def test_multi_frame_file_is_sent_as_a_still(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    image = np.zeros((8, 8, 3), dtype=np.uint8)
+    image[..., 0] = 255
+    other = np.zeros_like(image)
+    other[..., 2] = 255
+    path = tmp_path / "clip.gif"
+    path.write_bytes(bytes(imagecodecs.gif_encode(np.stack((image, other)))))
+    assert QImageReader(str(path)).imageCount() > 1
+    monkeypatch.chdir(tmp_path)
+    still = still_for_enlarge(Path("clip.gif"), 0)
+    assert still.is_absolute()
+    assert still.suffix == ".png"
+    assert still.is_file()
+    assert QImageReader(str(still)).imageCount() <= 1
