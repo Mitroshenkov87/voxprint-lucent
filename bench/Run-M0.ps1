@@ -13,8 +13,12 @@
     run 1 on its own and also the median and nearest-rank p95 of the N runs.
 
     -ScheduleCold registers a one-shot AtLogOn task named
-    VoxprintLucent-M0-Cold, then tells you to reboot. The task runs
-    -ColdResume once and unregisters itself.
+    VoxprintLucent-M0-Cold, then tells you to reboot. The task runs as the
+    user who registered it, with its working directory set to this script's
+    folder. It runs -ColdResume once and unregisters itself only after a
+    results file exists. A start and outcome line is always appended to
+    results\m0-task.log next to this script, and to
+    %LOCALAPPDATA%\Voxprint\Lucent\m0-task.log.
 
     If you reboot and start this script yourself while uptime is still under
     -ColdUptimeSeconds (default 180), that invocation is treated as the cold
@@ -64,6 +68,20 @@ $ErrorActionPreference = 'Stop'
 $TaskName = 'VoxprintLucent-M0-Cold'
 $BudgetMs = 250.0
 $NavigateBudgetMs = 30.0
+
+function Write-TaskLog([string]$Message) {
+    $line = '{0} {1}' -f (Get-Date).ToString('o'), $Message
+    $dirs = @()
+    if ($PSScriptRoot) { $dirs += (Join-Path $PSScriptRoot 'results') }
+    if ($env:LOCALAPPDATA) { $dirs += (Join-Path $env:LOCALAPPDATA 'Voxprint\Lucent') }
+    foreach ($dir in $dirs) {
+        try {
+            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            Add-Content -LiteralPath (Join-Path $dir 'm0-task.log') -Value $line -Encoding ASCII
+        } catch {
+        }
+    }
+}
 
 function Quote-Argument([string]$Value) {
     if ($Value -match '[\s"]') {
@@ -315,9 +333,13 @@ function Get-Gate([object]$Summary, [bool]$ColdBoot) {
 
 function Register-ColdTask {
     $arg = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ColdResume"
-    $action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $arg
+    $workdir = $PSScriptRoot
+    $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+    $action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $arg -WorkingDirectory $workdir
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Force | Out-Null
+    $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
+    Write-TaskLog "registered task=$TaskName user=$user workdir=$workdir"
 }
 
 function Unregister-ColdTask {
@@ -327,6 +349,8 @@ function Unregister-ColdTask {
     }
 }
 
+Write-TaskLog ("start user={0} cwd={1} script={2} ScheduleCold={3} ColdResume={4}" -f `
+        [Security.Principal.WindowsIdentity]::GetCurrent().Name, (Get-Location).Path, $PSCommandPath, [bool]$ScheduleCold, [bool]$ColdResume)
 $layout = Resolve-Layout
 New-Item -ItemType Directory -Force -Path $layout.Results | Out-Null
 
@@ -406,6 +430,7 @@ function Invoke-Profile([hashtable]$Target, [hashtable]$FormatInfo, [bool]$Warmu
 $environment = Get-EnvironmentReport
 $reportTargets = @()
 $firstExecutable = $true
+$ResultsWritten = $false
 try {
     foreach ($target in $targets) {
         $formatReports = @()
@@ -449,9 +474,6 @@ try {
         $reportTargets += @{ name = $target.name; executable = $target.file; formats = $formatReports }
         $firstExecutable = $false
     }
-} finally {
-    if ($ColdResume) { Unregister-ColdTask }
-}
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $payload = @{
@@ -512,6 +534,40 @@ foreach ($target in $reportTargets) {
 $lines.Add("")
 $lines.Add("json: $jsonPath")
 $lines | Set-Content -LiteralPath $logPath -Encoding UTF8
+if ((Test-Path -LiteralPath $jsonPath) -and (Test-Path -LiteralPath $logPath)) {
+    $ResultsWritten = $true
+    Write-TaskLog "wrote $jsonPath"
+}
 Write-Host "Wrote $logPath"
 Write-Host "Wrote $jsonPath"
+} catch {
+    $message = $_.Exception.Message
+    Write-TaskLog "failed: $message"
+    try {
+        $errDir = $layout.Results
+        if (-not $errDir) { $errDir = Join-Path $PSScriptRoot 'results' }
+        New-Item -ItemType Directory -Force -Path $errDir | Out-Null
+        $errPath = Join-Path $errDir ("m0-error-{0}.json" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        @{
+            error = $message
+            script = $PSCommandPath
+            cwd = (Get-Location).Path
+            user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+        } | ConvertTo-Json | Set-Content -LiteralPath $errPath -Encoding ASCII
+        if (Test-Path -LiteralPath $errPath) {
+            $ResultsWritten = $true
+            Write-TaskLog "wrote $errPath"
+        }
+    } catch {
+        Write-TaskLog "could not write error json: $($_.Exception.Message)"
+    }
+    throw
+} finally {
+    if ($ColdResume -and $ResultsWritten) {
+        Unregister-ColdTask
+        Write-TaskLog "unregistered $TaskName"
+    } elseif ($ColdResume) {
+        Write-TaskLog "left $TaskName registered because no results file was written"
+    }
+}
 exit 0
