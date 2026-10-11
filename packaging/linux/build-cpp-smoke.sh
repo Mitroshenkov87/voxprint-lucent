@@ -72,7 +72,7 @@ fi
 ver=$("$ROOT/cpp/build-ci/voxprint-lucent" --version)
 printf '%s\n' "$ver"
 printf '%s\n' "$ver" | grep -q '0.1.0 RC'
-printf '%s\n' "$ver" | grep -q Ner
+printf '%s\n' "$ver" | grep -q Yashar
 absent=$("$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
 printf '%s\n' "$absent"
 printf '%s\n' "$absent" | grep -q '"dry_run":true'

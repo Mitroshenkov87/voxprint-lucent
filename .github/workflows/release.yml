@@ -113,18 +113,25 @@ jobs:
             sha256sum ./* | sed 's| \./| |' > SHA256SUMS
           )
           notes="docs/release-notes/${GITHUB_REF_NAME}.md"
+          body="${RUNNER_TEMP}/release-body.md"
+          if [ -f "$notes" ]; then
+            cp "$notes" "$body"
+          else
+            printf 'Voxprint AI Lucent %s\n' "$GITHUB_REF_NAME" > "$body"
+          fi
+          {
+            printf '\n## Checksums\n\n```\n'
+            cat "$assets/SHA256SUMS"
+            printf '```\n'
+          } >> "$body"
           offset=$(sed -n 's/.*"offset" *: *\([0-9][0-9]*\).*/\1/p' BUILD.json)
           codename=$(sed -n 's/.*"codename" *: *"\([^"]*\)".*/\1/p' BUILD.json)
           build_n=$((GITHUB_RUN_NUMBER + offset))
           title="0.1.0 RC · build ${build_n} \"${codename}\""
           set -- release create "$GITHUB_REF_NAME" \
             --title "$title" \
+            --notes-file "$body" \
             --repo "${GITHUB_REPOSITORY}"
-          if [ -f "$notes" ]; then
-            set -- "$@" --notes-file "$notes"
-          else
-            set -- "$@" --notes "Voxprint AI Lucent ${GITHUB_REF_NAME}"
-          fi
           case "$GITHUB_REF_NAME" in
             *-*) set -- "$@" --prerelease ;;
           esac

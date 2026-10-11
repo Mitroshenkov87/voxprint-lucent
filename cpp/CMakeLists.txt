@@ -19,7 +19,7 @@ if(LUCENT_CI_RUN_NUMBER STREQUAL "")
     set(LUCENT_CI_RUN_NUMBER 0)
 endif()
 math(EXPR LUCENT_BUILD_NUMBER "${LUCENT_CI_RUN_NUMBER} + ${LUCENT_BUILD_OFFSET}")
-set(LUCENT_VERSION "0.1.0-rc4")
+set(LUCENT_VERSION "0.1.0-rc5")
 configure_file(src/lucent_build.h.in "${CMAKE_CURRENT_BINARY_DIR}/lucent_build.h" @ONLY)
 
 qt_add_executable(voxprint-lucent
