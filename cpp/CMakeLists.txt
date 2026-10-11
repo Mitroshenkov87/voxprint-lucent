@@ -40,6 +40,7 @@ qt_add_executable(voxprint-lucent
     src/gallery.cpp
     src/splash.cpp
     src/chrome.cpp
+    src/selftest.cpp
     src/display_hdr.cpp
 )
 

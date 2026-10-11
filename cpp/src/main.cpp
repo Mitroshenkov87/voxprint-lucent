@@ -7,13 +7,16 @@
 #include "browser.h"
 #include "dry_run.h"
 #include "lucent_build.h"
+#include "selftest.h"
 #include "viewer.h"
 
 #include <QApplication>
 #include <QFile>
+#include <QGuiApplication>
 #include <QImageReader>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QMessageBox>
 
 #include <chrono>
 #include <cstdio>
@@ -96,6 +99,7 @@ static void printHelp() {
         "  voxprint-lucent --help\n"
         "  voxprint-lucent --version\n"
         "  voxprint-lucent --dry-run [IMAGE]\n"
+        "  voxprint-lucent --selftest --json\n"
         "  voxprint-lucent --benchmark IMAGE [--navigate-next IMAGE]\n"
         "  voxprint-lucent [IMAGE]\n"
         "\n"
@@ -122,6 +126,12 @@ static void printHelp() {
         "    A non-zero Enlarge status becomes Lucent's status. A missing image still exits 3.\n"
         "    Combined with --benchmark, --dry-run wins and FIRST_PIXEL is not printed.\n"
         "\n"
+        "--selftest --json\n"
+        "    Print one JSON object naming the JPEG, WebP, AVIF, JPEG XL, and Visual C++\n"
+        "    runtime checks, then exit. No window is created. JPEG is required.\n"
+        "    WebP, AVIF, and JPEG XL are reported and do not fail this command when\n"
+        "    the install does not include them. Exit 1 when a required check fails.\n"
+        "\n"
         "--benchmark IMAGE\n"
         "    Paint IMAGE, print FIRST_PIXEL, and exit. The tools process is not started.\n"
         "    --navigate-next IMAGE opens that second image and prints NAVIGATE_PIXEL.\n"
@@ -133,7 +143,8 @@ static void printHelp() {
         "Exit status:\n"
         "    0  the command finished\n"
         "    2  --benchmark was given without an image\n"
-        "    3  --dry-run was given a path that is not a file\n",
+        "    3  --dry-run was given a path that is not a file\n"
+        "    1  --selftest found a required runtime file missing\n",
         stdout);
 }
 
@@ -150,6 +161,10 @@ int main(int argc, char **argv) {
     }
     if (lucent::hasFlag(argc, argv, "--dry-run")) {
         return lucent::runDryRun(argc, argv);
+    }
+    if (lucent::hasFlag(argc, argv, "--selftest")) {
+        QGuiApplication probe(argc, argv);
+        return lucent::runSelfTest();
     }
     const auto started = std::chrono::steady_clock::now();
     QApplication app(argc, argv);
@@ -169,6 +184,13 @@ int main(int argc, char **argv) {
     QLocalServer server;
     if (!options.benchmark && !options.image.isEmpty() && claimOrForward(server, options.image)) {
         return 0;
+    }
+
+    const QString warning = lucent::runtimeWarning();
+    if (!warning.isEmpty()) {
+        std::fprintf(stderr, "%s\n", qPrintable(warning));
+        QMessageBox::critical(nullptr, QStringLiteral("Voxprint AI Lucent"), warning);
+        return 1;
     }
 
     if (options.benchmark) {
