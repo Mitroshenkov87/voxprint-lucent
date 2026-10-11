@@ -11,9 +11,9 @@ namespace lucent {
 
 /// Decode `path` for a view of about `box`.
 ///
-/// JPEG uses DCT scaling to the view. JPEG XL requests the same when the plugin
-/// supports ScaledSize (progressive / low-resolution first pass). Other formats
-/// decode full size, then scale. AVIF and JPEG XL plugins thread internally.
+/// JPEG uses DCT scaling to the view. AVIF and JPEG XL use a linked libavif or libjxl
+/// decode on every core when this build has those libraries, then a fast fit to
+/// `box`. The plugins remain the fallback, including for PQ and HLG stills.
 QImage decodeForView(const QString &path, const QSize &box);
 
 /// Smaller decode used for thumbnails and the next-file lookahead.

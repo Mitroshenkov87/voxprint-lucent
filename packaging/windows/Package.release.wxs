@@ -1,4 +1,5 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <?define LucentVersion="0.1.0-rc4"?>
   <Package
       Name="Voxprint AI Lucent"
       Manufacturer="Aleksandr Mitroshenkov"
@@ -40,10 +41,45 @@
         <RegistryValue
             Root="HKCU"
             Key="Software\Voxprint\Lucent"
-            Name="installed"
-            Type="integer"
-            Value="1"
+            Name="InstallPath"
+            Type="string"
+            Value="[INSTALLFOLDER]"
             KeyPath="yes" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\Voxprint\Lucent"
+            Name="Exe"
+            Type="string"
+            Value="[INSTALLFOLDER]voxprint-lucent.exe" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\Voxprint\Lucent"
+            Name="Version"
+            Type="string"
+            Value="$(var.LucentVersion)" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\Voxprint\Lucent"
+            Name="IpcName"
+            Type="string"
+            Value="voxprint-lucent" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\Voxprint\Lucent"
+            Name="ProtocolVersion"
+            Type="integer"
+            Value="1" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent.exe"
+            Type="string"
+            Value="[INSTALLFOLDER]voxprint-lucent.exe" />
+        <RegistryValue
+            Root="HKCU"
+            Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent.exe"
+            Name="Path"
+            Type="string"
+            Value="[INSTALLFOLDER]" />
       </Component>
     </StandardDirectory>
   </Fragment>

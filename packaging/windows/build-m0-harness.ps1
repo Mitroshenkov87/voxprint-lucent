@@ -166,8 +166,14 @@ if ($Heif) { throw 'kimg_heif.dll was built; HEIF must stay off' }
 
 Write-Host 'Building voxprint-lucent'
 $CppBuild = Join-Path $Repo 'cpp\build-windows'
+$pkgBin = Split-Path -Parent $PkgConfig.FullName
+$env:Path = "$pkgBin;$env:Path"
+$env:PKG_CONFIG = $PkgConfig.FullName
+$env:PKG_CONFIG_PATH = Join-Path $VcpkgInstalled 'lib\pkgconfig'
 Invoke-Native {
-    cmake -S (Join-Path $Repo 'cpp') -B $CppBuild -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=$QtPrefix"
+    cmake -S (Join-Path $Repo 'cpp') -B $CppBuild -G Ninja -DCMAKE_BUILD_TYPE=Release `
+        "-DCMAKE_PREFIX_PATH=$QtPrefix" `
+        "-DPKG_CONFIG_EXECUTABLE=$($PkgConfig.FullName)"
 }
 Invoke-Native { cmake --build $CppBuild }
 $Exe = Join-Path $CppBuild 'voxprint-lucent.exe'
