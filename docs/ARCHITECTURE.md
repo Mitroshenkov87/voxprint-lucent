@@ -8,7 +8,7 @@ Lucent is two programs.
 
 ## Startup
 
-1. `--help`, `--version`, and `--dry-run` finish before any window is created.
+1. `--help`, `--version`, `--dry-run`, and `--selftest` finish before any window is created.
 2. Otherwise the process takes a per-user local socket. If Lucent is already running, the new process sends the picture path to it and exits.
 3. The viewer decodes the picture and paints it. Toolbar, menus, and the thumbnail strip are created after that first paint.
 4. The tools process starts later, from the menu, and only then.

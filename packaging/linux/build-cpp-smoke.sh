@@ -132,5 +132,20 @@ if [ "$missing" -ne 3 ]; then
   exit 1
 fi
 "$ROOT/cpp/build-ci/voxprint-lucent" --help | grep -q -- '--dry-run'
+"$ROOT/cpp/build-ci/voxprint-lucent" --help | grep -q -- '--selftest'
+selftest=$(QT_QPA_PLATFORM=offscreen "$ROOT/cpp/build-ci/voxprint-lucent" --selftest --json)
+printf '%s\n' "$selftest"
+printf '%s\n' "$selftest" | python3 -c '
+import json, sys
+payload = json.load(sys.stdin)
+assert payload["ok"] is True
+names = {item["name"] for item in payload["checks"]}
+missing = {"jpeg", "webp", "avif", "jpegxl", "vc_runtime"} - names
+if missing:
+    raise SystemExit("selftest missing " + ", ".join(sorted(missing)))
+jpeg = next(item for item in payload["checks"] if item["name"] == "jpeg")
+if not jpeg["required"] or not jpeg["ok"]:
+    raise SystemExit("jpeg check failed")
+'
 PYTHONPATH="$ROOT" python3 "$ROOT/packaging/docs/generate_cli_md.py" \
   --viewer "$ROOT/cpp/build-ci/voxprint-lucent" --check

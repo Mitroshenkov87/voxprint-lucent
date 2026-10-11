@@ -40,6 +40,7 @@ qt_add_executable(voxprint-lucent
     src/gallery.cpp
     src/splash.cpp
     src/chrome.cpp
+    src/selftest.cpp
 )
 
 target_compile_definitions(voxprint-lucent PRIVATE LUCENT_VERSION="${LUCENT_VERSION}")
