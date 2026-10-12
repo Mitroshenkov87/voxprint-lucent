@@ -7,7 +7,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' "$ROOT/pyproject.toml" | head -n 1)
 DEB_VERSION=$(printf '%s' "$VERSION" | sed 's/rc/~rc/; s/\([0-9]\)a/\1~a/; s/\([0-9]\)b/\1~b/')
-TAG=${LUCENT_RELEASE_TAG:-v0.1.0-rc6}
+TAG=${LUCENT_RELEASE_TAG:-v0.1.0-rc7}
 
 QT_VERSION=6.12.0
 QT_ROOT=${RUNNER_TEMP:-/tmp}/lucent-qt
@@ -40,9 +40,9 @@ if [ ! -x "$BUILD/voxprint-lucent" ]; then
 fi
 
 STAGE=$(mktemp -d)
-LIB="$STAGE/usr/lib/voxprint-lucent"
+LIB="$STAGE/opt/voxprint-ai-suite/lucent"
 mkdir -p "$LIB/lib" "$LIB/platforms" "$LIB/imageformats" "$LIB/share" \
-    "$STAGE/usr/bin" "$STAGE/usr/share/applications" "$STAGE/DEBIAN"
+    "$STAGE/usr/local/bin" "$STAGE/usr/share/applications" "$STAGE/DEBIAN"
 cp "$BUILD/voxprint-lucent" "$LIB/voxprint-lucent"
 cp "$ROOT/packaging/linux/qt.conf" "$LIB/qt.conf"
 cp -a "$QT_PREFIX/lib/"*.so* "$LIB/lib/"
@@ -61,21 +61,22 @@ cp -a "$ROOT/voxprint_lucent" "$LIB/voxprint_lucent"
 find "$LIB" -type d -name __pycache__ -exec rm -rf {} + || true
 find "$LIB/lib" -name '*.a' -delete || true
 
-cat > "$STAGE/usr/bin/voxprint-lucent" << 'EOF'
+cat > "$STAGE/usr/local/bin/voxprint-lucent" << 'EOF'
 #!/bin/sh
-ROOT=/usr/lib/voxprint-lucent
+ROOT=/opt/voxprint-ai-suite/lucent
 export LD_LIBRARY_PATH="$ROOT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$ROOT"
 exec "$ROOT/voxprint-lucent" "$@"
 EOF
-cat > "$STAGE/usr/bin/voxprint-lucent-tools" << 'EOF'
+cp "$STAGE/usr/local/bin/voxprint-lucent" "$STAGE/usr/local/bin/voxprint-lucent-cli"
+cat > "$STAGE/usr/local/bin/voxprint-lucent-tools" << 'EOF'
 #!/bin/sh
-ROOT=/usr/lib/voxprint-lucent
+ROOT=/opt/voxprint-ai-suite/lucent
 export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
 exec python3 -m voxprint_lucent.tools_host "$@"
 EOF
-chmod 755 "$STAGE/usr/bin/voxprint-lucent" "$STAGE/usr/bin/voxprint-lucent-tools" \
-    "$LIB/voxprint-lucent"
+chmod 755 "$STAGE/usr/local/bin/voxprint-lucent" "$STAGE/usr/local/bin/voxprint-lucent-cli" \
+    "$STAGE/usr/local/bin/voxprint-lucent-tools" "$LIB/voxprint-lucent"
 cp "$ROOT/packaging/linux/ai.voxprint.Lucent.desktop" \
     "$STAGE/usr/share/applications/ai.voxprint.Lucent.desktop"
 cat > "$STAGE/DEBIAN/control" << EOF
@@ -87,7 +88,7 @@ Architecture: amd64
 Depends: libc6, libegl1, libgl1, libglib2.0-0, libxkbcommon0, libfontconfig1, libdbus-1-3, libx11-6
 Recommends: python3 (>= 3.14)
 Maintainer: Aleksandr Mitroshenkov <223849179+Mitroshenkov87@users.noreply.github.com>
-Description: Voxprint AI Lucent image viewer
+Description: VOXPrint AI Lucent image viewer
  Fast, colour-accurate image viewer for the Voxprint AI Media Suite.
  The viewer does not require an NVIDIA GPU. Tools and the Enlarge client
  need Python 3.14. AVIF and JPEG XL plugins ship in the Windows installer.

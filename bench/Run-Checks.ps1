@@ -67,7 +67,7 @@ function Invoke-Capture {
 $failures = New-Object System.Collections.Generic.List[string]
 $version = Invoke-Capture $Exe @('--version') 30000
 $label = $version.stdout
-if ($version.exit -ne 0 -or $label -notmatch '0\.1\.0 RC' -or $label -notmatch '"Tov"') {
+if ($version.exit -ne 0 -or $label -notmatch '0\.1\.0 RC' -or $label -notmatch '"Orah"') {
     $failures.Add('version')
 }
 $capabilities = Invoke-Capture $Python @('-m', 'voxprint_lucent.enlarge_mock', '--capabilities', '--json') 60000

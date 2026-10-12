@@ -4,7 +4,7 @@ M0 ships installer skeletons. They produce artifacts. They are not the Nuitka on
 
 ## Windows: WiX Toolset 7
 
-`packaging/windows/build-installer.ps1` builds a per-user MSI with WiX 7 (`wix build`). WiX 7 is the current Toolset. The package installs under `%LOCALAPPDATA%\Voxprint\Lucent` (HKCU, no administrator). That matches the suite rule for a per-user install.
+`packaging/windows/build-installer.ps1` builds a skeleton MSI with WiX 7 (`wix build`). The release package is `Package.release.wxs`: per-machine, under `C:\Program Files\VOXPrint AI Suite\Lucent`, publisher `VOXPrint AI Suite`.
 
 MSIX is not used. A packaged sandbox would get in the way of the later Enlarge local socket and of per-user file associations. Inno Setup is not used; WiX is the forward-only Windows installer.
 

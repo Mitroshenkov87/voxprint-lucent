@@ -37,7 +37,7 @@ jobs:
             m0-win-qt-6.12.0-vcpkg-
       - name: Build the viewer, plugins, and tools tree
         run: pwsh -File packaging/windows/build-m0-harness.ps1
-      - name: Build the per-user MSI
+      - name: Build the per-machine MSI
         env:
           LUCENT_RELEASE_TAG: ${{ github.ref_name }}
         run: pwsh -File packaging/windows/build-release.ps1
@@ -117,7 +117,7 @@ jobs:
           if [ -f "$notes" ]; then
             cp "$notes" "$body"
           else
-            printf 'Voxprint AI Lucent %s\n' "$GITHUB_REF_NAME" > "$body"
+            printf 'VOXPrint AI Lucent %s\n' "$GITHUB_REF_NAME" > "$body"
           fi
           {
             printf '\n## Checksums\n\n```\n'

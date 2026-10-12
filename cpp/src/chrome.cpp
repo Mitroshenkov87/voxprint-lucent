@@ -438,7 +438,7 @@ void Chrome::openSettings() {
 void Chrome::openAbout() {
     QMessageBox box(impl_->host);
     box.setWindowTitle(text(Text::About));
-    box.setText(QStringLiteral("Voxprint AI Lucent"));
+    box.setText(QStringLiteral("VOXPrint AI Lucent"));
     box.setInformativeText(QString::fromUtf8(LUCENT_BUILD_LABEL) + QStringLiteral("\nApache License 2.0"));
     if (qgetenv("LUCENT_SCREENSHOT") == "about") {
         box.show();

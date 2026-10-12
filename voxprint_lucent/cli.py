@@ -42,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the viewer argument parser without loading Qt."""
     parser = argparse.ArgumentParser(
         prog="voxprint-lucent",
-        description="Voxprint AI Lucent, a fast colour-accurate image viewer.",
+        description="VOXPrint AI Lucent, a fast colour-accurate image viewer.",
     )
     parser.add_argument("image", nargs="?", type=Path, help="Image file to open")
     parser.add_argument(

@@ -50,9 +50,10 @@ def socket_path(app: str, ipc_base: str) -> str:
 def find_app(pascal: str, kebab: str) -> AppInstall | None:
     """Registry or desktop entry, App Paths, the shared manifest, the installer path, then PATH.
 
-    The executable must exist. Flatpak is not planned. On Windows the Enlarge
-    installer writes ``VoxprintEnlarge.exe`` and registers it as
-    ``voxprint-enlarge.exe`` under App Paths.
+    The executable must exist. Flatpak is not planned. On Windows, HKLM
+    ``Software\\VOXPrint\\<App>`` is first, then HKCU, then App Paths, then
+    ``Program Files\\VOXPrint AI Suite``. The older Enlarge installer writes
+    ``VoxprintEnlarge.exe``.
     """
     if sys.platform == "win32":
         found = _from_windows_registry(pascal, kebab)
@@ -319,45 +320,74 @@ def _from_desktop_dirs(pascal: str, kebab: str) -> AppInstall | None:
     return None
 
 
-def _from_windows_registry(pascal: str, kebab: str) -> AppInstall | None:
+def _read_app_key(hive: int, subkey: str, kebab: str) -> AppInstall | None:
     # winreg is Windows-only. A top-level import fails on Linux.
     import winreg
 
     try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, rf"Software\Voxprint\{pascal}") as key:
-            install_path, _ = _query(key, "InstallPath")
-            exe, _ = _query(key, "Exe")
-            version, _ = _query(key, "Version")
-            ipc_name, _ = _query(key, "IpcName")
-            protocol, _ = winreg.QueryValueEx(key, "ProtocolVersion")
+        key = winreg.OpenKey(hive, subkey)
     except OSError:
-        install_path = exe = version = ipc_name = ""
-        protocol = 0
-    else:
+        return None
+    with key:
+        install_path, _ = _query(key, "InstallPath")
+        exe, _ = _query(key, "Exe")
+        version, _ = _query(key, "Version")
+        ipc_name, _ = _query(key, "IpcName")
+        try:
+            protocol, _ = winreg.QueryValueEx(key, "ProtocolVersion")
+        except OSError:
+            protocol = 0
+    return install_from_values(
+        install_path=str(install_path),
+        exe=str(exe),
+        protocol=protocol,
+        version=str(version),
+        ipc_name=str(ipc_name),
+        kebab=kebab,
+    )
+
+
+def _from_windows_registry(pascal: str, kebab: str) -> AppInstall | None:
+    # winreg is Windows-only. A top-level import fails on Linux.
+    import winreg
+
+    for hive, subkey in (
+        (winreg.HKEY_LOCAL_MACHINE, rf"Software\VOXPrint\{pascal}"),
+        (winreg.HKEY_CURRENT_USER, rf"Software\VOXPrint\{pascal}"),
+        (winreg.HKEY_CURRENT_USER, rf"Software\Voxprint\{pascal}"),
+    ):
+        found = _read_app_key(hive, subkey, kebab)
+        if found is not None:
+            return found
+    app_paths = rf"Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-{kebab}.exe"
+    for hive in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        try:
+            with winreg.OpenKey(hive, app_paths) as key:
+                exe, _ = winreg.QueryValueEx(key, "")
+        except OSError:
+            continue
         found = install_from_values(
-            install_path=str(install_path),
+            install_path="",
             exe=str(exe),
-            protocol=protocol,
-            version=str(version),
-            ipc_name=str(ipc_name),
+            protocol=1,
+            version="",
+            ipc_name=f"voxprint-{kebab}",
             kebab=kebab,
         )
         if found is not None:
             return found
-    try:
-        app_paths = rf"Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-{kebab}.exe"
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, app_paths) as key:
-            exe, _ = winreg.QueryValueEx(key, "")
-    except OSError:
-        return None
-    return install_from_values(
-        install_path="",
-        exe=str(exe),
-        protocol=1,
-        version="",
-        ipc_name=f"voxprint-{kebab}",
-        kebab=kebab,
-    )
+    names = [f"voxprint-{kebab}.exe"]
+    if kebab == "enlarge":
+        names.append("VoxprintEnlarge.exe")
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    local = os.environ.get("LOCALAPPDATA", "").strip()
+    candidates = [Path(program_files) / "VOXPrint AI Suite" / pascal / name for name in names]
+    if local:
+        candidates.extend(Path(local) / "Programs" / "Voxprint" / pascal / name for name in names)
+    for candidate in candidates:
+        if candidate.is_file():
+            return AppInstall([str(candidate.resolve())], "", f"voxprint-{kebab}")
+    return None
 
 
 def _query(key: object, name: str) -> tuple[object, int]:

@@ -120,7 +120,7 @@ void SplashFrame::paintEvent(QPaintEvent *) {
     if (!image_.isNull()) {
         painter.drawImage(cover(image_.size(), size()), image_);
     }
-    const QString title = QStringLiteral("Voxprint AI Lucent");
+    const QString title = QStringLiteral("VOXPrint AI Lucent");
     const QString version = QString::fromUtf8(LUCENT_BUILD_LABEL);
     QFont font = painter.font();
     font.setPixelSize(22);
