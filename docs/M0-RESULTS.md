@@ -63,7 +63,7 @@ One warm `import PySide6.QtWidgets` was 73.7 ms. The spike's warm `QtGui` import
 
 ## How the owner runs it
 
-CI on `windows-latest` uploads `lucent-m0-windows.zip`. Unzip it on Windows 11 or Windows Server 2025. Leave Microsoft Defender real-time protection on.
+The release measurement zip is `voxprint-lucent-<version>-win-x64.zip`. CI on `windows-latest` also uploads the unversioned harness `lucent-m0-windows.zip`. Unzip either on Windows 11 or Windows Server 2025. Leave Microsoft Defender real-time protection on.
 
 A cold sample is the first launch after reboot. Runs 2 through N in that same boot are not cold, because Windows has cached the executable and the Qt DLLs. Ten independent cold medians would need ten reboots. The script records run 1 of the C++ JPEG launch as `cold_gate` and also writes the session median, nearest-rank p95, and the warm median.
 

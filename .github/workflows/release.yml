@@ -47,7 +47,7 @@ jobs:
           name: windows-release
           path: |
             dist/*.msi
-            dist/lucent-*-windows.zip
+            dist/voxprint-lucent-*-win-x64.zip
           if-no-files-found: error
 
   linux:

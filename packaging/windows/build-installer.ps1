@@ -8,7 +8,7 @@ if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
     dotnet tool install --global wix --version 7.0.0
     $env:PATH = "$Tools;$env:PATH"
 }
-$Msi = Join-Path $Out "VoxprintAILucent-0.1.0.msi"
+$Msi = Join-Path $Out "voxprint-lucent-setup-0.1.0-win-x64.msi"
 # File sources in Package.wxs are relative to the working directory.
 Push-Location $PSScriptRoot
 try {

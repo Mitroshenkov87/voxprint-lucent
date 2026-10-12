@@ -9,6 +9,8 @@
     NVIDIA GPU is present. Otherwise a missing GPU is recorded and a passing
     run still exits 0.
     -Smoke is the short pass and is the default. Budget: about 10 minutes.
+    The installer is voxprint-lucent-setup-<version>-win-x64.msi.
+    The measurement zip is voxprint-lucent-<version>-win-x64.zip.
 #>
 [CmdletBinding()]
 param(

@@ -9,6 +9,19 @@ RUN_M0 = Path("bench/Run-M0.ps1")
 VM_TEST = Path("scripts/vm_test.ps1")
 
 
+def test_release_files_use_lower_case_names() -> None:
+    windows = Path("packaging/windows/build-release.ps1").read_text(encoding="utf-8")
+    assert "voxprint-lucent-setup-$VersionName-win-x64.msi" in windows
+    assert "voxprint-lucent-$VersionName-win-x64.zip" in windows
+    assert "Voxprint" not in windows
+    linux = Path("packaging/linux/build-release.sh").read_text(encoding="utf-8")
+    assert "voxprint-lucent_${FILE_VERSION}_amd64.deb" in linux
+    workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
+    assert "dist/voxprint-lucent-*-win-x64.zip" in workflow
+    assert "voxprint-lucent-setup-<version>-win-x64.msi" in VM_TEST.read_text(encoding="utf-8")
+    assert "voxprint-lucent-<version>-win-x64.zip" in RUN_M0.read_text(encoding="utf-8")
+
+
 def test_release_msi_writes_app_discovery_values() -> None:
     """HKLM Lucent values, both App Paths keys, and the per-machine layout."""
     text = WXS.read_text(encoding="utf-8")

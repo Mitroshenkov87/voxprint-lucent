@@ -44,7 +44,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $Payload 'images') | Out-Nu
 Copy-Item $smokeSrc (Join-Path $Payload 'images\smoke.jpg')
 
 $HarnessZip = Join-Path $Out 'lucent-m0-windows.zip'
-$VersionedZip = Join-Path $Out "lucent-$VersionName-windows.zip"
+$VersionedZip = Join-Path $Out "voxprint-lucent-$VersionName-win-x64.zip"
 if (Test-Path -LiteralPath $HarnessZip) {
     Move-Item -Force $HarnessZip $VersionedZip
 }
@@ -54,7 +54,7 @@ if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
     dotnet tool install --global wix --version 7.0.0
     $env:PATH = "$Tools;$env:PATH"
 }
-$Msi = Join-Path $Out "VoxprintAILucent-$VersionName-win64.msi"
+$Msi = Join-Path $Out "voxprint-lucent-setup-$VersionName-win-x64.msi"
 $PayloadArg = ((Resolve-Path $Payload).Path) -replace '\\', '/'
 Push-Location $PSScriptRoot
 try {
