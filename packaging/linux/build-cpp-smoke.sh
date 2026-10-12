@@ -55,22 +55,37 @@ PY
 export LD_LIBRARY_PATH="$QT_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_QPA_PLATFORM=xcb
 export LIBGL_ALWAYS_SOFTWARE=1
-# Accepted gates for v0.1.x:
-#   cold first pixel <= 450 ms (Run-M0 cold_gate: JPEG, first launch after reboot)
-#   warm JPEG and WebP <= 250 ms (this job, and Run-M0 warm_gate)
-#   warm full-res AVIF and JPEG XL at 12 MP <= 350 ms (Run-M0 warm_gate)
-# One unmeasured launch warms the loader. The timed launch enforces the warm
-# figure on a tiny JPEG. This file has no embedded preview, so that pixel is
-# the full decode. It is not a cold-boot sample.
+# Accepted laptop gates for v0.1.x, scored by Run-M0 and vm_test:
+#   cold first pixel <= 450 ms (JPEG, first launch after reboot)
+#   warm JPEG and WebP <= 250 ms
+#   warm full-res AVIF and JPEG XL at 12 MP <= 350 ms
+# One unmeasured launch warms the loader. The timed launch logs the warm
+# tiny-JPEG time. A shared runner does not fail the job on that number.
+# A missing time still fails: the viewer did not report a pixel.
 WARM_FIRST_PIXEL_MS=250
 xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark >/dev/null
 out=$(xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark)
 printf '%s\n' "$out"
 printf '%s\n' "$out" | grep -q '^FIRST_PIXEL$'
 phase=$(printf '%s\n' "$out" | awk '/^LUCENT_PHASE first_image_presented_ms /{print $3}')
-if [ -z "$phase" ] || [ "$phase" -gt "$WARM_FIRST_PIXEL_MS" ]; then
-    echo "warm first visible pixel regression: ${phase:-missing} ms (budget ${WARM_FIRST_PIXEL_MS})" >&2
+if [ -z "$phase" ]; then
+    echo "first visible pixel time missing" >&2
     exit 1
+fi
+echo "warm first visible pixel: ${phase} ms (laptop warm gate ${WARM_FIRST_PIXEL_MS} ms, report only)"
+flag="within the laptop warm gate"
+if [ "$phase" -gt "$WARM_FIRST_PIXEL_MS" ]; then
+    flag="above the laptop warm gate of ${WARM_FIRST_PIXEL_MS} ms; this runner does not fail the job"
+    echo "warm first visible pixel ${phase} ms is above ${WARM_FIRST_PIXEL_MS} ms (report only)" >&2
+fi
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    printf '%s\n' \
+        "### First visible pixel (report only)" \
+        "" \
+        "Warm tiny JPEG: **${phase} ms**. ${flag}." \
+        "" \
+        "Laptop gates for v0.1.x, scored by Run-M0 and vm_test: cold first pixel 450 ms, warm JPEG and WebP 250 ms, warm full-resolution AVIF and JPEG XL at 12 MP 350 ms." \
+        >> "$GITHUB_STEP_SUMMARY"
 fi
 
 # After the timed launch. --dry-run uses QCoreApplication: no window, no GPU.

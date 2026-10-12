@@ -42,6 +42,12 @@ def test_v01_gates_are_recorded() -> None:
     smoke = Path("packaging/linux/build-cpp-smoke.sh").read_text(encoding="utf-8")
     assert "WARM_FIRST_PIXEL_MS=250" in smoke
     assert "cold first pixel <= 450 ms" in smoke
+    assert "GITHUB_STEP_SUMMARY" in smoke
+    assert "report only" in smoke
+    timing = smoke.split("WARM_FIRST_PIXEL_MS=250", 1)[1].split("# After the timed launch", 1)[0]
+    assert "exit 1" in timing
+    over = timing.split('-gt "$WARM_FIRST_PIXEL_MS"', 1)[1]
+    assert "exit 1" not in over
 
 
 def test_cold_task_unregisters_on_failure() -> None:
