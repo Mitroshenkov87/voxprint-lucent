@@ -495,7 +495,7 @@ if ($layout.Python -and (Test-Path -LiteralPath $layout.Python)) {
     $targets += @{ name = 'pyside6'; file = $layout.Python; arguments = @('-m', 'voxprint_lucent'); env = $pyEnv }
 }
 if ($targets.Count -eq 0) {
-    throw "No voxprint-lucent.exe and no Python. Unzip the lucent-m0-windows artifact and run Run-M0.ps1 from that folder."
+    throw "No voxprint-lucent.exe and no Python. Unzip voxprint-lucent-<version>-win-x64.zip and run Run-M0.ps1 from that folder."
 }
 
 function Invoke-Profile([hashtable]$Target, [hashtable]$FormatInfo, [bool]$Warmup) {
