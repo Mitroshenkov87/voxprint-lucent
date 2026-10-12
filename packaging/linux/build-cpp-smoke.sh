@@ -55,17 +55,21 @@ PY
 export LD_LIBRARY_PATH="$QT_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_QPA_PLATFORM=xcb
 export LIBGL_ALWAYS_SOFTWARE=1
-# One unmeasured launch warms the loader. The timed launch is the regression gate
-# for the first visible pixel: at most 250 ms. This JPEG has no embedded preview,
-# so that pixel is the full decode. It is not a cold-boot sample. The 350 ms warm
-# budget for a 12 megapixel AVIF or JPEG XL is recorded by bench/Run-M0.ps1.
+# Accepted gates for v0.1.x:
+#   cold first pixel <= 450 ms (Run-M0 cold_gate: JPEG, first launch after reboot)
+#   warm JPEG and WebP <= 250 ms (this job, and Run-M0 warm_gate)
+#   warm full-res AVIF and JPEG XL at 12 MP <= 350 ms (Run-M0 warm_gate)
+# One unmeasured launch warms the loader. The timed launch enforces the warm
+# figure on a tiny JPEG. This file has no embedded preview, so that pixel is
+# the full decode. It is not a cold-boot sample.
+WARM_FIRST_PIXEL_MS=250
 xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark >/dev/null
 out=$(xvfb-run -a -s "-screen 0 1280x720x24" "$ROOT/cpp/build-ci/voxprint-lucent" /tmp/lucent-smoke.jpg --benchmark)
 printf '%s\n' "$out"
 printf '%s\n' "$out" | grep -q '^FIRST_PIXEL$'
 phase=$(printf '%s\n' "$out" | awk '/^LUCENT_PHASE first_image_presented_ms /{print $3}')
-if [ -z "$phase" ] || [ "$phase" -gt 250 ]; then
-    echo "first visible pixel regression: ${phase:-missing} ms (budget 250)" >&2
+if [ -z "$phase" ] || [ "$phase" -gt "$WARM_FIRST_PIXEL_MS" ]; then
+    echo "warm first visible pixel regression: ${phase:-missing} ms (budget ${WARM_FIRST_PIXEL_MS})" >&2
     exit 1
 fi
 

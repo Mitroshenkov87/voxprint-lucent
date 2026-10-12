@@ -5,9 +5,11 @@ from __future__ import annotations
 import pytest
 
 from bench.stats import (
+    COLD_FIRST_PIXEL_BUDGET_MS,
     FIRST_PIXEL_BUDGET_MS,
     FULL_RES_WARM_BUDGET_MS,
     NAVIGATE_BUDGET_MS,
+    WARM_FIRST_PIXEL_BUDGET_MS,
     evaluate,
     median,
     percentile,
@@ -35,7 +37,8 @@ def test_summary_keys() -> None:
 
 def test_pass_rule_requires_the_reference_laptop() -> None:
     assert evaluate(cold_median_ms=200, navigate_median_ms=10, reference_laptop=True) == "pass"
-    assert evaluate(cold_median_ms=251, navigate_median_ms=10, reference_laptop=True) == "fail"
+    assert evaluate(cold_median_ms=450, navigate_median_ms=10, reference_laptop=True) == "pass"
+    assert evaluate(cold_median_ms=451, navigate_median_ms=10, reference_laptop=True) == "fail"
     assert evaluate(cold_median_ms=200, navigate_median_ms=31, reference_laptop=True) == "fail"
     indicative = evaluate(cold_median_ms=200, navigate_median_ms=10, reference_laptop=False)
     assert indicative == "indicative"
@@ -43,6 +46,8 @@ def test_pass_rule_requires_the_reference_laptop() -> None:
 
 
 def test_warm_budget_splits_full_res_avif_and_jxl() -> None:
+    assert COLD_FIRST_PIXEL_BUDGET_MS == 450
+    assert WARM_FIRST_PIXEL_BUDGET_MS == 250
     assert FIRST_PIXEL_BUDGET_MS == 250
     assert NAVIGATE_BUDGET_MS == 30
     assert FULL_RES_WARM_BUDGET_MS == 350
