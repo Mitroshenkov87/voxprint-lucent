@@ -4,13 +4,13 @@ Cold on this harness is an approximation: drop the OS page cache when permitted,
 otherwise ``posix_fadvise`` the image. A real cold number is one run after reboot
 on the reference laptop. CI virtual machines are indicative only.
 
-Pass rule (PLAN-v1): on the reference laptop, cold median <= 250 ms and cached
+Pass rule for v0.1.x: on the reference laptop, cold median <= 450 ms and cached
 next/previous <= 30 ms. ``--reference-laptop`` is how that machine records a pass
 or a fail. Every other machine is reported as indicative.
 
-A warm full-resolution AVIF or JPEG XL at 12 megapixels or larger has a
-separate budget of 350 ms (``target_full_res_warm_ms``). Run-M0 records that
-as ``warm_gate``. This harness does not fail on it.
+Warm JPEG and WebP stay at 250 ms. A warm full-resolution AVIF or JPEG XL at
+12 megapixels or larger has a budget of 350 ms (``target_full_res_warm_ms``).
+Run-M0 records that as ``warm_gate``. This harness does not fail on it.
 """
 
 from __future__ import annotations
@@ -27,9 +27,10 @@ from threading import Thread
 
 from bench.fixtures import ensure_fixtures
 from bench.stats import (
-    FIRST_PIXEL_BUDGET_MS,
+    COLD_FIRST_PIXEL_BUDGET_MS,
     FULL_RES_WARM_BUDGET_MS,
     NAVIGATE_BUDGET_MS,
+    WARM_FIRST_PIXEL_BUDGET_MS,
     evaluate,
     summarise,
 )
@@ -192,7 +193,8 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
         reference_laptop=bool(args.reference_laptop),
     )
     return {
-        "target_first_pixel_ms": FIRST_PIXEL_BUDGET_MS,
+        "target_cold_first_pixel_ms": COLD_FIRST_PIXEL_BUDGET_MS,
+        "target_first_pixel_ms": WARM_FIRST_PIXEL_BUDGET_MS,
         "target_full_res_warm_ms": FULL_RES_WARM_BUDGET_MS,
         "target_navigate_ms": NAVIGATE_BUDGET_MS,
         "runs": args.runs,
@@ -204,8 +206,9 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
         "note": (
             "Pass/fail applies only with --reference-laptop "
             "(RTX 4090 Laptop, Windows 11 24H2, Nuitka onedir) and uses the "
-            "cold 250 ms and cached 30 ms rules. target_full_res_warm_ms (350) "
-            "is the warm AVIF and JPEG XL budget recorded by Run-M0. "
+            "cold 450 ms and cached 30 ms rules. Warm JPEG and WebP stay at "
+            "250 ms. target_full_res_warm_ms (350) is the warm AVIF and JPEG XL "
+            "budget recorded by Run-M0. "
             "CI and other machines are indicative."
         ),
     }
@@ -233,7 +236,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--reference-laptop",
         action="store_true",
         help=(
-            "Record a pass/fail against the cold 250 ms and 30 ms rules. "
+            "Record a pass/fail against the cold 450 ms and 30 ms rules. "
             "Omit on CI and other machines."
         ),
     )

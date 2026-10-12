@@ -22,8 +22,11 @@
 - Owner accepted a split startup budget. A first visible pixel is at most 250 ms. A warm full-resolution AVIF or JPEG XL at 12 megapixels or larger is at most 350 ms. JPEG and WebP warm stay at 250 ms. The cold JPEG first-launch gate stays 250 ms. Cached next/previous stays 30 ms.
 - One measurement of the cheap preview paths stopped there. libavif 1.0.4 documents thumbnail-item decode as unimplemented. `large.jxl` has no preview frame. `large.jpg` has no Exif thumbnail. AUTO AVIF decode is already dav1d (184.6 ms on the 4000×3000 fixture, 4 threads). Naming dav1d was 181.3 ms, libgav1 263.2 ms, aom 352.9 ms. The decode path is unchanged. The rc6 warm medians (AVIF 296 ms, JPEG XL 253 ms, p95 338 ms) sit inside 350 ms and were not remeasured.
 
+## 2026-10-12
+- Owner accepted the v0.1.x gates. Cold first pixel is at most 450 ms. Warm JPEG and WebP stay at 250 ms. Warm full-resolution AVIF and JPEG XL at 12 megapixels or larger stay at 350 ms. The Ubuntu smoke job logs the warm tiny-JPEG time and does not fail on it. Run-M0 and vm_test on the laptop score the gates.
+
 ## Next
-1. Owner runs `bench/Run-M0.ps1` on the reference machine when that session exists. CI's 250 ms check is the first visible pixel on a tiny JPEG. AVIF and JPEG XL warm full resolution at 12 MP use 350 ms (`warm_gate`). The cold JPEG first-launch gate stays 250 ms.
+1. Owner runs `bench/Run-M0.ps1` on the reference machine when that session exists. The Ubuntu smoke job only records the warm tiny-JPEG time. AVIF and JPEG XL warm full resolution at 12 MP use 350 ms (`warm_gate`). The cold JPEG first-launch gate for v0.1.x is 450 ms. Warm JPEG and WebP stay at 250 ms.
 2. Point the Enlarge client at the real server when that process exists. The mock remains the CI stand-in.
 3. `v0.1.0-rc1` is the keyboard-only build. `v0.1.0-rc2` adds the viewer chrome. Notes are in [release-notes/v0.1.0-rc2.md](release-notes/v0.1.0-rc2.md).
 4. `v0.1.0-rc3` ("Zohar") replaces the save icons, reads the build label from `BUILD.json`, calls Enlarge through its CLI, and adds `--dry-run`. Notes are in [release-notes/v0.1.0-rc3.md](release-notes/v0.1.0-rc3.md).

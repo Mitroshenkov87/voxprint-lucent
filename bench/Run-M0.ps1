@@ -13,8 +13,8 @@
     run 1 on its own and also the median and nearest-rank p95 of the N runs.
 
     Warm medians use 250 ms for JPEG and WebP, and 350 ms for AVIF and JPEG XL
-    at 12 megapixels or larger. That result is warm_gate. The cold JPEG
-    first-launch gate stays 250 ms. Cached next/previous stays 30 ms.
+    at 12 megapixels or larger. That result is warm_gate. For v0.1.x the cold
+    JPEG first-launch gate is 450 ms. Cached next/previous stays 30 ms.
 
     -ScheduleCold registers a one-shot AtLogOn task named
     VoxprintLucent-M0-Cold, then tells you to reboot. The task runs as the
@@ -71,6 +71,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $TaskName = 'VoxprintLucent-M0-Cold'
+$ColdBudgetMs = 450.0
 $BudgetMs = 250.0
 $FullResBudgetMs = 350.0
 $NavigateBudgetMs = 30.0
@@ -344,7 +345,7 @@ function Summarize-Samples([object[]]$Samples) {
 
 function Get-Gate([object]$Summary, [bool]$ColdBoot) {
     if (-not $ColdBoot -or $null -eq $Summary.run_1_ms) { return 'unmeasured' }
-    if ([double]$Summary.run_1_ms -le $BudgetMs) { return 'pass' } else { return 'fail' }
+    if ([double]$Summary.run_1_ms -le $ColdBudgetMs) { return 'pass' } else { return 'fail' }
 }
 
 function Get-WarmBudgetMs([string]$FormatName) {
@@ -585,6 +586,7 @@ $firstExecutable = $true
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $payload = @{
     created_local = (Get-Date).ToString('o')
+    budget_cold_first_pixel_ms = $ColdBudgetMs
     budget_first_pixel_ms = $BudgetMs
     budget_full_res_warm_ms = $FullResBudgetMs
     budget_navigate_ms = $NavigateBudgetMs
@@ -595,6 +597,7 @@ $payload = @{
         'Only the first launch of the C++ executable in that boot is a cold start of voxprint-lucent. The pass/fail field cold_gate uses that sample (jpeg, run 1), not the median.',
         'N runs in the same boot are session numbers. Runs after the first are warm in the Windows file cache. A median of 10 independent cold starts would need 10 reboots.',
         'p95 is nearest-rank (for N=10 that is the maximum). The median of an even count is the average of the two middle values.',
+        'For v0.1.x, cold_gate passes when that JPEG sample is at most 450 ms.',
         'Warm numbers follow one unmeasured warmup launch. JPEG and WebP warm median must be at most 250 ms. AVIF and JPEG XL at 12 megapixels or larger must be at most 350 ms warm. That field is warm_gate. PySide6 is the comparison harness and is expected to miss both.'
     )
     environment = $environment
@@ -608,7 +611,7 @@ $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add("VOXPrint AI Lucent M0")
 $lines.Add("created: $($payload.created_local)")
 $lines.Add("cold boot: $coldBoot")
-$lines.Add("budget: first visible pixel <= $BudgetMs ms; full-res AVIF and JXL warm <= $FullResBudgetMs ms; cached navigate <= $NavigateBudgetMs ms")
+$lines.Add("budget: cold first pixel <= $ColdBudgetMs ms (v0.1.x); warm JPEG and WebP <= $BudgetMs ms; full-res AVIF and JXL warm <= $FullResBudgetMs ms; cached navigate <= $NavigateBudgetMs ms")
 $envr = $payload.environment
 $lines.Add("OS: $($envr.os_product) $($envr.os_display_version) build $($envr.os_build) $($envr.os_arch)")
 $lines.Add("CPU: $($envr.cpu) cores=$($envr.cpu_cores) logical=$($envr.cpu_logical)")

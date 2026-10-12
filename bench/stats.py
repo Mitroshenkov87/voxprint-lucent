@@ -1,15 +1,17 @@
 """Sample statistics for the cold-start harness.
 
-The cold pass rule stays at 250 ms, with cached next/previous at 30 ms.
-A warm full-resolution AVIF or JPEG XL at 12 megapixels or larger uses
-350 ms. That figure is ``warm_budget_ms`` and is recorded by Run-M0.
+For v0.1.x the cold pass rule is 450 ms, with cached next/previous at 30 ms.
+Warm JPEG and WebP stay at 250 ms. A warm full-resolution AVIF or JPEG XL
+at 12 megapixels or larger uses 350 ms. Run-M0 records those warm figures.
 """
 
 from __future__ import annotations
 
 import math
 
-FIRST_PIXEL_BUDGET_MS = 250
+COLD_FIRST_PIXEL_BUDGET_MS = 450
+WARM_FIRST_PIXEL_BUDGET_MS = 250
+FIRST_PIXEL_BUDGET_MS = WARM_FIRST_PIXEL_BUDGET_MS
 NAVIGATE_BUDGET_MS = 30
 FULL_RES_WARM_BUDGET_MS = 350
 
@@ -53,11 +55,11 @@ def warm_budget_ms(image_format: str) -> int:
     """Warm median budget for one full-resolution image.
 
     AVIF and JPEG XL at 12 megapixels or larger use 350 ms. Every other
-    format uses the 250 ms first-visible-pixel budget.
+    format uses the 250 ms warm budget. The v0.1.x cold gate is 450 ms.
     """
     if image_format in {"avif", "jxl"}:
         return FULL_RES_WARM_BUDGET_MS
-    return FIRST_PIXEL_BUDGET_MS
+    return WARM_FIRST_PIXEL_BUDGET_MS
 
 
 def evaluate(
@@ -66,15 +68,15 @@ def evaluate(
     navigate_median_ms: float | None,
     reference_laptop: bool,
 ) -> str:
-    """Plan rule: pass only on the reference laptop, cold median <= 250 and cached nav <= 30.
+    """Pass only on the reference laptop: cold median <= 450 and cached nav <= 30.
 
-    Other machines, including CI, are ``indicative``. The 350 ms warm
-    full-resolution budget is separate and does not change this verdict.
+    Other machines, including CI, are ``indicative``. Warm budgets (250 ms,
+    or 350 ms for a 12 megapixel AVIF or JPEG XL) do not change this verdict.
     """
     if not reference_laptop:
         return "indicative"
     if cold_median_ms is None or navigate_median_ms is None:
         return "fail"
-    if cold_median_ms <= FIRST_PIXEL_BUDGET_MS and navigate_median_ms <= NAVIGATE_BUDGET_MS:
+    if cold_median_ms <= COLD_FIRST_PIXEL_BUDGET_MS and navigate_median_ms <= NAVIGATE_BUDGET_MS:
         return "pass"
     return "fail"
