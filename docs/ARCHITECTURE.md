@@ -4,7 +4,7 @@ Lucent is two programs.
 
 `voxprint-lucent` is a C++ and Qt 6 application. It owns startup, the single running instance, decoding, the image cache, and the shell. This is the program that opens a picture. It does not import Python, and PySide6 is not on the cold-start path. `--benchmark` constructs `Viewer` only.
 
-`voxprint-lucent-tools` is a Python process that uses PySide6. It starts when you open Enlarge's window, the shared viewer screen, or check for updates. It is not running while the first picture is painted. The helper depends on `voxprint-common[ui]` at commit `0d1e30de68cc49549a2a94cb3695e5601c17e7db` and opens that screen with `ReferenceShell(app="viewer")`.
+`voxprint-lucent-tools` is a Python process that uses PySide6. It starts when you open Enlarge's window, the shared viewer screen, or check for updates. It is not running while the first picture is painted. The helper depends on `voxprint-common[ui]` at commit `8a94b531cb4f3526425a80a86a1e64624b5de606` and opens that screen with `ReferenceShell(app="viewer")`.
 
 ## Shell
 
@@ -47,4 +47,4 @@ Lucent reads the JSON lines Enlarge prints. Cancel kills that process. Open in E
 
 ## Theme
 
-The C++ viewer reads `share/tokens.json` and `share/locales`, schema 1, vendored from voxprint-common commit `0d1e30de68cc49549a2a94cb3695e5601c17e7db` at `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/`. It does not import that package. The pin file is `share/voxprint-common.pin.json`. Changing that commit is the re-pin. The C++ build writes `lucent.qss` from `share/lucent.qss.in` and those tokens. The focus ring is 2 px in the accent colour. Lucent has no models. An MDL catalog is read only when the install dialog needs a download size.
+The C++ viewer reads `share/tokens.json` and `share/locales`, schema 1, vendored from voxprint-common commit `8a94b531cb4f3526425a80a86a1e64624b5de606` at `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/`. It does not import that package. The pin file is `share/voxprint-common.pin.json`. Changing that commit is the re-pin. The C++ build writes `lucent.qss` from `share/lucent.qss.in` and those tokens. The focus ring is 2 px in the accent colour. Lucent has no models. An MDL catalog is read only when the install dialog needs a download size.

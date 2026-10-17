@@ -1,8 +1,8 @@
 {
   "package": "voxprint-common",
-  "pr": 13,
-  "ref": "cursor/expert-mode-3cae",
-  "commit": "0d1e30de68cc49549a2a94cb3695e5601c17e7db",
+  "tag": "v0.2.5",
+  "ref": "v0.2.5 (Yitro)",
+  "commit": "8a94b531cb4f3526425a80a86a1e64624b5de606",
   "paths": {
     "tokens": "src/voxprint_common/ui/tokens.json",
     "locales": "src/voxprint_common/ui/locales",

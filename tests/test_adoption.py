@@ -10,7 +10,7 @@ from pathlib import Path
 from voxprint_lucent.suite_state import app_settings_path
 from voxprint_lucent.viewer_shell import SURFACE_ID
 
-PIN = "0d1e30de68cc49549a2a94cb3695e5601c17e7db"
+PIN = "8a94b531cb4f3526425a80a86a1e64624b5de606"
 DEPENDENCY = (
     "voxprint-common[ui] @ git+https://github.com/Mitroshenkov87/voxprint-common@" + PIN
 )
