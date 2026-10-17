@@ -6,6 +6,8 @@
 #include "catalog.h"
 #include "chrome.h"
 #include "decode.h"
+#include "labels.h"
+#include "shell_logic.h"
 #include "hotkeys.h"
 #include "imagecache.h"
 #include "rhi_view.h"
@@ -14,6 +16,7 @@
 #include "theme.h"
 #include "welcome_policy.h"
 
+#include <QColorSpace>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -24,6 +27,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLocale>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPointer>
@@ -63,6 +67,46 @@ QString failureText(const QString &path) {
     return text(Text::DecodeFailed);
 }
 
+void restoreLaunchGeometry(QWidget *window) {
+    window->setMinimumSize(640, 400);
+    if (!qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        window->resize(1200, 900);
+        return;
+    }
+    const Json document = readDocument(appSettingsPath("lucent"));
+    const Json *geo = document.field("ui.geometry");
+    const auto number = [](const Json *object, const char *key) -> int {
+        if (object == nullptr) {
+            return -1;
+        }
+        const Json *value = object->field(key);
+        if (value == nullptr || !value->isNumber()) {
+            return -1;
+        }
+        return static_cast<int>(std::lround(value->asNumber()));
+    };
+    const int width = number(geo, "width");
+    const int height = number(geo, "height");
+    if (geo == nullptr || geo->kind != Json::Kind::Object || width < 640 || height < 400) {
+        window->resize(1200, 900);
+        return;
+    }
+    const int x = number(geo, "x");
+    const int y = number(geo, "y");
+    if (x >= 0 && y >= 0) {
+        window->setGeometry(x, y, width, height);
+    } else {
+        window->resize(width, height);
+    }
+    const Json *fullscreen = geo->field("fullscreen");
+    const Json *maximized = geo->field("maximized");
+    if (fullscreen != nullptr && fullscreen->kind == Json::Kind::Bool && fullscreen->boolean) {
+        window->setWindowState(Qt::WindowFullScreen);
+    } else if (maximized != nullptr && maximized->kind == Json::Kind::Bool && maximized->boolean) {
+        window->setWindowState(Qt::WindowMaximized);
+    }
+}
+
 }  // namespace
 
 void deliver(const std::shared_ptr<std::atomic<bool>> &alive, const QPointer<Browser> &self, std::function<void(Browser *)> fn) {
@@ -87,10 +131,10 @@ void deliver(const std::shared_ptr<std::atomic<bool>> &alive, const QPointer<Bro
 Browser::Browser(LaunchOptions options, std::chrono::steady_clock::time_point started, QWidget *parent)
     : QWidget(parent), options_(std::move(options)) {
     Q_UNUSED(started);
-    setObjectName(QStringLiteral("lucent-window"));
+    setObjectName(QStringLiteral("shell"));
     setWindowTitle(QStringLiteral("VOXPrint AI Lucent"));
     setStyleSheet(loadStyleSheet());
-    resize(1600, 1000);
+    restoreLaunchGeometry(this);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
@@ -117,6 +161,7 @@ Browser::Browser(LaunchOptions options, std::chrono::steady_clock::time_point st
 Browser::~Browser() {
     alive_->store(false);
     ++requestId_;
+    delete chrome_;
     delete cache_;
 }
 
@@ -188,7 +233,8 @@ void Browser::showImage(const QImage &image, bool resetZoom) {
         error_.clear();
         if (resetZoom) {
             mode_ = ZoomMode::Fit;
-            placement_ = placementFor(mode_, image.width(), image.height(), width(), height());
+            const QSize view = pictureRect().size();
+            placement_ = placementFor(mode_, image.width(), image.height(), std::max(1, view.width()), std::max(1, view.height()));
         }
     }
     imageReady_ = !image.isNull();
@@ -285,23 +331,73 @@ void Browser::armAfterFirstPaint() {
     ensureChrome();
 }
 
+QRect Browser::pictureRect() const {
+    if (chrome_ == nullptr) {
+        return rect();
+    }
+    const QRect view = chrome_->resultRect();
+    return view.isEmpty() ? rect() : view;
+}
+
+void Browser::refit() {
+    const QSize view = pictureRect().size();
+    if (!image_.isNull() && mode_ != ZoomMode::Free && view.width() > 0 && view.height() > 0) {
+        placement_ = placementFor(mode_, image_.width(), image_.height(), view.width(), view.height());
+    }
+    if (rhi_ != nullptr) {
+        rhi_->setGeometry(pictureRect());
+        rhi_->lower();
+    }
+    syncRhi();
+}
+
+QString Browser::exportSuffix() const {
+    return chrome_ == nullptr ? QStringLiteral("avif") : chrome_->exportSuffix();
+}
+
 void Browser::applyMode(ZoomMode mode) {
     mode_ = mode;
-    if (!image_.isNull() && mode != ZoomMode::Free) {
-        placement_ = placementFor(mode, image_.width(), image_.height(), width(), height());
-    }
+    refit();
     if (mode == ZoomMode::OneToOne) {
         ensureFullResolution();
     }
-    syncRhi();
+    if (chrome_ != nullptr) {
+        chrome_->noteZoom(mode_, placement_.scale);
+    }
     updateChrome();
     update();
 }
 
 void Browser::updateChrome() {
+    if (chrome_ != nullptr) {
+        LiveView live;
+        live.scale = placement_.scale;
+        live.mode = mode_;
+        live.frame = frame_;
+        live.frameCount = frameCount_;
+        if (!image_.isNull()) {
+            live.info = QFileInfo(currentPath_).fileName() + QStringLiteral("  ") + QString::number(image_.width())
+                + QStringLiteral("×") + QString::number(image_.height());
+            if (image_.colorSpace().isValid()) {
+                live.profile = image_.colorSpace().description();
+            }
+            if (cropping_ && cropRect_.isValid()) {
+                const QRect view = pictureRect();
+                const QRect local = cropRect_.translated(-view.topLeft());
+                live.cropX = qRound(local.x() / placement_.scale + placement_.originX);
+                live.cropY = qRound(local.y() / placement_.scale + placement_.originY);
+                live.cropW = qRound(local.width() / placement_.scale);
+                live.cropH = qRound(local.height() / placement_.scale);
+            }
+        } else if (!error_.isEmpty()) {
+            live.info = error_;
+        }
+        chrome_->setLive(live);
+    }
     if (status_ == nullptr) {
         return;
     }
+    status_->hide();
     QString line = error_;
     if (line.isEmpty()) {
         Text modeText = Text::Free;
@@ -510,7 +606,7 @@ void Browser::fitWindow() {
         limit = wanted.boundedTo(screen()->availableGeometry().size() - QSize(48, 80));
     }
     if (!isFullScreen()) {
-        resize(limit.expandedTo(QSize(320, 200)));
+        resize(limit.expandedTo(QSize(640, 400)));
     }
 }
 
@@ -545,7 +641,7 @@ void Browser::refreshFolder() {
     folderWorker.detach();
 }
 
-void Browser::openTools(bool enlarge) {
+void Browser::launchHost(const QStringList &tail) {
     const QString appDir = QCoreApplication::applicationDirPath();
     QString python = qEnvironmentVariable("LUCENT_PYTHON");
     const QString bundled = appDir + QStringLiteral("/python/python.exe");
@@ -582,18 +678,26 @@ void Browser::openTools(bool enlarge) {
     QProcess process;
     process.setProgram(python);
     QStringList arguments{QStringLiteral("-m"), QStringLiteral("voxprint_lucent.tools_host")};
-    if (enlarge) {
-        arguments.append(QStringLiteral("--enlarge"));
-        arguments.append(QStringLiteral("--frame"));
-        arguments.append(QString::number(frame_));
-    }
-    arguments.append(QStringLiteral("--path"));
-    arguments.append(QFileInfo(currentPath_).absoluteFilePath());
+    arguments.append(tail);
     process.setArguments(arguments);
     process.setWorkingDirectory(appDir);
     process.setProcessEnvironment(env);
     process.startDetached();
 }
+
+void Browser::openTools(bool enlarge) {
+    QStringList tail;
+    if (enlarge) {
+        tail.append(QStringLiteral("--enlarge"));
+        tail.append(QStringLiteral("--frame"));
+        tail.append(QString::number(frame_));
+    }
+    tail.append(QStringLiteral("--path"));
+    tail.append(QFileInfo(currentPath_).absoluteFilePath());
+    launchHost(tail);
+}
+
+void Browser::checkForUpdate() { launchHost({QStringLiteral("--check-update")}); }
 
 void Browser::cycleLanguage() {
     const QString current = language();
@@ -606,6 +710,14 @@ void Browser::cycleLanguage() {
     }
     QSettings settings;
     settings.setValue(QStringLiteral("language"), language());
+    setCatalogLanguage(language());
+    std::map<std::string, Json> own;
+    own.emplace("ui_language", Json::fromString(language().toStdString()));
+    std::string error;
+    writeOwnKeys(suiteSettingsPath(), own, error);
+    if (chrome_ != nullptr) {
+        chrome_->retranslate();
+    }
     updateChrome();
 }
 
@@ -627,15 +739,18 @@ void Browser::paintEvent(QPaintEvent *) {
     }
     QPainter painter(this);
     painter.fillRect(rect(), rootPlain());
+    const QRect view = pictureRect();
     if (!image_.isNull()) {
         painter.save();
+        painter.setClipRect(view);
+        painter.translate(view.topLeft());
         painter.translate(-placement_.originX * placement_.scale, -placement_.originY * placement_.scale);
         painter.scale(placement_.scale, placement_.scale);
         painter.drawImage(QPointF(0, 0), image_);
         painter.restore();
     } else if (!error_.isEmpty()) {
         painter.setPen(QColor(QStringLiteral("#f2f2f5")));
-        painter.drawText(rect().adjusted(24, 24, -24, -24), Qt::AlignCenter | Qt::TextWordWrap, error_);
+        painter.drawText(view.adjusted(24, 24, -24, -24), Qt::AlignCenter | Qt::TextWordWrap, error_);
     }
     if (cropping_ && cropRect_.isValid()) {
         painter.setPen(QPen(QColor(QStringLiteral("#60a5fa")), 2));
@@ -810,7 +925,11 @@ void Browser::wheelEvent(QWheelEvent *event) {
         inertia_->stop();
     }
     mode_ = ZoomMode::Free;
-    placement_ = zoomAtCursor(placement_, std::pow(1.1, steps), event->position().x(), event->position().y());
+    const QPointF local = event->position() - pictureRect().topLeft();
+    placement_ = zoomAtCursor(placement_, std::pow(1.1, steps), local.x(), local.y());
+    if (chrome_ != nullptr) {
+        chrome_->noteZoom(ZoomMode::Free, placement_.scale);
+    }
     ensureFullResolution();
     syncRhi();
     updateChrome();
@@ -882,9 +1001,6 @@ void Browser::mouseReleaseEvent(QMouseEvent *event) {
 
 void Browser::resizeEvent(QResizeEvent *event) {
     QWidget::resizeEvent(event);
-    if (rhi_ != nullptr) {
-        rhi_->setGeometry(rect());
-    }
     if (splash_ != nullptr) {
         splash_->setGeometry(rect());
         splash_->raise();
@@ -892,10 +1008,7 @@ void Browser::resizeEvent(QResizeEvent *event) {
     if (chrome_ != nullptr) {
         chrome_->relayout();
     }
-    if (!image_.isNull() && mode_ != ZoomMode::Free) {
-        placement_ = placementFor(mode_, image_.width(), image_.height(), width(), height());
-        syncRhi();
-    }
+    refit();
     updateChrome();
 }
 
@@ -943,9 +1056,50 @@ void Browser::ensureChrome() {
     };
     callbacks.image = [this] { return image_; };
     callbacks.path = [this] { return currentPath_; };
+    callbacks.numericCrop = [this](int x, int y, int w, int h) {
+        if (image_.isNull()) {
+            return;
+        }
+        const QRect bounds = QRect(x, y, w, h).intersected(image_.rect());
+        if (bounds.width() > 1 && bounds.height() > 1) {
+            image_ = image_.copy(bounds);
+            showImage(image_, true);
+        }
+    };
+    callbacks.stepFrame = [this](int delta) {
+        if (animation_ != nullptr) {
+            animation_->stop();
+        }
+        stepFrame(delta);
+    };
+    callbacks.togglePlay = [this] {
+        if (animation_ == nullptr || frameCount_ <= 1) {
+            return;
+        }
+        if (animation_->isActive()) {
+            animation_->stop();
+        } else {
+            animation_->start();
+        }
+    };
+    callbacks.setScale = [this](double scale) {
+        mode_ = ZoomMode::Free;
+        const QSize view = pictureRect().size();
+        if (!image_.isNull()) {
+            placement_ = centeredPlacement(scale, image_.width(), image_.height(), std::max(1, view.width()), std::max(1, view.height()));
+        }
+        if (scale > 1.05) {
+            ensureFullResolution();
+        }
+        syncRhi();
+        updateChrome();
+        update();
+    };
+    callbacks.checkUpdate = [this] { checkForUpdate(); };
     chrome_ = new Chrome(this, std::move(callbacks));
     chrome_->setFolder(folder_, index_);
     chrome_->prepareShots();
+    refit();
     updateChrome();
 }
 
@@ -1054,7 +1208,7 @@ void Browser::cancelCrop() {
 }
 
 void Browser::applyCrop() {
-    const QRect rect = cropRect_.normalized();
+    const QRect rect = cropRect_.normalized().translated(-pictureRect().topLeft());
     cropping_ = false;
     cropDragging_ = false;
     if (image_.isNull() || rect.width() < 4 || rect.height() < 4 || placement_.scale <= 0.0) {
@@ -1078,7 +1232,7 @@ void Browser::applyCrop() {
 }
 
 QString Browser::uniqueAvif(const QString &directory, const QString &base, const QString &infix) const {
-    const QString ext = QStringLiteral(".avif");
+    const QString ext = QLatin1Char('.') + exportSuffix();
     QString dest = directory + QLatin1Char('/') + base + infix + ext;
     int number = 2;
     while (QFileInfo::exists(dest)) {
@@ -1094,6 +1248,9 @@ bool Browser::writeView(const QString &path) {
         return false;
     }
     QImageWriter writer(path, QFileInfo(path).suffix().toLower().toUtf8());
+    if (chrome_ != nullptr) {
+        writer.setQuality(chrome_->exportQuality());
+    }
     if (!writer.write(image_)) {
         error_ = text(Text::SaveFailed);
         updateChrome();
@@ -1175,7 +1332,7 @@ void Browser::saveAs() {
         return;
     }
     const QFileInfo info(currentPath_);
-    const QString suggested = info.absolutePath() + QLatin1Char('/') + info.completeBaseName() + QStringLiteral(".avif");
+    const QString suggested = info.absolutePath() + QLatin1Char('/') + info.completeBaseName() + QLatin1Char('.') + exportSuffix();
     QString selected;
     QString dest = QFileDialog::getSaveFileName(
         this, text(Text::SaveAs), suggested, QStringLiteral("AVIF (*.avif);;JPEG XL (*.jxl);;WebP (*.webp)"), &selected);
@@ -1197,6 +1354,12 @@ void Browser::saveAs() {
 void Browser::moveToTrash() {
     if (currentPath_.isEmpty()) {
         return;
+    }
+    if (qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        const auto answer = QMessageBox::question(this, label(QStringLiteral("lucent.action.trash")), label(QStringLiteral("lucent.trash.confirm")));
+        if (answer != QMessageBox::Yes) {
+            return;
+        }
     }
     const QString share = findShareDir();
     if (!share.isEmpty() && currentPath_.startsWith(share)) {

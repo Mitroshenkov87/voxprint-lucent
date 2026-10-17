@@ -4,16 +4,17 @@
 #pragma once
 
 #include "placement.h"
-
-#include "welcome_policy.h"
+#include "shell_logic.h"
 
 #include <QImage>
 #include <QPoint>
+#include <QRect>
 #include <QString>
 #include <QStringList>
 
 #include <functional>
 
+class QComboBox;
 class QWidget;
 
 namespace lucent {
@@ -64,6 +65,39 @@ struct ChromeCallbacks {
     std::function<QImage()> image;
     /// Current file path.
     std::function<QString()> path;
+    /// Apply a numeric crop in image pixels.
+    std::function<void(int x, int y, int w, int h)> numericCrop;
+    /// Step one frame. Negative moves backward.
+    std::function<void(int)> stepFrame;
+    /// Start or stop frame playback.
+    std::function<void()> togglePlay;
+    /// Set a free zoom factor in view pixels per image pixel.
+    std::function<void(double)> setScale;
+    /// Read this repository's releases. Not on the cold-start path.
+    std::function<void()> checkUpdate;
+};
+
+/// Values the expert panel shows for the open picture.
+struct LiveView {
+    /// View pixels per image pixel.
+    double scale = 1.0;
+    /// Current zoom mode.
+    ZoomMode mode = ZoomMode::Fit;
+    /// Crop origin and size in image pixels. Zero size means the whole picture.
+    int cropX = 0;
+    int cropY = 0;
+    int cropW = 0;
+    int cropH = 0;
+    /// Quarter-turns clockwise from the file, 0–270.
+    int rotation = 0;
+    /// Zero-based frame index.
+    int frame = 0;
+    /// Frame count. 1 for a still picture.
+    int frameCount = 1;
+    /// One-line file facts.
+    QString info;
+    /// Colour profile name, or empty.
+    QString profile;
 };
 
 /// Toolbar, menus, settings, and the thumbnail strip.
@@ -86,8 +120,22 @@ public:
     void setCurrent(int index);
     /// Open the image context menu at `globalPos`.
     void contextMenu(const QPoint &globalPos);
-    /// Height reserved for the thumbnail strip, or 0 when it is hidden.
+    /// Height reserved for the thumbnail strip, or 0 when it is hidden or collapsed.
     int galleryHeight() const;
+    /// Rectangle the picture occupies. The expert panel is not included.
+    QRect resultRect() const;
+    /// Push live zoom, crop, frames, and info into the expert panel.
+    void setLive(const LiveView &live);
+    /// A zoom change that did not come from a preset chip.
+    void noteZoom(ZoomMode mode, double scale);
+    /// Reload catalog strings.
+    void retranslate();
+    /// Write the host geometry into the app settings file.
+    void saveGeometry();
+    /// Export suffix from the expert panel: avif, jxl, or webp.
+    QString exportSuffix() const;
+    /// Export quality from the expert panel, 1–100.
+    int exportQuality() const;
     /// Decode thumbnails ahead of a screenshot or a test.
     void prepareShots();
     /// Open the settings dialog.
@@ -102,6 +150,28 @@ public:
     void reveal();
 
 private:
+    void loadPresets();
+    void persistState();
+    void persistFlag(const std::string &key, const Json &value);
+    bool panelOpen() const;
+    void buildBar();
+    void buildPresets();
+    void buildExpert();
+    void buildStatus();
+    void buildCompare();
+    void refreshChips();
+    void refreshExpert();
+    void chooseChip(const QString &id);
+    void resetView();
+    void applyZoom();
+    void commitZoomSpin();
+    void commitCombo(QComboBox *box, const char *key);
+    void resizeExpert(int delta);
+    void startJob();
+    void readJob();
+    void finishJob(int code);
+    void cancelJob();
+    void setExpert(bool enabled);
     void openFile();
     void openMenu();
     void openSettings();

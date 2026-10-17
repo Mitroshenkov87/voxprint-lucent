@@ -12,12 +12,24 @@
 namespace lucent {
 namespace {
 
-QString applyTokens(QString sheet, const QJsonObject &tokens) {
-    const QString accent = tokens.value(QStringLiteral("ACCENT")).toString();
+QJsonObject colourMap(const QJsonObject &document) {
+    const QJsonObject colours = document.value(QStringLiteral("colors")).toObject();
+    return colours.isEmpty() ? document : colours;
+}
+
+QString applyTokens(QString sheet, const QJsonObject &document) {
+    const QJsonObject colours = colourMap(document);
+    const QString accent = colours.value(QStringLiteral("ACCENT")).toString();
     sheet.replace(QStringLiteral("@SPLASH@"), accent);
     sheet.replace(QStringLiteral("@TEXT_ON_SELECTION@"), QStringLiteral("#ffffff"));
-    for (auto it = tokens.constBegin(); it != tokens.constEnd(); ++it) {
-        sheet.replace(QStringLiteral("@") + it.key() + QStringLiteral("@"), it.value().toString());
+    for (auto it = colours.constBegin(); it != colours.constEnd(); ++it) {
+        if (it.value().isString()) {
+            sheet.replace(QStringLiteral("@") + it.key() + QStringLiteral("@"), it.value().toString());
+        }
+    }
+    const QJsonObject density = document.value(QStringLiteral("density")).toObject();
+    for (auto it = density.constBegin(); it != density.constEnd(); ++it) {
+        sheet.replace(QStringLiteral("@") + it.key().toUpper() + QStringLiteral("@"), QString::number(it.value().toInt()));
     }
     return sheet;
 }
@@ -66,7 +78,7 @@ QColor rootPlain() {
         return QColor(0x17, 0x17, 0x1c);
     }
     const QJsonObject tokens = QJsonDocument::fromJson(tokensFile.readAll()).object();
-    const QColor colour(tokens.value(QStringLiteral("ROOT_PLAIN")).toString());
+    const QColor colour(colourMap(tokens).value(QStringLiteral("ROOT_PLAIN")).toString());
     return colour.isValid() ? colour : QColor(0x17, 0x17, 0x1c);
 }
 

@@ -1,88 +1,29 @@
-/* Lucent stylesheet. Colour names are filled from share/tokens.json.
-   The splash border is this app's accent. Selection text is white. */
-QWidget#lucent-window {
+/* Lucent stylesheet. Colour names and density come from share/tokens.json schema 1.
+   Plain chrome uses *_PLAIN. Glass tokens are not used for this window. */
+QWidget#shell, QWidget#lucent-window {
     background-color: @ROOT_PLAIN@;
     color: @TEXT@;
-    border: 2px solid @SPLASH@;
+    font-family: "Segoe UI Variable Text", "Segoe UI", Ubuntu, "Noto Sans", Cantarell, "DejaVu Sans", sans-serif;
+    font-size: @BODY_PX@px;
 }
 QWidget {
     background-color: @ROOT_PLAIN@;
     color: @TEXT@;
-    font-size: 13px;
+    font-size: @BODY_PX@px;
 }
 QLabel {
     color: @TEXT@;
     background: transparent;
 }
-QLabel#muted {
+QLabel#muted, QLabel#status, QLabel#presetLabel, QLabel#emptyHint, QLabel#expertChip {
     color: @TEXT_MUTED@;
 }
 QLabel#faint {
     color: @TEXT_FAINT@;
 }
-QPushButton {
-    background-color: @CONTROL_BG@;
+QLabel#progressText, QLabel#blockedText, QLabel#featureText {
     color: @TEXT@;
-    border: 1px solid @CONTROL_BORDER@;
-    border-radius: 6px;
-    padding: 6px 12px;
-}
-QPushButton:hover {
-    background-color: @CONTROL_HOVER@;
-}
-QPushButton:disabled {
-    color: @TEXT_DISABLED@;
-}
-QPushButton#primary {
-    background-color: @PRIMARY@;
-    color: @TEXT_ON_PRIMARY@;
-    border: 1px solid @PRIMARY_BORDER@;
-    font-weight: 600;
-}
-QPushButton#primary:hover {
-    background-color: @PRIMARY_HOVER@;
-}
-QPushButton#primary:disabled {
-    background-color: @PRIMARY_DISABLED_BG@;
-    color: @PRIMARY_DISABLED_TEXT@;
-}
-QLineEdit, QComboBox, QSpinBox {
-    background-color: @CONTROL_BG@;
-    color: @TEXT@;
-    border: 1px solid @CONTROL_BORDER@;
-    border-radius: 4px;
-    padding: 4px 8px;
-    selection-background-color: @ACCENT_STRONG@;
-    selection-color: @TEXT_ON_SELECTION@;
-}
-QLineEdit:hover, QComboBox:hover {
-    background-color: @CONTROL_HOVER@;
-}
-QMenu, QComboBox QAbstractItemView, QListView {
-    background-color: @MENU_BG@;
-    color: @TEXT@;
-    border: 1px solid @CONTROL_BORDER@;
-    selection-background-color: @MENU_SELECTION@;
-    selection-color: @TEXT_ON_SELECTION@;
-}
-QCheckBox::indicator:checked, QSlider::handle {
-    background-color: @ACCENT@;
-}
-QCheckBox::indicator:hover, QSlider::handle:hover {
-    background-color: @ACCENT_HOVER@;
-}
-QProgressBar::chunk {
-    background-color: @ACCENT_STRONG@;
-}
-QFrame#card {
-    background-color: @CARD_PLAIN@;
-    border: 1px solid @CONTROL_BORDER@;
-    border-radius: 8px;
-}
-QFrame#note {
-    background-color: @NOTE_BG@;
-    border: 1px solid @NOTE_BORDER@;
-    color: @AMBER@;
+    font-size: 15px;
 }
 QLabel#ok {
     color: @GREEN@;
@@ -93,4 +34,131 @@ QLabel#error {
 QLabel#on-accent {
     color: @TEXT_ON_ACCENT@;
     background-color: @ACCENT@;
+}
+QFrame#stage, QFrame#expertPanel, QFrame#settingsSheet, QFrame#card {
+    background-color: @CARD_PLAIN@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    border-radius: 8px;
+}
+QFrame#note {
+    background-color: @NOTE_BG@;
+    border: @BORDER_PX@px solid @NOTE_BORDER@;
+    color: @AMBER@;
+}
+QFrame#splitLine {
+    background-color: @CONTROL_BORDER@;
+    border: none;
+}
+QFrame#splitLine[hot="true"] {
+    background-color: @ACCENT@;
+}
+QPushButton {
+    background-color: @CONTROL_BG@;
+    color: @TEXT@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    border-radius: @CONTROL_RADIUS_PX@px;
+    padding: 6px 12px;
+}
+QPushButton:hover {
+    background-color: @CONTROL_HOVER@;
+}
+QPushButton:disabled {
+    color: @TEXT_DISABLED@;
+}
+QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QAbstractSpinBox:focus {
+    border: @FOCUS_RING_PX@px solid @ACCENT@;
+}
+QPushButton#generate, QPushButton#primary {
+    background-color: @PRIMARY@;
+    color: @TEXT_ON_PRIMARY@;
+    border: @BORDER_PX@px solid @PRIMARY_BORDER@;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+}
+QPushButton#primary:hover, QPushButton#generate:hover {
+    background-color: @PRIMARY_HOVER@;
+}
+QPushButton#primary:disabled, QPushButton#generate:disabled {
+    background-color: @PRIMARY_DISABLED_BG@;
+    color: @PRIMARY_DISABLED_TEXT@;
+}
+QPushButton[chip="true"] {
+    background-color: @CONTROL_BG@;
+    color: @TEXT@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    border-radius: 15px;
+    padding: 4px 12px;
+    min-width: 156px;
+}
+QPushButton[chip="true"]:checked {
+    background-color: @PRIMARY@;
+    color: @TEXT_ON_PRIMARY@;
+    border: @BORDER_PX@px solid @PRIMARY_BORDER@;
+}
+QPushButton[chip="true"][available="false"] {
+    background-color: @PRIMARY_DISABLED_BG@;
+    color: @PRIMARY_DISABLED_TEXT@;
+}
+QPushButton[thumb="true"] {
+    background-color: @CARD_PLAIN@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    border-radius: 4px;
+    padding: 0;
+}
+QPushButton[thumb="true"]:checked {
+    border: 2px solid @PRIMARY@;
+}
+QPlainTextEdit, QLineEdit, QSpinBox, QComboBox {
+    background-color: @CONTROL_BG@;
+    color: @TEXT@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    border-radius: @CONTROL_RADIUS_PX@px;
+    padding: 4px 8px;
+    selection-background-color: @ACCENT@;
+    selection-color: @TEXT_ON_ACCENT@;
+}
+QLineEdit:hover, QComboBox:hover, QSpinBox:hover {
+    background-color: @CONTROL_HOVER@;
+}
+QMenu, QComboBox QAbstractItemView, QListView {
+    background-color: @MENU_BG@;
+    color: @TEXT@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    selection-background-color: @MENU_SELECTION@;
+    selection-color: @TEXT_ON_SELECTION@;
+}
+QMenu::item:selected {
+    background-color: @MENU_SELECTION@;
+}
+QCheckBox::indicator:checked, QSlider::handle {
+    background-color: @ACCENT@;
+}
+QCheckBox::indicator:hover, QSlider::handle:hover {
+    background-color: @ACCENT_HOVER@;
+}
+QProgressBar#progress {
+    background-color: @CONTROL_BG@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    border-radius: @CONTROL_RADIUS_PX@px;
+    text-align: center;
+    color: @TEXT@;
+}
+QProgressBar#progress::chunk {
+    background-color: @PRIMARY@;
+}
+QProgressBar::chunk {
+    background-color: @PRIMARY@;
+}
+QWidget#paletteRow[selected="true"] {
+    background-color: @ACCENT@;
+    color: @TEXT_ON_ACCENT@;
+}
+QScrollBar:horizontal {
+    height: 8px;
+    background: @ROOT_PLAIN@;
+}
+QScrollBar::handle:horizontal {
+    background: @CONTROL_BORDER@;
+    border-radius: 4px;
 }

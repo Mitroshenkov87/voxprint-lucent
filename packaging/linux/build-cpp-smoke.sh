@@ -17,6 +17,12 @@ c++ -std=c++20 -I "$ROOT/cpp/src" \
     -o /tmp/tone_curve_test
 /tmp/tone_curve_test
 
+c++ -std=c++20 -pthread -I "$ROOT/cpp/src" \
+    "$ROOT/cpp/src/shell_logic.cpp" \
+    "$ROOT/cpp/tests/shell_logic_test.cpp" \
+    -o /tmp/shell_logic_test
+/tmp/shell_logic_test "$ROOT/tests/fixtures/shell"
+
 QT_VERSION=6.12.0
 QT_ROOT=${RUNNER_TEMP:-/tmp}/lucent-qt
 QT_PREFIX="$QT_ROOT/$QT_VERSION/gcc_64"

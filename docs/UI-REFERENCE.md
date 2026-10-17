@@ -1,27 +1,31 @@
-# Viewer chrome reference
+# Viewer shell
 
-Lucent's window layout follows the public behaviour of [ImageGlass](https://imageglass.org/): a slim top toolbar, a right-click menu with the same commands plus clipboard and reveal, a bottom thumbnail strip for the current folder, and an app menu for settings, hotkeys, language, and about. The welcome picture opens when the app is started with no file.
+Lucent is the viewer variant of the shared VOXPrint shell. The picture is the result. There is no prompt and no primary action. Simple mode is the default.
 
-That reference is behaviour only. It comes from ImageGlass's public docs and screenshots, including the [app API list](https://imageglass.org/docs/app-apis) (open, next/previous, zoom modes, rotate, flip, crop, save, delete, slideshow, fullscreen, gallery, main menu) and the [theme-pack colour roles](https://imageglass.org/docs/theme-pack) for a toolbar and a gallery. No ImageGlass source, icons, themes, or assets were read or copied. ImageGlass is GPL-3.0. This repository is Apache-2.0.
+The window opens at 1200×900 the first time, and at a minimum of 640×400 after that. Later launches restore the last geometry, including maximized and fullscreen. Fullscreen and slideshow stay available from the overflow menu.
 
-## Clean-room rule
+## Simple mode
 
-Do not read or copy ImageGlass source, icons, themes, or assets. Toolbar icons are original drawings in `cpp/src/icons.cpp`, credited in `NOTICE`. The save family follows the suite artwork in `icons/` (22×22, 1.7 px stroke). The floppy-disk save mark is not used. Colours come from `share/tokens.json` (voxprint-common 0.1.0, "Yesod"). On Windows 11 the top-level window asks for an acrylic backdrop (`DWMWA_SYSTEMBACKDROP_TYPE`); other systems use the suite glass colour.
+A 40 px toolbar carries Open, Save, Previous, and Next. Under it, one row of preset chips reads Fit, 100%, and Enhance with Enlarge. The chips scroll sideways; they do not wrap. The picture fills everything left under that row.
 
-## What we matched, and the small differences
+Enhance with Enlarge writes scale 2 and Enlarge's `photo` preset, then runs the Enlarge command. When Enlarge is not installed the chip stays grey, with the reason and Install Enlarge. Choosing the grey chip does not write values.
 
-Toolbar order follows ImageGlass's public command groups: menu and open, previous and next, zoom modes, rotate and flip, crop, save, delete, slideshow, fullscreen, gallery, then Lucent's Enlarge hand-off and settings. The toolbar is shown at launch and hides until the pointer returns to the top edge.
+A drag on the picture still crops it. Previous and Next walk the folder.
 
-The context menu repeats those actions and adds copy image, copy path, and reveal in folder.
+The folder strip is 104 px tall with 88×88 thumbnails and an 8 px gap. It can be hidden. Hidden means it is absent. At the 640×400 minimum the strip collapses first, and that space returns to the picture.
 
-The thumbnail strip is on by default, toggleable, and decodes off the GUI thread only after the first image paint. It is not on the `--benchmark` path.
+While Enlarge is running, a 36 px row under the picture shows the step, the total, the stage, and Cancel. Time left appears only when Enlarge reports it. Cancel returns the viewer to idle and keeps the settings. After a finished job the picture offers Keep, Reveal, and Discard. Discard deletes only the enlarged file.
 
-Settings keeps the welcome image, the thumbnail strip, the slideshow interval, and the language. Hotkeys stay on Ctrl+K. Re-enabling the welcome image resets its counter to zero. The first three launches with no file show `share/welcome.avif`. The fourth does not.
+## Expert mode
 
-`share/splash.avif` is the attached splash artwork. The app name and version are drawn as text, not baked into the file. The splash is loaded off the GUI thread and is dismissed as soon as the image is presented, so it does not hold the first pixel. `--benchmark` never constructs it.
+Expert mode is a boolean in `suite.json`. The panel sits on the right of the picture only. It starts at 280 px, and the divider moves it between 220 and 420. Opening or resizing it shrinks the picture and leaves the toolbar, the chips, the status row, and the strip where they are.
 
-Save writes `<name>.saved.avif` beside the file. Save a copy writes `<name>-copy.avif`. Export writes `<name>.export.avif`. Download writes `<name>.avif` in the downloads folder. Save as offers AVIF, JPEG XL, and WebP. PNG is not an output. Each icon has a tooltip.
+The panel shows the live zoom, colour management and the profile, HDR tone-map, numeric crop and rotate, export format and quality, frames, and file info. Photographs and Drawings write Enlarge's `photo` or `art` value. Open in Enlarge hands the file to Enlarge's window. Copy, reveal, and trash live here. Trash asks before it moves the file.
 
-## Startup
+A hand edit of a chip's values reads "{name} + changes" while the stored choice is still close, and Custom when it is not. Reset restores that choice. The rule is the shared preset rule, applied to `share/presets/lucent.json`.
 
-`--benchmark` still constructs only `Viewer`. The interactive window creates the toolbar, menus, settings, and thumbnail strip in `armAfterFirstPaint`, after the first image is presented. The laptop gate for that warm tiny JPEG stays at 250 ms. The Ubuntu smoke job only records the sample. The v0.1.x cold first pixel is 450 ms.
+## Chrome
+
+Colours and the 2 px focus ring come from `share/tokens.json` schema 1, pinned to voxprint-common `f4e95ccfa25780abaf50412cb095a7843725102a`. The window uses the plain colours. Labels come from the shell catalogs (`share/locales`) and Lucent's own catalogs (`share/locales/lucent`, English, Russian, and German). A missing phrase falls back to English, then to the key.
+
+Lucent does not ship models, so it has no MDL dependency.

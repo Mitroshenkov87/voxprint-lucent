@@ -1,8 +1,7 @@
-"""Palette tokens from voxprint-common's ``tokens.json``.
+"""Palette tokens from the vendored voxprint-common ``tokens.json``.
 
-The vendored file is Yesod (voxprint-common 0.1.0). Splash colour and
-selection text are not suite tokens: the splash colour is this app's accent,
-and selection text is white, matching the suite stylesheet.
+Schema 1 stores colours, density, and splash identity. Chrome uses the plain
+colours. The splash border is this app's accent. Menu selection text is white.
 """
 
 from __future__ import annotations
@@ -31,17 +30,46 @@ def share_dir() -> Path:
     return candidates[0]
 
 
-def load_tokens(directory: Path | None = None) -> dict[str, str]:
-    """Read the vendored suite palette.
+def load_document(directory: Path | None = None) -> dict[str, object]:
+    """Read ``tokens.json``.
 
     Args:
         directory: Share directory. Defaults to :func:`share_dir`.
+
+    Raises:
+        TypeError: The file is not a JSON object.
+        ValueError: The schema is not 1.
     """
     path = (directory or share_dir()) / "tokens.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise TypeError(f"{path} must be a JSON object")
-    return {str(key): str(value) for key, value in data.items()}
+    if data.get("schema") != 1 or not isinstance(data.get("colors"), dict):
+        raise ValueError(f"{path} must be tokens schema 1")
+    return data
+
+
+def load_tokens(directory: Path | None = None) -> dict[str, str]:
+    """Read the plain colour map.
+
+    Args:
+        directory: Share directory. Defaults to :func:`share_dir`.
+    """
+    colours = load_document(directory)["colors"]
+    assert isinstance(colours, dict)
+    return {str(key): str(value) for key, value in colours.items()}
+
+
+def load_density(directory: Path | None = None) -> dict[str, int]:
+    """Read the density block, including the 2 px focus ring.
+
+    Args:
+        directory: Share directory. Defaults to :func:`share_dir`.
+    """
+    block = load_document(directory).get("density")
+    if not isinstance(block, dict):
+        raise ValueError("tokens.json is missing density")
+    return {str(key): int(value) for key, value in block.items()}
 
 
 _TOKENS = load_tokens()
@@ -126,6 +154,8 @@ def render_stylesheet(directory: Path | None = None) -> str:
     values = load_tokens(folder)
     values["SPLASH"] = values["ACCENT"]
     values["TEXT_ON_SELECTION"] = SELECTION_TEXT
+    for name, value in load_density(folder).items():
+        values[name.upper()] = str(value)
     sheet = (folder / "lucent.qss.in").read_text(encoding="utf-8")
     for name, value in values.items():
         sheet = sheet.replace(f"@{name}@", value)

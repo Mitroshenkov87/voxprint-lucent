@@ -1,0 +1,17 @@
+{
+  "schema": "voxprint-presets/1",
+  "groups": [
+    {
+      "id": "bad",
+      "label_key": "simple.quality",
+      "default": "no",
+      "options": [
+        {
+          "id": "no",
+          "label_key": "simple.quality.fast",
+          "values": {"safety.minor": "no"}
+        }
+      ]
+    }
+  ]
+}

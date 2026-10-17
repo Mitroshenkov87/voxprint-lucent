@@ -1,0 +1,42 @@
+{
+  "schema": "voxprint-presets/1",
+  "groups": [
+    {
+      "id": "view",
+      "label_key": "simple.preset.view",
+      "default": "fit",
+      "options": [
+        {
+          "id": "fit",
+          "label_key": "simple.viewer.fit",
+          "values": {
+            "viewer.zoom": "fit",
+            "enlarge.scale": 0,
+            "enlarge.preset": ""
+          }
+        },
+        {
+          "id": "full",
+          "label_key": "simple.viewer.full",
+          "values": {
+            "viewer.zoom": "100",
+            "enlarge.scale": 0,
+            "enlarge.preset": ""
+          }
+        },
+        {
+          "id": "enhance",
+          "label_key": "lucent.viewer.enhance",
+          "reason_key": "simple.viewer.enhance.reason",
+          "action_label_key": "simple.output.install",
+          "action_id": "install.enlarge",
+          "values": {
+            "viewer.zoom": "fit",
+            "enlarge.scale": 2,
+            "enlarge.preset": "photo"
+          }
+        }
+      ]
+    }
+  ]
+}
