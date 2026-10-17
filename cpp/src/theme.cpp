@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QScrollBar>
 
 namespace lucent {
 namespace {
@@ -73,15 +74,38 @@ QString loadStyleSheet() {
     return applyTokens(QString::fromUtf8(templateFile.readAll()), tokens);
 }
 
-QColor rootPlain() {
+QColor tokenColour(const QString &key, const QColor &fallback) {
     const QString share = findShareDir();
     QFile tokensFile(share + QStringLiteral("/tokens.json"));
     if (!tokensFile.open(QIODevice::ReadOnly)) {
-        return QColor(0x17, 0x17, 0x1c);
+        return fallback;
     }
     const QJsonObject tokens = QJsonDocument::fromJson(tokensFile.readAll()).object();
-    const QColor colour(colourMap(tokens).value(QStringLiteral("ROOT_PLAIN")).toString());
-    return colour.isValid() ? colour : QColor(0x17, 0x17, 0x1c);
+    const QColor colour(colourMap(tokens).value(key).toString());
+    return colour.isValid() ? colour : fallback;
+}
+
+QColor rootPlain() {
+    return tokenColour(QStringLiteral("ROOT_PLAIN"), QColor(0x17, 0x17, 0x1c));
+}
+
+void polishScrollBar(QScrollBar *bar) {
+    if (bar == nullptr || bar->objectName().isEmpty()) {
+        return;
+    }
+    const QString name = bar->objectName();
+    const QString root = rootPlain().name(QColor::HexRgb);
+    const QString handle = tokenColour(QStringLiteral("CONTROL_BORDER"), QColor(0x4b, 0x4b, 0x5c)).name(QColor::HexRgb);
+    const bool vertical = bar->orientation() == Qt::Vertical;
+    const QString axis = vertical ? QStringLiteral("vertical") : QStringLiteral("horizontal");
+    const QString thickness = vertical ? QStringLiteral("width: 8px;") : QStringLiteral("height: 8px;");
+    const QString minimum = vertical ? QStringLiteral("min-height: 24px;") : QStringLiteral("min-width: 24px;");
+    bar->setStyleSheet(QStringLiteral(
+                            "QScrollBar#%1:%2 { background: %3; %4 margin: 0; border: none; }"
+                            "QScrollBar#%1::handle:%2 { background: %5; border-radius: 4px; %6 }"
+                            "QScrollBar#%1::add-line:%2, QScrollBar#%1::sub-line:%2 { width: 0; height: 0; background: %3; border: none; }"
+                            "QScrollBar#%1::add-page:%2, QScrollBar#%1::sub-page:%2 { background: %3; }")
+                            .arg(name, axis, root, thickness, handle, minimum));
 }
 
 }  // namespace lucent

@@ -3,6 +3,8 @@
 
 #include "gallery.h"
 
+#include "theme.h"
+
 #include <QButtonGroup>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -12,6 +14,7 @@
 #include <QPointer>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QVBoxLayout>
 
 #include <thread>
@@ -37,6 +40,10 @@ Gallery::Gallery(QWidget *parent) : QWidget(parent) {
     setObjectName(QStringLiteral("history"));
     setFixedHeight(104);
     auto *scroll = new QScrollArea(this);
+    scroll->setObjectName(QStringLiteral("historyScroll"));
+    scroll->viewport()->setObjectName(QStringLiteral("historyViewport"));
+    scroll->horizontalScrollBar()->setObjectName(QStringLiteral("historyBar"));
+    polishScrollBar(scroll->horizontalScrollBar());
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setWidgetResizable(true);
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);

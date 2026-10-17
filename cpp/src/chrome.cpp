@@ -5,6 +5,7 @@
 
 #include "dry_run.h"
 #include "gallery.h"
+#include "hotkeys.h"
 #include "labels.h"
 #include "lucent_build.h"
 #include "phrases.h"
@@ -42,7 +43,9 @@
 #include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QScreen>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QSettings>
 #include <QSpinBox>
 #include <QTimer>
@@ -83,6 +86,28 @@ void saveGrab(QWidget *widget, const QString &name) {
         return;
     }
     widget->grab().save(shotDir() + QLatin1Char('/') + name + QStringLiteral(".png"));
+    QTimer::singleShot(0, qApp, &QApplication::quit);
+}
+
+void saveScreen(QWidget *window, QWidget *popup, const QString &name) {
+    if (window == nullptr) {
+        return;
+    }
+    QScreen *screen = window->screen();
+    if (screen == nullptr) {
+        screen = QGuiApplication::primaryScreen();
+    }
+    if (screen == nullptr) {
+        return;
+    }
+    const QPixmap shot = screen->grabWindow(0);
+    QRect bounds = window->frameGeometry();
+    if (popup != nullptr && popup->isVisible()) {
+        bounds = bounds.united(popup->frameGeometry());
+    }
+    const QRect local = bounds.translated(-screen->geometry().topLeft());
+    shot.copy(local.intersected(QRect(QPoint(0, 0), shot.size())))
+        .save(shotDir() + QLatin1Char('/') + name + QStringLiteral(".png"));
     QTimer::singleShot(0, qApp, &QApplication::quit);
 }
 
@@ -489,6 +514,10 @@ void Chrome::buildPresets() {
     outer->setContentsMargins(0, 0, 0, 0);
     outer->setSpacing(8);
     auto *scroll = new QScrollArea(impl_->presetRow);
+    scroll->setObjectName(QStringLiteral("presetScroll"));
+    scroll->viewport()->setObjectName(QStringLiteral("presetViewport"));
+    scroll->verticalScrollBar()->setObjectName(QStringLiteral("presetBar"));
+    polishScrollBar(scroll->verticalScrollBar());
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setWidgetResizable(true);
     scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -519,6 +548,10 @@ void Chrome::buildExpert() {
     impl_->expert = new QFrame(impl_->host);
     impl_->expert->setObjectName(QStringLiteral("expertPanel"));
     auto *scroll = new QScrollArea(impl_->expert);
+    scroll->setObjectName(QStringLiteral("expertScroll"));
+    scroll->viewport()->setObjectName(QStringLiteral("expertViewport"));
+    scroll->verticalScrollBar()->setObjectName(QStringLiteral("expertBar"));
+    polishScrollBar(scroll->verticalScrollBar());
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
     auto *formHost = new QWidget(scroll);
@@ -1586,11 +1619,19 @@ void Chrome::openMenu() {
             impl_->cb.checkUpdate();
         }
     });
-    if (qgetenv("LUCENT_SCREENSHOT") == "menu") {
+    if (qgetenv("LUCENT_SCREENSHOT") == "menu" || qgetenv("LUCENT_SCREENSHOT") == "overflow") {
+        menu.setObjectName(QStringLiteral("overflowMenu"));
         menu.popup(impl_->bar->mapToGlobal(QPoint(impl_->bar->width() - 120, impl_->bar->height())));
-        QTimer::singleShot(150, &menu, [&menu] { saveGrab(&menu, QStringLiteral("menu")); });
+        const bool wholeWindow = qgetenv("LUCENT_SCREENSHOT") == "overflow";
+        QTimer::singleShot(250, &menu, [this, &menu, wholeWindow] {
+            if (wholeWindow) {
+                saveScreen(impl_->host, &menu, QStringLiteral("overflow"));
+            } else {
+                saveGrab(&menu, QStringLiteral("menu"));
+            }
+        });
         QEventLoop loop;
-        QTimer::singleShot(800, &loop, &QEventLoop::quit);
+        QTimer::singleShot(900, &loop, &QEventLoop::quit);
         loop.exec();
         return;
     }
@@ -1725,8 +1766,10 @@ void Chrome::prepareShots() {
         QTimer::singleShot(200, impl_->host, [this] {
             contextMenu(impl_->host->mapToGlobal(QPoint(impl_->host->width() / 3, impl_->host->height() / 3)));
         });
-    } else if (mode == "menu") {
-        QTimer::singleShot(200, impl_->host, [this] { openMenu(); });
+    } else if (mode == "menu" || mode == "overflow") {
+        QTimer::singleShot(400, impl_->host, [this] { openMenu(); });
+    } else if (mode == "hotkeys") {
+        QTimer::singleShot(400, impl_->host, [this] { editHotkeys(impl_->host); });
     } else if (mode == "settings") {
         QTimer::singleShot(200, impl_->host, [this] { openSettings(); });
     } else if (mode == "welcome") {

@@ -162,3 +162,66 @@ QScrollBar::handle:horizontal {
     background: @CONTROL_BORDER@;
     border-radius: 4px;
 }
+/* Scroll areas, the hotkey list, and the info line keep the dark surface.
+   Qt otherwise paints their viewport and vertical bar in the light palette. */
+QScrollArea#expertScroll, QScrollArea#presetScroll, QScrollArea#historyScroll {
+    background-color: @ROOT_PLAIN@;
+    border: none;
+}
+QWidget#expertViewport, QWidget#presetViewport, QWidget#historyViewport, QWidget#hotkeyViewport {
+    background-color: @ROOT_PLAIN@;
+    color: @TEXT@;
+}
+QListWidget#hotkeyList {
+    background-color: @CONTROL_BG@;
+    color: @TEXT@;
+    border: @BORDER_PX@px solid @CONTROL_BORDER@;
+    outline: none;
+}
+QLabel#status {
+    background-color: @ROOT_PLAIN@;
+}
+QMenu#overflowMenu {
+    background-color: @MENU_BG@;
+    color: @TEXT@;
+}
+QScrollBar#expertBar:vertical, QScrollBar#presetBar:vertical, QScrollBar#hotkeyBar:vertical {
+    background: @ROOT_PLAIN@;
+    width: 8px;
+    margin: 0;
+    border: none;
+}
+QScrollBar#expertBar::handle:vertical, QScrollBar#presetBar::handle:vertical, QScrollBar#hotkeyBar::handle:vertical {
+    background: @CONTROL_BORDER@;
+    min-height: 24px;
+    border-radius: 4px;
+}
+QScrollBar#expertBar::add-line:vertical, QScrollBar#expertBar::sub-line:vertical,
+QScrollBar#presetBar::add-line:vertical, QScrollBar#presetBar::sub-line:vertical,
+QScrollBar#hotkeyBar::add-line:vertical, QScrollBar#hotkeyBar::sub-line:vertical {
+    height: 0;
+    width: 0;
+    background: @ROOT_PLAIN@;
+    border: none;
+}
+QScrollBar#expertBar::add-page:vertical, QScrollBar#expertBar::sub-page:vertical,
+QScrollBar#presetBar::add-page:vertical, QScrollBar#presetBar::sub-page:vertical,
+QScrollBar#hotkeyBar::add-page:vertical, QScrollBar#hotkeyBar::sub-page:vertical {
+    background: @ROOT_PLAIN@;
+}
+QScrollBar#historyBar:horizontal {
+    height: 8px;
+    background: @ROOT_PLAIN@;
+    border: none;
+}
+QScrollBar#historyBar::handle:horizontal {
+    background: @CONTROL_BORDER@;
+    border-radius: 4px;
+    min-width: 24px;
+}
+QScrollBar#historyBar::add-line:horizontal, QScrollBar#historyBar::sub-line:horizontal {
+    width: 0;
+    height: 0;
+    background: @ROOT_PLAIN@;
+    border: none;
+}

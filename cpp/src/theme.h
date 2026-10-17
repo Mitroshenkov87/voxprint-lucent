@@ -6,6 +6,8 @@
 #include <QColor>
 #include <QString>
 
+class QScrollBar;
+
 namespace lucent {
 
 /// Directory that holds tokens.json and the stylesheet template.
@@ -16,5 +18,8 @@ QString loadStyleSheet();
 
 /// Window background colour from the ROOT_PLAIN token.
 QColor rootPlain();
+
+/// Paint `bar` with the dark tokens. Qt ignores a QScrollBar rule that lives only on an ancestor.
+void polishScrollBar(QScrollBar *bar);
 
 }  // namespace lucent
