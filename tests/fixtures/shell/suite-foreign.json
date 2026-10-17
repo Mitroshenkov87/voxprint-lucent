@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "ui_language": "de",
+  "gpu": "auto",
+  "ui.expert_mode": false,
+  "keymap": {"schema": 1, "assigned": [], "removed": []}
+}

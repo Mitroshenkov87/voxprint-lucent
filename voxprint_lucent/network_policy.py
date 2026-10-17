@@ -8,9 +8,13 @@ user opts in. Nothing here runs while an image is opening.
 from __future__ import annotations
 
 import json
+import os
 import re
+import sys
+import urllib.error
 import urllib.request
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from voxprint_lucent import __version__
@@ -18,6 +22,8 @@ from voxprint_lucent import __version__
 # Public releases collection. No query string, so it cannot carry a usage token.
 # /releases/latest hides pre-releases, so the check reads this list instead.
 RELEASES_FEED_URL = "https://api.github.com/repos/Mitroshenkov87/voxprint-lucent/releases"
+ENLARGE_RELEASES_FEED_URL = "https://api.github.com/repos/Mitroshenkov87/voxprint-enlarge/releases"
+_ENLARGE_DOWNLOAD_PREFIX = "https://github.com/Mitroshenkov87/voxprint-enlarge/releases/download/"
 
 # Product name only. No version, OS, locale, or install id.
 UPDATE_USER_AGENT = "VoxprintAILucent"
@@ -112,13 +118,12 @@ def choose_update(current: str, releases: list[dict[str, Any]]) -> dict[str, Any
     }
 
 
-def fetch_releases() -> list[dict[str, Any]]:
-    """GET the public releases list. No query string and no identifiers."""
-    request = update_check_request()
+def _fetch_release_list(url: str) -> list[dict[str, Any]]:
+    """GET a public releases list. No query string and no identifiers."""
     outgoing = urllib.request.Request(
-        request["url"],
-        headers={"User-Agent": request["user_agent"], "Accept": request["accept"]},
-        method=request["method"],
+        url,
+        headers={"User-Agent": UPDATE_USER_AGENT, "Accept": "application/vnd.github+json"},
+        method="GET",
     )
     try:
         with urllib.request.urlopen(outgoing, timeout=15) as response:
@@ -128,6 +133,120 @@ def fetch_releases() -> list[dict[str, Any]]:
     if not isinstance(payload, list):
         raise UpdateCheckError("releases feed was not a list")
     return [item for item in payload if isinstance(item, dict)]
+
+
+def fetch_releases() -> list[dict[str, Any]]:
+    """GET this repository's public releases list."""
+    return _fetch_release_list(RELEASES_FEED_URL)
+
+
+def enlarge_asset_name(platform: str | None = None) -> str | None:
+    """Installer file published for this operating system, if Enlarge ships one."""
+    system = sys.platform if platform is None else platform
+    if system == "win32":
+        return "VoxprintEnlarge-Setup.exe"
+    if system == "linux":
+        return "voxprint-enlarge-linux-x64.tar.gz"
+    return None
+
+
+def choose_enlarge_package(
+    releases: list[dict[str, Any]], platform: str | None = None
+) -> dict[str, Any] | None:
+    """Newest Enlarge release asset for `platform`.
+
+    The download URL has to stay on the Enlarge releases host. A missing size
+    is reported as 0 so the confirm dialog can omit it.
+    """
+    name = enlarge_asset_name(platform)
+    if name is None:
+        return None
+    for item in releases:
+        if item.get("draft"):
+            continue
+        assets = item.get("assets")
+        if not isinstance(assets, list):
+            continue
+        for asset in assets:
+            if not isinstance(asset, dict) or asset.get("name") != name:
+                continue
+            url = asset.get("browser_download_url")
+            if not isinstance(url, str) or not url.startswith(_ENLARGE_DOWNLOAD_PREFIX):
+                continue
+            size = asset.get("size")
+            reported = size if isinstance(size, int) and size > 0 else 0
+            tag = item.get("tag_name")
+            return {
+                "name": name,
+                "bytes": reported,
+                "url": url,
+                "tag": tag if isinstance(tag, str) else "",
+            }
+    return None
+
+
+def enlarge_package(platform: str | None = None) -> dict[str, Any] | None:
+    """Release metadata for the Enlarge package, or None when it is not listed."""
+    return choose_enlarge_package(_fetch_release_list(ENLARGE_RELEASES_FEED_URL), platform)
+
+
+def install_enlarge_package(dest_dir: Path) -> int:
+    """Download the Enlarge release package into `dest_dir` and print progress lines.
+
+    Progress is JSON on stdout, the same shape the viewer already reads. Cancel
+    is the process being killed. A failed download removes the partial file.
+    """
+    try:
+        package = enlarge_package()
+    except UpdateCheckError as exc:
+        print(json.dumps({"type": "error", "message": str(exc)}), flush=True)
+        return 1
+    if package is None:
+        print(json.dumps({"type": "error", "message": "no package"}), flush=True)
+        return 1
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / str(package["name"])
+    partial = dest.with_name(dest.name + ".partial")
+    total = int(package["bytes"])
+    print(
+        json.dumps({"type": "meta", "bytes": total, "path": str(dest), "partial": str(partial)}),
+        flush=True,
+    )
+    request = urllib.request.Request(
+        str(package["url"]),
+        headers={"User-Agent": UPDATE_USER_AGENT},
+        method="GET",
+    )
+    got = 0
+    next_pct = 0
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response, partial.open("wb") as out:
+            header = response.headers.get("Content-Length")
+            if total <= 0 and isinstance(header, str) and header.isdigit():
+                total = int(header)
+            while True:
+                chunk = response.read(256 * 1024)
+                if not chunk:
+                    break
+                out.write(chunk)
+                got += len(chunk)
+                if total > 0:
+                    pct = min(100, got * 100 // total)
+                    if pct >= next_pct:
+                        line = json.dumps({"type": "progress", "stage": "download", "pct": pct})
+                        print(line, flush=True)
+                        next_pct = pct + 1
+                else:
+                    print(json.dumps({"type": "progress", "stage": "download"}), flush=True)
+            out.flush()
+            os.fsync(out.fileno())
+    except (OSError, urllib.error.URLError) as exc:
+        partial.unlink(missing_ok=True)
+        print(json.dumps({"type": "error", "message": str(exc)}), flush=True)
+        return 1
+    partial.replace(dest)
+    print(json.dumps({"type": "done", "path": str(dest), "pct": 100}), flush=True)
+    return 0
 
 
 def check_for_update(current: str | None = None) -> dict[str, Any] | None:

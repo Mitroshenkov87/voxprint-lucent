@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -62,17 +61,23 @@ def test_stylesheet_uses_dark_ground_and_splash() -> None:
     assert PRIMARY in sheet
     assert SPLASH in sheet
     assert SPLASH == "#60a5fa"
+    assert "QWidget#shell" in sheet
     assert "lucent-window" in sheet
+    assert "2px solid #60a5fa" in sheet
     assert "@SPLASH@" not in sheet
     assert "@ROOT_PLAIN@" not in sheet
+    assert "@FOCUS_RING_PX@" not in sheet
 
 
-def test_vendored_tokens_match_yesod() -> None:
+def test_vendored_tokens_match_the_pin() -> None:
     pin = json.loads(Path("share/tokens.pin.json").read_text(encoding="utf-8"))
     body = Path("share/tokens.json").read_bytes()
-    assert pin["version"] == "0.1.0"
-    assert pin["codename"] == "Yesod"
-    assert hashlib.sha256(body).hexdigest() == pin["sha256"]
+    assert pin["package"] == "voxprint-common"
+    assert pin["tag"] == "v0.2.5"
+    assert pin["commit"] == "8a94b531cb4f3526425a80a86a1e64624b5de606"
     tokens = json.loads(body)
-    assert "SPLASH" not in tokens
+    assert tokens["schema"] == 1
+    assert "SPLASH" not in tokens["colors"]
+    assert tokens["density"]["focus_ring_px"] == 2
+    assert len(body) > 0
     assert "palette.json" not in {path.name for path in Path("share").iterdir()}

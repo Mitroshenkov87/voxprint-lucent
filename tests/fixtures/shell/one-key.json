@@ -1,0 +1,22 @@
+{
+  "schema": "voxprint-presets/1",
+  "groups": [
+    {
+      "id": "zoom",
+      "label_key": "simple.preset.view",
+      "default": "fit",
+      "options": [
+        {
+          "id": "fit",
+          "label_key": "simple.viewer.fit",
+          "values": {"viewer.zoom": "fit"}
+        },
+        {
+          "id": "full",
+          "label_key": "simple.viewer.full",
+          "values": {"viewer.zoom": "100"}
+        }
+      ]
+    }
+  ]
+}

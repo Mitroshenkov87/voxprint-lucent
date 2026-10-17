@@ -1,0 +1,78 @@
+{
+  "schema": "voxprint-presets/1",
+  "groups": [
+    {
+      "id": "view",
+      "label_key": "simple.preset.view",
+      "default": "fit",
+      "options": [
+        {
+          "id": "fit",
+          "label_key": "simple.viewer.fit",
+          "values": {
+            "viewer.zoom": "fit"
+          }
+        },
+        {
+          "id": "fill",
+          "label_key": "lucent.action.fill",
+          "values": {
+            "viewer.zoom": "fill"
+          }
+        },
+        {
+          "id": "full",
+          "label_key": "simple.viewer.full",
+          "values": {
+            "viewer.zoom": "100"
+          }
+        }
+      ]
+    },
+    {
+      "id": "enhance",
+      "label_key": "lucent.preset.enhance",
+      "default": "off",
+      "options": [
+        {
+          "id": "off",
+          "label_key": "lucent.hdr.off",
+          "values": {
+            "enlarge.scale": 0
+          }
+        },
+        {
+          "id": "enhance",
+          "label_key": "lucent.viewer.enhance",
+          "reason_key": "simple.viewer.enhance.reason",
+          "action_label_key": "simple.output.install",
+          "action_id": "install.enlarge",
+          "values": {
+            "enlarge.scale": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "pictures",
+      "label_key": "lucent.expert.pictures",
+      "default": "photo",
+      "options": [
+        {
+          "id": "photo",
+          "label_key": "lucent.simple.photo",
+          "values": {
+            "enlarge.preset": "photo"
+          }
+        },
+        {
+          "id": "art",
+          "label_key": "lucent.simple.drawing",
+          "values": {
+            "enlarge.preset": "art"
+          }
+        }
+      ]
+    }
+  ]
+}
