@@ -46,6 +46,9 @@ void reload() {
 }  // namespace
 
 void loadCatalogs(const QString &shareDir) {
+    // `share/locales` is the vendored copy of
+    // `src/voxprint_common/ui/locales` at the pinned commit. This reader does
+    // not import the Python package.
     gShare = shareDir;
     reload();
 }

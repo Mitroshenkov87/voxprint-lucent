@@ -147,7 +147,14 @@ std::filesystem::path dataHome();
 /// `<data home>/state/suite.json`.
 std::filesystem::path suiteSettingsPath();
 
+/// Surface id of the viewer screen. It has no input and no primary action.
+inline constexpr char kSurfaceId[] = "viewer";
+
 /// `<data home>/state/<app-id>/image-settings.json`.
+///
+/// The viewer screen passes `kSurfaceId`, so the file is
+/// `state/viewer/image-settings.json`. Geometry stays in this document.
+/// The helper's reference screen writes `viewer-settings.json` beside it.
 std::filesystem::path appSettingsPath(const std::string &appId);
 
 /// Read a JSON object, keeping the last good object when the file is invalid.

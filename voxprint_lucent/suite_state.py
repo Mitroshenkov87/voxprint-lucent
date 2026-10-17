@@ -53,8 +53,13 @@ def suite_settings_path() -> Path:
     return data_home() / "state" / "suite.json"
 
 
-def app_settings_path(app_id: str = "lucent") -> Path:
-    """Return ``<data home>/state/<app-id>/image-settings.json``."""
+def app_settings_path(app_id: str = "viewer") -> Path:
+    """Return ``<data home>/state/<app-id>/image-settings.json``.
+
+    The viewer screen uses the surface id ``viewer``. Geometry and the native
+    chips stay in this file. The helper's reference screen writes
+    ``viewer-settings.json`` in the same directory.
+    """
     return data_home() / "state" / app_id / "image-settings.json"
 
 

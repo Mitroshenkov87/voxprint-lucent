@@ -69,7 +69,7 @@ constexpr int kStatus = 36;
 constexpr int kHistory = 104;
 constexpr int kViewerMinH = 400;
 
-const char *kAppId = "lucent";
+const char *kAppId = kSurfaceId;
 
 QString shotDir() {
     const QString dir = qEnvironmentVariable("LUCENT_SCREENSHOT_DIR", QStringLiteral("/tmp/lucent-shots"));

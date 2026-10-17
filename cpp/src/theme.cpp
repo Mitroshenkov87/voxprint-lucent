@@ -37,6 +37,8 @@ QString applyTokens(QString sheet, const QJsonObject &document) {
 }  // namespace
 
 QString findShareDir() {
+    // `share/tokens.json` is the vendored copy of
+    // `src/voxprint_common/ui/tokens.json` at the pinned commit.
     const QString overrideDir = qEnvironmentVariable("LUCENT_SHARE");
     if (!overrideDir.isEmpty() && QFile::exists(overrideDir + QStringLiteral("/tokens.json"))) {
         return overrideDir;

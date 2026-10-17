@@ -1,4 +1,4 @@
-"""On-demand PySide6 process for settings, tools, the info panel, Enlarge, and updates.
+"""On-demand PySide6 process for settings, tools, the viewer screen, Enlarge, and updates.
 
 The C++ viewer starts this process when the user opens tools. It is not on the
 path that paints the first image.
@@ -40,6 +40,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Read this repository's GitHub releases and print a newer tag.",
     )
+    parser.add_argument(
+        "--shell",
+        action="store_true",
+        help="Open the shared viewer screen. Not part of viewer startup.",
+    )
     args = parser.parse_args(argv)
     if args.ping:
         print("pong")
@@ -55,6 +60,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         print(f"{offer['tag']} {offer['html_url']}", flush=True)
         return 0
+    if args.shell:
+        # Startup-budget exception to the no-inline-import rule: --ping must
+        # not load Qt or voxprint-common. This process is never on the
+        # viewer's cold-start path.
+        from voxprint_lucent.viewer_shell import open_viewer_shell
+
+        return open_viewer_shell()
     path = Path(args.path)
     if not args.path or not path.is_file():
         if args.enlarge:

@@ -120,6 +120,9 @@ int main(int argc, char **argv) {
     std::filesystem::remove_all(home);
     ::setenv("VOXPRINT_HOME", home.string().c_str(), 1);
     expect(lucent::dataHome() == home, "VOXPRINT_HOME replaces the suite root");
+    expect(std::string(lucent::kSurfaceId) == "viewer", "the viewer surface id");
+    expect(lucent::appSettingsPath(lucent::kSurfaceId) == home / "state" / "viewer" / "image-settings.json",
+           "the viewer document lives under the surface id");
     const lucent::Json foreign = load(dir / "suite-foreign.json");
     std::string writeError;
     expect(lucent::writeOwnKeys(lucent::suiteSettingsPath(), {}, writeError), "the first publish creates the file");

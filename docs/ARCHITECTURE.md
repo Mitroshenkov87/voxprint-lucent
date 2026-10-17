@@ -4,7 +4,7 @@ Lucent is two programs.
 
 `voxprint-lucent` is a C++ and Qt 6 application. It owns startup, the single running instance, decoding, the image cache, and the shell. This is the program that opens a picture. It does not import Python, and PySide6 is not on the cold-start path. `--benchmark` constructs `Viewer` only.
 
-`voxprint-lucent-tools` is a Python process that uses PySide6. It starts when you open Enlarge's window or check for updates. It is not running while the first picture is painted.
+`voxprint-lucent-tools` is a Python process that uses PySide6. It starts when you open Enlarge's window, the shared viewer screen, or check for updates. It is not running while the first picture is painted. The helper depends on `voxprint-common[ui]` at commit `f4e95ccfa25780abaf50412cb095a7843725102a` and opens that screen with `ReferenceShell(app="viewer")`.
 
 ## Shell
 
@@ -16,7 +16,7 @@ Preset documents use schema `voxprint-presets/1`. Lucent's file is `share/preset
 
 Suite state is `<data home>/state/suite.json`. The data home is `%LOCALAPPDATA%\VOXPrint AI Suite` on Windows and `${XDG_DATA_HOME:-~/.local/share}/voxprint-ai-suite` on Linux. `VOXPRINT_HOME`, when set and not empty, replaces that directory. The spelling of the directory lives in one function in each program: `dataHome()` in `cpp/src/shell_logic.cpp` and `data_home()` in `voxprint_lucent/suite_state.py`.
 
-`ui.expert_mode` is a boolean in `suite.json`. The viewer document is `<data home>/state/lucent/image-settings.json`, schema 1, with `values`, `chosen`, and `overrides`, plus `ui.geometry` and `ui.history_visible`.
+`ui.expert_mode` is a boolean in `suite.json`. The viewer screen's surface id is `viewer`. The native document is `<data home>/state/viewer/image-settings.json`, schema 1, with `values`, `chosen`, and `overrides`, plus `ui.geometry` and `ui.history_visible`. The helper's reference screen writes `viewer-settings.json` in that same directory, which is the file name `state_names` gives the viewer variant.
 
 A writer locks `<file>.lock`, re-reads, changes only its own keys, writes a temporary file, fsyncs it, and replaces the destination. A reader keeps the last good document when the file is invalid. A missing file means the defaults.
 
@@ -47,4 +47,4 @@ Lucent reads the JSON lines Enlarge prints. Cancel kills that process. Open in E
 
 ## Theme
 
-Both programs use `share/tokens.json` schema 1, vendored from voxprint-common commit `f4e95ccfa25780abaf50412cb095a7843725102a` (PR 13, `cursor/expert-mode-3cae`). The pin file is `share/voxprint-common.pin.json`. Changing that commit is the re-pin. The C++ build writes `lucent.qss` from `share/lucent.qss.in` and those tokens. The focus ring is 2 px in the accent colour. Lucent has no models and does not use MDL.
+The C++ viewer reads `share/tokens.json` and `share/locales`, schema 1, vendored from voxprint-common commit `f4e95ccfa25780abaf50412cb095a7843725102a` at `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/`. It does not import that package. The pin file is `share/voxprint-common.pin.json`. Changing that commit is the re-pin. The C++ build writes `lucent.qss` from `share/lucent.qss.in` and those tokens. The focus ring is 2 px in the accent colour. Lucent has no models and does not use MDL.

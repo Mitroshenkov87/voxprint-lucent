@@ -26,6 +26,8 @@ A hand edit of a chip's values reads "{name} + changes" while the stored choice 
 
 ## Chrome
 
-Colours and the 2 px focus ring come from `share/tokens.json` schema 1, pinned to voxprint-common `f4e95ccfa25780abaf50412cb095a7843725102a`. The window uses the plain colours. Labels come from the shell catalogs (`share/locales`) and Lucent's own catalogs (`share/locales/lucent`, English, Russian, and German). A missing phrase falls back to English, then to the key.
+Colours and the 2 px focus ring come from `share/tokens.json` schema 1. That file, and the shell catalogs in `share/locales`, are the vendored copy of `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/` at voxprint-common `f4e95ccfa25780abaf50412cb095a7843725102a`. The C++ viewer reads those files directly. The window uses the plain colours. Lucent's own phrases live in `share/locales/lucent` (English, Russian, and German). A missing phrase falls back to English, then to the key.
+
+The on-demand helper opens the same surface id, `viewer`, through `ReferenceShell`. Its dependency is `voxprint-common[ui]` at that commit. The native viewer does not import it.
 
 Lucent does not ship models, so it has no MDL dependency.

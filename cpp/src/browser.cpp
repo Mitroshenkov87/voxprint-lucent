@@ -73,7 +73,7 @@ void restoreLaunchGeometry(QWidget *window) {
         window->resize(1200, 900);
         return;
     }
-    const Json document = readDocument(appSettingsPath("lucent"));
+    const Json document = readDocument(appSettingsPath(kSurfaceId));
     const Json *geo = document.field("ui.geometry");
     const auto number = [](const Json *object, const char *key) -> int {
         if (object == nullptr) {
