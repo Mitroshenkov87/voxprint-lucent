@@ -99,7 +99,7 @@ options:
 
 ```text
 usage: voxprint-lucent-tools [-h] [--ping] [--path PATH] [--enlarge]
-                             [--frame FRAME] [--check-update]
+                             [--frame FRAME] [--check-update] [--shell]
 
 VOXPrint AI Lucent tools host. Not part of viewer startup.
 
@@ -114,4 +114,5 @@ options:
                   still ignores this.
   --check-update  Read this repository's GitHub releases and print a newer
                   tag.
+  --shell         Open the shared viewer screen. Not part of viewer startup.
 ```
