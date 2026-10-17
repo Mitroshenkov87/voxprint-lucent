@@ -10,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QImageReader>
 #include <QMetaObject>
+#include <QPainter>
 #include <QPixmap>
 #include <QPointer>
 #include <QPushButton>
@@ -32,6 +33,32 @@ QImage decodeThumb(const QString &path) {
         reader.setScaledSize(size.scaled(kTile, kTile, Qt::KeepAspectRatio));
     }
     return reader.read();
+}
+
+QPixmap placeholderThumb() {
+    QPixmap pix(kTile - 4, kTile - 4);
+    pix.fill(Qt::transparent);
+    QPainter painter(&pix);
+    painter.setRenderHint(QPainter::Antialiasing);
+    const QColor ink(0xa8, 0xa8, 0xb8, 150);
+    painter.setPen(QPen(ink, 1.6));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRoundedRect(QRectF(22, 26, 40, 30), 3, 3);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(ink);
+    painter.drawEllipse(QPointF(32, 35), 3.2, 3.2);
+    painter.setPen(QPen(ink, 1.6));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPolyline(QPolygonF{QPointF(28, 50), QPointF(38, 40), QPointF(46, 47), QPointF(56, 38)});
+    return pix;
+}
+
+void showThumb(QPushButton *button, const QImage &image) {
+    if (image.isNull()) {
+        button->setIcon(placeholderThumb());
+        return;
+    }
+    button->setIcon(QPixmap::fromImage(image));
 }
 
 }  // namespace
@@ -74,10 +101,7 @@ void Gallery::rebuild() {
         button->setFixedSize(kTile, kTile);
         button->setIconSize(QSize(kTile - 4, kTile - 4));
         button->setChecked(index == current_);
-        const QImage thumb = thumbs_.value(files_.at(index));
-        if (!thumb.isNull()) {
-            button->setIcon(QPixmap::fromImage(thumb));
-        }
+        showThumb(button, thumbs_.value(files_.at(index)));
         group_->addButton(button);
         rowLayout_->insertWidget(rowLayout_->count() - 1, button);
         buttons_.append(button);
@@ -94,8 +118,17 @@ void Gallery::setFiles(const QStringList &files, int current) {
     files_ = files;
     current_ = current;
     ++generation_;
+    if (!qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        for (const QString &path : files_) {
+            if (!thumbs_.contains(path) || thumbs_.value(path).isNull()) {
+                thumbs_.insert(path, decodeThumb(path));
+            }
+        }
+    }
     rebuild();
-    pump();
+    if (qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        pump();
+    }
 }
 
 void Gallery::setCurrent(int current) {
@@ -138,7 +171,7 @@ void Gallery::pump() {
                         self->thumbs_.insert(next, image);
                         const int index = self->files_.indexOf(next);
                         if (index >= 0 && index < self->buttons_.size()) {
-                            self->buttons_.at(index)->setIcon(QPixmap::fromImage(image));
+                            showThumb(self->buttons_.at(index), image);
                         }
                     }
                     self->pump();

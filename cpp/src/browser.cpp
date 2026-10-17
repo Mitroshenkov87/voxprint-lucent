@@ -69,18 +69,21 @@ QString failureText(const QString &path) {
 }
 
 QString fileSizeText(qint64 bytes) {
+    const auto withUnit = [](const QString &number, const char *key) {
+        return number + QLatin1Char(' ') + label(QString::fromUtf8(key));
+    };
     if (bytes < 1024) {
-        return QString::number(bytes) + QStringLiteral(" B");
+        return withUnit(QString::number(bytes), "lucent.size.byte");
     }
     const double kilobytes = static_cast<double>(bytes) / 1024.0;
     if (kilobytes < 1024.0) {
-        return QString::number(kilobytes, 'f', kilobytes < 10.0 ? 1 : 0) + QStringLiteral(" KB");
+        return withUnit(QString::number(kilobytes, 'f', kilobytes < 10.0 ? 1 : 0), "lucent.size.kb");
     }
     const double megabytes = kilobytes / 1024.0;
     if (megabytes < 1024.0) {
-        return QString::number(megabytes, 'f', megabytes < 10.0 ? 1 : 0) + QStringLiteral(" MB");
+        return withUnit(QString::number(megabytes, 'f', megabytes < 10.0 ? 1 : 0), "lucent.size.mb");
     }
-    return QString::number(megabytes / 1024.0, 'f', 1) + QStringLiteral(" GB");
+    return withUnit(QString::number(megabytes / 1024.0, 'f', 1), "lucent.size.gb");
 }
 
 void restoreLaunchGeometry(QWidget *window) {
@@ -657,6 +660,15 @@ void Browser::refreshFolder() {
     }
     const QString path = currentPath_;
     const QString directory = QFileInfo(path).absolutePath();
+    if (!qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        folder_ = listFolderImages(directory);
+        index_ = folder_.indexOf(path);
+        if (chrome_ != nullptr) {
+            chrome_->setFolder(folder_, index_);
+        }
+        updateChrome();
+        return;
+    }
     const QPointer<Browser> self(this);
     const auto alive = alive_;
     std::thread folderWorker([directory, path, self, alive] {
