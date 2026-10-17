@@ -6,11 +6,11 @@ The window opens at 1200×900 the first time. Later launches restore the last ge
 
 ## Simple mode
 
-A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous (Предыдущий), Next (Следующий), Rotate (↻, tooltip Rotate right / Повернуть вправо), Crop, Delete (Удалить), Slideshow, and Fullscreen. Delete asks, then moves the file to the trash. More and the picture's context menu carry save as, save a copy, export, download, fit width, fit height, rotate left, flip, Resize…, thumbnails, frameless, window fit, and Tools. The toolbar actions stay in More as well. Resize… takes a width and height or a percent, with keep aspect and resampling. The full list is `docs/ui/FEATURE-MAP.md`.
+A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous (Предыдущий), Next (Следующий), ↻ Rotate (↻ Повернуть, tooltip Rotate right / Повернуть вправо), Crop, Move to trash (В корзину), Slideshow, and Fullscreen. Move to trash asks, then moves the file to the trash. Expert mode (Режим эксперта) is a checkable button at the top right, beside More, and it stays when the bar overflows. More and the picture's context menu carry save as, save a copy, export, Save to downloads (В загрузки), fit width, fit height, rotate left, flip, Resize…, thumbnails, frameless, window fit, and Tools. Fullscreen, Slideshow, and Crop return to More only when those toolbar buttons do not fit. Save to downloads writes the current view into the downloads folder. Resize… takes a width and height or a percent, with keep aspect and resampling. The full list is `docs/ui/FEATURE-MAP.md`.
 
 Under the toolbar, the View row reads Fit, Fill, and 100%. The Enhance row reads Enhance with Enlarge, then Photo and Drawing (Фото and Рисунок). Those two chips are the Снимки setting: they write Enlarge's `photo` or `art` value, and the Expert combo keeps the same value. The picture fills everything left under those rows.
 
-Enhance with Enlarge writes scale 2 and runs the Enlarge command with the current Photo or Drawing choice. When Enlarge is not installed the chip stays grey, with the reason and Install Enlarge. Choosing the grey chip does not write values.
+Enhance with Enlarge stays enabled. It writes scale 2 and runs the Enlarge command with the current Photo or Drawing choice. When Enlarge is not installed, the chip opens a confirm dialog: "Enhancing needs VOXPrint Enlarge. Install it?" with Install and Cancel (Russian: "Для улучшения нужен VOXPrint Enlarge. Установить?" with Установить and Отмена). The download size is added when the suite manifest, an MDL catalog, or the Enlarge release metadata lists it. Install then shows progress with Cancel and downloads the package through `voxprint-lucent-tools --install-enlarge`. If that download cannot start, the releases page opens.
 
 A drag on the picture still crops it. Previous and Next walk the folder. The status row has an Info toggle. On, it shows the file name, the file size, and the pixel size. The Expert info row shows that same line.
 
@@ -22,7 +22,7 @@ The status row stays under the picture. While Enlarge is running it also shows t
 
 Expert mode is a boolean in `suite.json`. The panel sits on the right of the picture only. It starts at 280 px, and the divider moves it between 220 and 420. Opening or resizing it shrinks the picture and leaves the toolbar, the chips, the status row, and the strip where they are.
 
-The panel shows the live zoom, colour management and the profile, HDR tone-map, numeric crop, the same resize values as Resize…, rotate, export format and quality, frames, and file info. Photographs and Drawings write the same Enlarge `photo` or `art` value as the Photo and Drawing chips. Open in Enlarge hands the file to Enlarge's window. Copy, reveal, and trash live here. Trash asks before it moves the file.
+The panel shows the live zoom, colour management and the profile, HDR tone-map, crop, the same resize values as Resize… under the label Size (Размер), rotate, export format and quality, frames, and file info. Crop reads No crop (Без обрезки) until a crop exists, then the x/y/w/h fields. Photographs and Drawings write the same Enlarge `photo` or `art` value as the Photo and Drawing chips. Open in Enlarge hands the file to Enlarge's window. Copy, reveal, and trash live here. Trash asks before it moves the file.
 
 A hand edit of a chip's values reads "{name} + changes" while the stored choice is still close, and Custom when it is not. Reset restores that choice. The rule is the shared preset rule, applied to `share/presets/lucent.json`.
 
@@ -32,4 +32,4 @@ Colours and the 2 px focus ring come from `share/tokens.json` schema 1. That fil
 
 The on-demand helper opens the same surface id, `viewer`, through `ReferenceShell`. Its dependency is `voxprint-common[ui]` at that commit. The native viewer does not import it.
 
-Lucent does not ship models, so it has no MDL dependency.
+Lucent does not ship models. It reads an MDL catalog only to show an Enlarge download size when that catalog lists one.

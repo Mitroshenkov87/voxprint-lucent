@@ -6,6 +6,7 @@
 #include "catalog.h"
 #include "chrome.h"
 #include "decode.h"
+#include "dry_run.h"
 #include "labels.h"
 #include "shell_logic.h"
 #include "hotkeys.h"
@@ -66,24 +67,6 @@ QString failureText(const QString &path) {
         return text(Text::PluginMissing);
     }
     return text(Text::DecodeFailed);
-}
-
-QString fileSizeText(qint64 bytes) {
-    const auto withUnit = [](const QString &number, const char *key) {
-        return number + QLatin1Char(' ') + label(QString::fromUtf8(key));
-    };
-    if (bytes < 1024) {
-        return withUnit(QString::number(bytes), "lucent.size.byte");
-    }
-    const double kilobytes = static_cast<double>(bytes) / 1024.0;
-    if (kilobytes < 1024.0) {
-        return withUnit(QString::number(kilobytes, 'f', kilobytes < 10.0 ? 1 : 0), "lucent.size.kb");
-    }
-    const double megabytes = kilobytes / 1024.0;
-    if (megabytes < 1024.0) {
-        return withUnit(QString::number(megabytes, 'f', megabytes < 10.0 ? 1 : 0), "lucent.size.mb");
-    }
-    return withUnit(QString::number(megabytes / 1024.0, 'f', 1), "lucent.size.gb");
 }
 
 void restoreLaunchGeometry(QWidget *window) {
@@ -413,7 +396,7 @@ void Browser::updateChrome() {
             QStringList facts;
             facts << file.fileName();
             if (file.exists() && file.size() > 0) {
-                facts << fileSizeText(file.size());
+                facts << formatDataSize(file.size());
             }
             facts << QString::number(image_.width()) + QStringLiteral("×") + QString::number(image_.height());
             live.info = facts.join(QStringLiteral("  "));
@@ -690,46 +673,10 @@ void Browser::refreshFolder() {
 }
 
 void Browser::launchHost(const QStringList &tail) {
-    const QString appDir = QCoreApplication::applicationDirPath();
-    QString python = qEnvironmentVariable("LUCENT_PYTHON");
-    const QString bundled = appDir + QStringLiteral("/python/python.exe");
-    if (python.isEmpty() && QFileInfo::exists(bundled)) {
-        python = bundled;
-    }
-    if (python.isEmpty()) {
-#ifdef Q_OS_WIN
-        python = QStringLiteral("python");
-#else
-        python = QStringLiteral("python3");
-#endif
-    }
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    QStringList pythonPath;
-    if (QFileInfo::exists(appDir + QStringLiteral("/voxprint_lucent/__init__.py"))) {
-        pythonPath.append(appDir);
-    }
-    const QString debRoot = QDir(appDir).filePath(QStringLiteral("../lib/voxprint-lucent"));
-    if (QFileInfo::exists(debRoot + QStringLiteral("/voxprint_lucent/__init__.py"))) {
-        pythonPath.append(QDir(debRoot).absolutePath());
-    }
-    if (!pythonPath.isEmpty()) {
-        const QString existing = env.value(QStringLiteral("PYTHONPATH"));
-        if (!existing.isEmpty()) {
-            pythonPath.append(existing);
-        }
-#ifdef Q_OS_WIN
-        env.insert(QStringLiteral("PYTHONPATH"), pythonPath.join(QLatin1Char(';')));
-#else
-        env.insert(QStringLiteral("PYTHONPATH"), pythonPath.join(QLatin1Char(':')));
-#endif
-    }
     QProcess process;
-    process.setProgram(python);
-    QStringList arguments{QStringLiteral("-m"), QStringLiteral("voxprint_lucent.tools_host")};
-    arguments.append(tail);
-    process.setArguments(arguments);
-    process.setWorkingDirectory(appDir);
-    process.setProcessEnvironment(env);
+    if (!startToolsHost(process, tail)) {
+        return;
+    }
     process.startDetached();
 }
 

@@ -86,4 +86,22 @@ QString labelWithName(const QString &pattern, const QString &name) {
     return text;
 }
 
+QString formatDataSize(qint64 bytes) {
+    const auto withUnit = [](const QString &number, const char *key) {
+        return number + QLatin1Char(' ') + label(QString::fromUtf8(key));
+    };
+    if (bytes < 1024) {
+        return withUnit(QString::number(bytes), "lucent.size.byte");
+    }
+    const double kilobytes = static_cast<double>(bytes) / 1024.0;
+    if (kilobytes < 1024.0) {
+        return withUnit(QString::number(kilobytes, 'f', kilobytes < 10.0 ? 1 : 0), "lucent.size.kb");
+    }
+    const double megabytes = kilobytes / 1024.0;
+    if (megabytes < 1024.0) {
+        return withUnit(QString::number(megabytes, 'f', megabytes < 10.0 ? 1 : 0), "lucent.size.mb");
+    }
+    return withUnit(QString::number(megabytes / 1024.0, 'f', 1), "lucent.size.gb");
+}
+
 }  // namespace lucent

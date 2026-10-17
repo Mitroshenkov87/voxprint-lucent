@@ -42,6 +42,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPaintEvent>
+#include <QPainter>
 #include <QProcess>
 #include <QResizeEvent>
 #include <QProgressBar>
@@ -66,13 +67,8 @@
 namespace lucent {
 namespace {
 
-constexpr int kTop = 40;
-constexpr int kChip = 44;
 constexpr int kPageLeft = 16;
-constexpr int kPageTop = 12;
 constexpr int kPageRight = 16;
-constexpr int kPageBottom = 12;
-constexpr int kBarGap = 10;
 constexpr int kRowGap = 8;
 constexpr int kExpertGap = 12;
 constexpr int kExpertDefault = 280;
@@ -98,26 +94,33 @@ void saveGrab(QWidget *widget, const QString &name) {
     QTimer::singleShot(0, qApp, &QApplication::quit);
 }
 
-void saveScreen(QWidget *window, QWidget *popup, const QString &name) {
+void saveWindowMenu(QWidget *window, QWidget *popup, const QPoint &popupPos, const QString &name) {
     if (window == nullptr) {
         return;
     }
-    QScreen *screen = window->screen();
-    if (screen == nullptr) {
-        screen = QGuiApplication::primaryScreen();
-    }
-    if (screen == nullptr) {
-        return;
-    }
-    const QPixmap shot = screen->grabWindow(0);
-    QRect bounds = window->frameGeometry();
+    window->repaint();
+    QImage base = window->grab().toImage();
     if (popup != nullptr && popup->isVisible()) {
-        bounds = bounds.united(popup->frameGeometry());
+        const QImage menu = popup->grab().toImage();
+        QPainter painter(&base);
+        painter.drawImage(popupPos, menu);
     }
-    const QRect local = bounds.translated(-screen->geometry().topLeft());
-    shot.copy(local.intersected(QRect(QPoint(0, 0), shot.size())))
-        .save(shotDir() + QLatin1Char('/') + name + QStringLiteral(".png"));
+    base.save(shotDir() + QLatin1Char('/') + name + QStringLiteral(".png"));
     QTimer::singleShot(0, qApp, &QApplication::quit);
+}
+
+QPoint placeMenuInside(QWidget *window, QMenu *menu, int anchorY) {
+    menu->adjustSize();
+    const QSize size = menu->size().expandedTo(menu->sizeHint());
+    const int x = std::max(8, window->width() - size.width() - 8);
+    int y = std::max(8, anchorY);
+    if (y + size.height() > window->height() - 8) {
+        y = std::max(8, window->height() - size.height() - 8);
+    }
+    const QPoint local(x, y);
+    menu->move(window->mapToGlobal(local));
+    menu->raise();
+    return local;
 }
 
 QString qs(const std::string &text) { return QString::fromStdString(text); }
@@ -526,36 +529,6 @@ private:
     ExpertPage *page_ = nullptr;
 };
 
-class ElideLabel : public QLabel {
-public:
-    explicit ElideLabel(QWidget *parent = nullptr) : QLabel(parent) {
-        setMinimumWidth(0);
-        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    }
-
-    void setFullText(const QString &text) {
-        full_ = text;
-        applyElide();
-    }
-
-protected:
-    void resizeEvent(QResizeEvent *event) override {
-        QLabel::resizeEvent(event);
-        applyElide();
-    }
-
-private:
-    void applyElide() {
-        const int width = std::max(0, this->width());
-        const QString shown = fontMetrics().elidedText(full_, Qt::ElideRight, width > 0 ? width : 100000);
-        if (text() != shown) {
-            QLabel::setText(shown);
-        }
-    }
-
-    QString full_;
-};
-
 void clearLayout(QLayout *layout) {
     if (layout == nullptr) {
         return;
@@ -619,8 +592,10 @@ struct Chrome::Impl {
     QHBoxLayout *enhanceChips = nullptr;
     QLabel *customLabel = nullptr;
     QPushButton *resetButton = nullptr;
-    ElideLabel *featureText = nullptr;
-    QPushButton *installButton = nullptr;
+    QPushButton *expertButton = nullptr;
+    QPushButton *cropButton = nullptr;
+    QPushButton *slideshowButton = nullptr;
+    QPushButton *fullscreenButton = nullptr;
     QPushButton *infoToggle = nullptr;
     QLabel *infoLine = nullptr;
     QPushButton *cancelButton = nullptr;
@@ -635,6 +610,11 @@ struct Chrome::Impl {
     QByteArray jobBuffer;
     QString jobOutput;
     bool jobCancel = false;
+    bool installJob = false;
+    QString installPath;
+    QString installPartial;
+    QLabel *cropEmpty = nullptr;
+    QWidget *cropGrid = nullptr;
     QTimer *stateTimer = nullptr;
     QObject *filter = nullptr;
 
@@ -755,8 +735,6 @@ void Chrome::loadPresets() {
         return;
     }
     impl_->presetsOk = true;
-    const bool enlarge = !enlargeCliCommand().isEmpty();
-    setOptionAvailable(impl_->presets, "enhance", "enhance", enlarge);
     const Json stored = readDocument(appSettingsPath(kAppId));
     impl_->state = mergePresets(impl_->presets, {}, stored.kind == Json::Kind::Object ? &stored : nullptr);
     if (impl_->state.values.count("viewer.colour") == 0) {
@@ -848,33 +826,40 @@ void Chrome::buildBar() {
             impl_->cb.step(1);
         }
     });
-    auto *rotate = add(QStringLiteral("↻"), label(QStringLiteral("lucent.action.rotate_right")), [this] {
+    auto *rotate = add(QStringLiteral("↻ ") + label(QStringLiteral("lucent.action.rotate_plain")),
+                       label(QStringLiteral("lucent.action.rotate_right")), [this] {
         if (impl_->cb.rotate) {
             impl_->cb.rotate(true);
         }
     });
     rotate->setAccessibleName(rotate->toolTip());
-    labeled("lucent.action.crop", [this] {
+    impl_->cropButton = labeled("lucent.action.crop", [this] {
         if (impl_->cb.crop) {
             impl_->cb.crop();
         }
     });
-    labeled("lucent.action.delete", [this] {
+    labeled("lucent.action.trash", [this] {
         if (impl_->cb.trash) {
             impl_->cb.trash();
         }
-    }, "lucent.action.trash");
-    labeled("lucent.action.slideshow", [this] {
+    });
+    impl_->slideshowButton = labeled("lucent.action.slideshow", [this] {
         if (impl_->cb.slideshow) {
             impl_->cb.slideshow();
         }
     });
-    labeled("lucent.action.fullscreen", [this] {
+    impl_->fullscreenButton = labeled("lucent.action.fullscreen", [this] {
         if (impl_->cb.fullscreen) {
             impl_->cb.fullscreen();
         }
     });
     row->addStretch(1);
+    impl_->expertButton = new QPushButton(label(QStringLiteral("command.view.toggle_expert_mode")), impl_->bar);
+    impl_->expertButton->setObjectName(QStringLiteral("expertToggle"));
+    impl_->expertButton->setCheckable(true);
+    impl_->expertButton->setChecked(panelOpen());
+    QObject::connect(impl_->expertButton, &QPushButton::toggled, impl_->host, [this](bool on) { setExpert(on); });
+    row->addWidget(impl_->expertButton);
     impl_->moreButton = new QPushButton(label(QStringLiteral("lucent.action.more")), impl_->bar);
     QObject::connect(impl_->moreButton, &QPushButton::clicked, impl_->host, [this] { openMenu(); });
     row->addWidget(impl_->moreButton);
@@ -888,6 +873,12 @@ void Chrome::fitToolbar() {
         button->setVisible(true);
     }
     impl_->moreButton->setVisible(true);
+    if (impl_->expertButton != nullptr) {
+        impl_->expertButton->setVisible(true);
+        impl_->expertButton->blockSignals(true);
+        impl_->expertButton->setChecked(panelOpen());
+        impl_->expertButton->blockSignals(false);
+    }
     impl_->bar->layout()->activate();
     const QMargins margins = impl_->bar->layout()->contentsMargins();
     const int spacing = impl_->bar->layout()->spacing();
@@ -897,6 +888,10 @@ void Chrome::fitToolbar() {
     };
     int used = widthOf(impl_->moreButton);
     int visible = 1;
+    if (impl_->expertButton != nullptr) {
+        used += widthOf(impl_->expertButton);
+        visible += 1;
+    }
     for (QPushButton *button : impl_->barButtons) {
         used += widthOf(button);
         visible += 1;
@@ -936,15 +931,7 @@ void Chrome::buildPresets() {
     impl_->enhanceChips = new QHBoxLayout;
     impl_->enhanceChips->setContentsMargins(0, 0, 0, 0);
     impl_->enhanceChips->setSpacing(8);
-    enhance->addLayout(impl_->enhanceChips, 0);
-    impl_->featureText = new ElideLabel(impl_->enhanceRow);
-    impl_->featureText->setObjectName(QStringLiteral("featureText"));
-    impl_->installButton = new QPushButton(impl_->enhanceRow);
-    QObject::connect(impl_->installButton, &QPushButton::clicked, impl_->host, [] {
-        QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
-    });
-    enhance->addWidget(impl_->featureText, 1);
-    enhance->addWidget(impl_->installButton, 0);
+    enhance->addLayout(impl_->enhanceChips, 1);
 
     stack->addWidget(impl_->viewRow);
     stack->addWidget(impl_->enhanceRow);
@@ -1032,8 +1019,18 @@ void Chrome::buildExpert() {
     namedRow("lucent.expert.colour", impl_->colour);
     namedRow("lucent.expert.icc", impl_->profile);
     namedRow("lucent.expert.hdr", impl_->hdr);
-    namedRow("lucent.expert.crop", new CropGrid(impl_->cropX, impl_->cropY, impl_->cropW, impl_->cropH, page));
-    namedRow("lucent.action.resize", impl_->resizeUnit);
+    impl_->cropEmpty = new WrapLabel(label(QStringLiteral("lucent.expert.no_crop")), page);
+    impl_->expertLabels.emplace_back(QStringLiteral("lucent.expert.no_crop"), impl_->cropEmpty);
+    impl_->cropGrid = new CropGrid(impl_->cropX, impl_->cropY, impl_->cropW, impl_->cropH, page);
+    auto *cropField = new QWidget(page);
+    auto *cropStack = new QVBoxLayout(cropField);
+    cropStack->setContentsMargins(0, 0, 0, 0);
+    cropStack->setSpacing(0);
+    cropStack->addWidget(impl_->cropEmpty);
+    cropStack->addWidget(impl_->cropGrid);
+    impl_->cropGrid->setVisible(false);
+    namedRow("lucent.expert.crop", cropField);
+    namedRow("lucent.expert.size", impl_->resizeUnit);
     namedRow("lucent.resize.width", impl_->resizeWidth);
     namedRow("lucent.resize.height", impl_->resizeHeight);
     namedRow("lucent.resize.percent", impl_->resizePercent);
@@ -1337,7 +1334,7 @@ void Chrome::refreshChips() {
     const ChipStatus enhanceStatus = impl_->presetsOk ? chipFor(impl_->presets, impl_->state, "enhance") : ChipStatus{};
     if (enhance != nullptr) {
         const bool checked = enhanceStatus.optionId == enhance->id && enhanceStatus.kind == ChipKind::Exact;
-        auto *chip = chipButton(impl_->enhanceRow, label(qs(enhance->labelKey)), enhance->available, checked);
+        auto *chip = chipButton(impl_->enhanceRow, label(qs(enhance->labelKey)), true, checked);
         QObject::connect(chip, &QPushButton::clicked, impl_->host, [this] { chooseEnhance(); });
         impl_->enhanceChips->addWidget(chip);
     }
@@ -1352,13 +1349,7 @@ void Chrome::refreshChips() {
             impl_->enhanceChips->addWidget(chip);
         }
     }
-    const bool missing = enhance != nullptr && !enhance->available;
-    impl_->featureText->setVisible(missing);
-    impl_->installButton->setVisible(missing);
-    if (enhance != nullptr) {
-        impl_->featureText->setFullText(label(qs(enhance->reasonKey)));
-        impl_->installButton->setText(label(qs(enhance->actionLabelKey)));
-    }
+    impl_->enhanceChips->addStretch(1);
 }
 
 void Chrome::refreshExpert() {
@@ -1454,6 +1445,11 @@ void Chrome::choosePicture(const QString &id) {
 }
 
 void Chrome::chooseEnhance() {
+    if (enlargeCliCommand().isEmpty()) {
+        offerEnlargeInstall();
+        refreshChips();
+        return;
+    }
     if (!chooseOption(impl_->presets, impl_->state, "enhance", "enhance")) {
         refreshChips();
         return;
@@ -1566,6 +1562,13 @@ void Chrome::setLive(const LiveView &live) {
     impl_->cropY->setValue(live.cropY);
     impl_->cropW->setValue(live.cropW);
     impl_->cropH->setValue(live.cropH);
+    const bool cropped = live.cropW > 0 && live.cropH > 0;
+    if (impl_->cropGrid != nullptr) {
+        impl_->cropGrid->setVisible(cropped);
+    }
+    if (impl_->cropEmpty != nullptr) {
+        impl_->cropEmpty->setVisible(!cropped);
+    }
     impl_->frames->setText(QString::number(live.frame + 1) + QStringLiteral(" / ") + QString::number(std::max(1, live.frameCount)));
     impl_->info->setText(live.info);
     impl_->profile->setText(live.profile.isEmpty() ? label(QStringLiteral("lucent.colour.srgb")) : live.profile);
@@ -1600,9 +1603,9 @@ void Chrome::relayout() {
     const int statusH = kStatus;
     const int historyH = history ? kHistory : 0;
     const int expertW = panelOpen() ? impl_->expertWidth : 0;
-    int y = kPageTop;
-    impl_->bar->setFixedHeight(kTop);
-    impl_->bar->setGeometry(kPageLeft, y, std::max(0, width - kPageLeft - kPageRight), kTop);
+    const ViewerBands bands = viewerBands(height, history);
+    impl_->bar->setFixedHeight(bands.barHeight);
+    impl_->bar->setGeometry(kPageLeft, bands.barTop, std::max(0, width - kPageLeft - kPageRight), bands.barHeight);
     impl_->bar->show();
     fitToolbar();
     impl_->presetRow->show();
@@ -1615,13 +1618,9 @@ void Chrome::relayout() {
     if (impl_->cancelButton != nullptr) {
         impl_->cancelButton->setVisible(running);
     }
-    y += kTop + kBarGap;
-    const int presetH = kChip + kRowGap + kChip;
-    impl_->presetRow->setGeometry(kPageLeft, y, std::max(0, width - kPageLeft - kPageRight), presetH);
-    y += presetH + kRowGap;
-    const int bottom = height - kPageBottom - historyH - statusH;
+    impl_->presetRow->setGeometry(kPageLeft, bands.chipTop, std::max(0, width - kPageLeft - kPageRight), bands.chipHeight);
     const int resultW = std::max(0, width - kPageLeft - kPageRight - expertW - (expertW > 0 ? kExpertGap : 0));
-    impl_->result = QRect(kPageLeft, y, resultW, std::max(0, bottom - y));
+    impl_->result = QRect(kPageLeft, bands.pictureTop, resultW, bands.pictureHeight);
     impl_->expert->setFixedWidth(expertW);
     impl_->expert->setGeometry(impl_->result.right() + (expertW > 0 ? kExpertGap : 0), impl_->result.top(), expertW, impl_->result.height());
     impl_->expert->setVisible(true);
@@ -1646,6 +1645,7 @@ void Chrome::relayout() {
     raiseNative(impl_->split);
     raiseNative(impl_->statusRow);
     raiseNative(impl_->gallery);
+    impl_->host->update();
 }
 
 QRect Chrome::resultRect() const { return impl_->result; }
@@ -1676,6 +1676,10 @@ void Chrome::mouseAt(const QPoint &) {}
 void Chrome::retranslate() {
     impl_->barButtons.clear();
     impl_->moreButton = nullptr;
+    impl_->expertButton = nullptr;
+    impl_->cropButton = nullptr;
+    impl_->slideshowButton = nullptr;
+    impl_->fullscreenButton = nullptr;
     delete impl_->bar;
     impl_->bar = nullptr;
     buildBar();
@@ -1737,7 +1741,7 @@ int Chrome::exportQuality() const {
 }
 
 void Chrome::startJob() {
-    if (impl_->job != nullptr && impl_->job->state() != QProcess::NotRunning) {
+    if (impl_->installJob || (impl_->job != nullptr && impl_->job->state() != QProcess::NotRunning)) {
         return;
     }
     QStringList command = enlargeCliCommand();
@@ -1794,7 +1798,18 @@ void Chrome::readJob() {
         const QByteArray line = impl_->jobBuffer.left(newline);
         impl_->jobBuffer = impl_->jobBuffer.mid(newline + 1);
         const QJsonObject object = QJsonDocument::fromJson(line).object();
-        if (object.value(QStringLiteral("type")).toString() != QStringLiteral("progress")) {
+        const QString type = object.value(QStringLiteral("type")).toString();
+        if (type == QStringLiteral("meta") || type == QStringLiteral("done")) {
+            const QString path = object.value(QStringLiteral("path")).toString();
+            if (!path.isEmpty()) {
+                impl_->installPath = path;
+            }
+            const QString partial = object.value(QStringLiteral("partial")).toString();
+            if (!partial.isEmpty()) {
+                impl_->installPartial = partial;
+            }
+        }
+        if (type != QStringLiteral("progress")) {
             continue;
         }
         const bool hasPct = object.contains(QStringLiteral("pct"));
@@ -1822,6 +1837,27 @@ void Chrome::readJob() {
 void Chrome::finishJob(int code) {
     const bool cancelled = impl_->jobCancel;
     impl_->jobCancel = false;
+    if (impl_->installJob) {
+        impl_->installJob = false;
+        const QString path = impl_->installPath;
+        const QString partial = impl_->installPartial;
+        impl_->installPath.clear();
+        impl_->installPartial.clear();
+        if (cancelled || code != 0) {
+            if (!partial.isEmpty()) {
+                QFile::remove(partial);
+            }
+            if (!cancelled) {
+                QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
+            }
+        } else if (QFileInfo::exists(path)) {
+            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+        } else {
+            QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
+        }
+        relayout();
+        return;
+    }
     if (cancelled || code != 0 || !QFileInfo::exists(impl_->jobOutput)) {
         if (cancelled || code != 0) {
             QFile::remove(impl_->jobOutput);
@@ -1839,6 +1875,86 @@ void Chrome::cancelJob() {
     if (impl_->job != nullptr) {
         impl_->job->kill();
     }
+}
+
+void Chrome::offerEnlargeInstall() {
+    qint64 bytes = enlargeListedBytes();
+    if (bytes <= 0) {
+        QProcess probe;
+        if (startToolsHost(probe, {QStringLiteral("--enlarge-size")})) {
+            probe.start();
+            if (!probe.waitForFinished(8000)) {
+                probe.kill();
+                probe.waitForFinished(1000);
+            }
+            bool ok = false;
+            const qint64 reported = QString::fromUtf8(probe.readAllStandardOutput()).trimmed().toLongLong(&ok);
+            if (ok && reported > 0) {
+                bytes = reported;
+            }
+        }
+    }
+    QDialog dialog(impl_->host);
+    dialog.setWindowTitle(label(QStringLiteral("lucent.enlarge.install")));
+    dialog.setMinimumWidth(420);
+    auto *layout = new QVBoxLayout(&dialog);
+    auto *prompt = new QLabel(label(QStringLiteral("lucent.enlarge.install_prompt")), &dialog);
+    prompt->setWordWrap(true);
+    layout->addWidget(prompt);
+    if (bytes > 0) {
+        layout->addWidget(new QLabel(formatDataSize(bytes), &dialog));
+    }
+    auto *buttons = new QHBoxLayout;
+    buttons->addStretch(1);
+    auto *install = new QPushButton(label(QStringLiteral("lucent.enlarge.install")), &dialog);
+    auto *cancel = new QPushButton(label(QStringLiteral("mdl.cancel")), &dialog);
+    buttons->addWidget(install);
+    buttons->addWidget(cancel);
+    layout->addLayout(buttons);
+    QObject::connect(install, &QPushButton::clicked, &dialog, &QDialog::accept);
+    QObject::connect(cancel, &QPushButton::clicked, &dialog, &QDialog::reject);
+    install->setDefault(true);
+    const QByteArray mode = qgetenv("LUCENT_SCREENSHOT");
+    if (mode == "enlarge" || mode == "enlarge-confirm") {
+        dialog.show();
+        dialog.raise();
+        QTimer::singleShot(200, &dialog, [&dialog] { saveGrab(&dialog, QStringLiteral("enlarge-confirm")); });
+        QEventLoop loop;
+        QTimer::singleShot(800, &loop, &QEventLoop::quit);
+        loop.exec();
+        return;
+    }
+    if (dialog.exec() == QDialog::Accepted) {
+        startInstall();
+    }
+}
+
+void Chrome::startInstall() {
+    if (impl_->job != nullptr && impl_->job->state() != QProcess::NotRunning) {
+        return;
+    }
+    if (impl_->job == nullptr) {
+        impl_->job = new QProcess(impl_->host);
+        QObject::connect(impl_->job, &QProcess::readyReadStandardOutput, impl_->host, [this] { readJob(); });
+        QObject::connect(impl_->job, &QProcess::finished, impl_->host, [this](int code, QProcess::ExitStatus) { finishJob(code); });
+    }
+    if (!startToolsHost(*impl_->job, {QStringLiteral("--install-enlarge")})) {
+        QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
+        return;
+    }
+    impl_->installJob = true;
+    impl_->jobCancel = false;
+    impl_->jobBuffer.clear();
+    impl_->installPath.clear();
+    impl_->installPartial.clear();
+    impl_->progress->setRange(0, 0);
+    impl_->progressText->setText(stageSentence(QStringLiteral("download")));
+    impl_->compare->hide();
+    impl_->job->start();
+    if (!impl_->job->waitForStarted(3000)) {
+        impl_->job->kill();
+    }
+    relayout();
 }
 
 void Chrome::openFile() {
@@ -2026,7 +2142,7 @@ void Chrome::openResizeDialog() {
     editResize(saved);
 }
 
-void Chrome::addKeptActions(QMenu &menu) {
+void Chrome::addKeptActions(QMenu &menu, bool crop) {
     const auto call = [](const std::function<void()> &fn) {
         if (fn) {
             fn();
@@ -2082,7 +2198,9 @@ void Chrome::addKeptActions(QMenu &menu) {
             impl_->cb.flip(false);
         }
     });
-    menu.addAction(label(QStringLiteral("lucent.action.crop")), [this, call] { call(impl_->cb.crop); });
+    if (crop) {
+        menu.addAction(label(QStringLiteral("lucent.action.crop")), [this, call] { call(impl_->cb.crop); });
+    }
     menu.addAction(label(QStringLiteral("lucent.action.resize")), [this] { openResizeDialog(); });
     menu.addAction(label(QStringLiteral("lucent.action.trash")), [this, call] { call(impl_->cb.trash); });
     menu.addAction(label(QStringLiteral("lucent.expert.thumbnails")), [this] { toggleGallery(); });
@@ -2093,21 +2211,22 @@ void Chrome::addKeptActions(QMenu &menu) {
 
 void Chrome::openMenu() {
     QMenu menu(impl_->host);
-    QAction *expert = menu.addAction(label(QStringLiteral("command.view.toggle_expert_mode")));
-    expert->setCheckable(true);
-    expert->setChecked(panelOpen());
-    QObject::connect(expert, &QAction::toggled, impl_->host, [this](bool on) { setExpert(on); });
-    menu.addAction(label(QStringLiteral("lucent.action.fullscreen")), [this] {
-        if (impl_->cb.fullscreen) {
-            impl_->cb.fullscreen();
-        }
-    });
-    menu.addAction(label(QStringLiteral("lucent.action.slideshow")), [this] {
-        if (impl_->cb.slideshow) {
-            impl_->cb.slideshow();
-        }
-    });
-    addKeptActions(menu);
+    const auto hidden = [](const QPushButton *button) { return button != nullptr && !button->isVisible(); };
+    if (hidden(impl_->fullscreenButton)) {
+        menu.addAction(label(QStringLiteral("lucent.action.fullscreen")), [this] {
+            if (impl_->cb.fullscreen) {
+                impl_->cb.fullscreen();
+            }
+        });
+    }
+    if (hidden(impl_->slideshowButton)) {
+        menu.addAction(label(QStringLiteral("lucent.action.slideshow")), [this] {
+            if (impl_->cb.slideshow) {
+                impl_->cb.slideshow();
+            }
+        });
+    }
+    addKeptActions(menu, hidden(impl_->cropButton));
     menu.addAction(label(QStringLiteral("lucent.action.about")), [this] { openAbout(); });
     menu.addAction(label(QStringLiteral("lucent.action.updates")), [this] {
         if (impl_->cb.checkUpdate) {
@@ -2116,17 +2235,19 @@ void Chrome::openMenu() {
     });
     if (qgetenv("LUCENT_SCREENSHOT") == "menu" || qgetenv("LUCENT_SCREENSHOT") == "overflow") {
         menu.setObjectName(QStringLiteral("overflowMenu"));
-        menu.popup(impl_->bar->mapToGlobal(QPoint(impl_->bar->width() - 120, impl_->bar->height())));
         const bool wholeWindow = qgetenv("LUCENT_SCREENSHOT") == "overflow";
-        QTimer::singleShot(250, &menu, [this, &menu, wholeWindow] {
+        menu.popup(impl_->host->mapToGlobal(QPoint(8, impl_->bar->geometry().bottom())));
+        QTimer::singleShot(300, &menu, [this, &menu, wholeWindow] {
+            const QPoint local = placeMenuInside(impl_->host, &menu, impl_->bar->geometry().bottom() + 4);
+            QApplication::processEvents();
             if (wholeWindow) {
-                saveScreen(impl_->host, &menu, QStringLiteral("overflow"));
+                saveWindowMenu(impl_->host, &menu, local, QStringLiteral("overflow"));
             } else {
                 saveGrab(&menu, QStringLiteral("menu"));
             }
         });
         QEventLoop loop;
-        QTimer::singleShot(900, &loop, &QEventLoop::quit);
+        QTimer::singleShot(1200, &loop, &QEventLoop::quit);
         loop.exec();
         return;
     }
@@ -2154,7 +2275,7 @@ void Chrome::contextMenu(const QPoint &globalPos) {
             impl_->cb.save();
         }
     });
-    addKeptActions(menu);
+    addKeptActions(menu, true);
     menu.addAction(label(QStringLiteral("lucent.action.copy_image")), [this] { copyImage(); });
     menu.addAction(label(QStringLiteral("lucent.action.copy_path")), [this] { copyPath(); });
     menu.addAction(label(QStringLiteral("lucent.tools.reveal")), [this] { reveal(); });
@@ -2283,6 +2404,8 @@ void Chrome::prepareShots() {
         impl_->shotExpert = true;
         relayout();
         QTimer::singleShot(400, impl_->host, [this] { saveGrab(impl_->host, QStringLiteral("expert")); });
+    } else if (mode == "enlarge" || mode == "enlarge-confirm") {
+        QTimer::singleShot(400, impl_->host, [this] { offerEnlargeInstall(); });
     }
 }
 

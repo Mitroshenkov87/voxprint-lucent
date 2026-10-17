@@ -7,9 +7,16 @@ path that paints the first image.
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
-from voxprint_lucent.network_policy import UpdateCheckError, check_for_update
+from voxprint_lucent.network_policy import (
+    UpdateCheckError,
+    check_for_update,
+    enlarge_package,
+    install_enlarge_package,
+)
+from voxprint_lucent.suite_state import data_home
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -41,6 +48,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Read this repository's GitHub releases and print a newer tag.",
     )
     parser.add_argument(
+        "--enlarge-size",
+        action="store_true",
+        help="Print the Enlarge download size in bytes, or 0 when the release metadata has none.",
+    )
+    parser.add_argument(
+        "--install-enlarge",
+        action="store_true",
+        help="Download the Enlarge release package and print progress. Not part of viewer startup.",
+    )
+    parser.add_argument(
         "--shell",
         action="store_true",
         help="Open the shared viewer screen. Not part of viewer startup.",
@@ -60,6 +77,17 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         print(f"{offer['tag']} {offer['html_url']}", flush=True)
         return 0
+    if args.enlarge_size:
+        try:
+            package = enlarge_package()
+        except UpdateCheckError as exc:
+            print(f"update check failed: {exc}", file=sys.stderr, flush=True)
+            print("0", flush=True)
+            return 1
+        print(0 if package is None else int(package["bytes"]), flush=True)
+        return 0
+    if args.install_enlarge:
+        return install_enlarge_package(data_home() / "enlarge-setup")
     if args.shell:
         # Startup-budget exception to the no-inline-import rule: --ping must
         # not load Qt or voxprint-common. This process is never on the

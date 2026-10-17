@@ -165,6 +165,14 @@ int main(int argc, char **argv) {
     const lucent::ResizeSpec tiny = lucent::resizeFromPercent(lucent::resizeFromSource(10, 10, true, true, false), 0);
     expect(tiny.percent == 1 && tiny.width == 1 && tiny.height == 1, "percent and size stay at least 1");
 
+    const lucent::ViewerBands bands = lucent::viewerBands(900, true);
+    expect(bands.pictureTop >= bands.chipTop + bands.chipHeight, "the picture starts below the chip rows");
+    expect(bands.pictureHeight > 0, "a 900 px window still has a picture");
+    const lucent::ViewerBands narrow = lucent::viewerBands(640, true);
+    expect(narrow.pictureTop >= narrow.chipTop + narrow.chipHeight, "a short window keeps the picture below the chips");
+    const lucent::ViewerBands noStrip = lucent::viewerBands(400, false);
+    expect(noStrip.pictureTop >= noStrip.chipTop + noStrip.chipHeight, "hiding the strip does not pull the picture into the chips");
+
     if (failures != 0) {
         std::cerr << failures << " failure(s)\n";
         return 1;

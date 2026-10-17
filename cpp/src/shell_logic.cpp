@@ -1106,6 +1106,27 @@ std::vector<std::string> ownedKeys(const PresetFile &file, const std::string &gr
     return owned;
 }
 
+ViewerBands viewerBands(int windowHeight, bool historyVisible) {
+    constexpr int kPageTop = 12;
+    constexpr int kPageBottom = 12;
+    constexpr int kTop = 40;
+    constexpr int kBarGap = 10;
+    constexpr int kRowGap = 8;
+    constexpr int kChip = 44;
+    constexpr int kStatus = 36;
+    constexpr int kHistory = 104;
+    ViewerBands bands;
+    bands.barTop = kPageTop;
+    bands.barHeight = kTop;
+    bands.chipTop = bands.barTop + bands.barHeight + kBarGap;
+    bands.chipHeight = kChip + kRowGap + kChip;
+    bands.pictureTop = bands.chipTop + bands.chipHeight + kRowGap;
+    const int history = historyVisible ? kHistory : 0;
+    const int bottom = windowHeight - kPageBottom - history - kStatus;
+    bands.pictureHeight = std::max(0, bottom - bands.pictureTop);
+    return bands;
+}
+
 std::filesystem::path dataHome() {
     if (const char *overrideHome = std::getenv("VOXPRINT_HOME")) {
         const std::string text(overrideHome);

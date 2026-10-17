@@ -8,7 +8,7 @@ Lucent is two programs.
 
 ## Shell
 
-The interactive window is the viewer variant of the shared shell. Simple mode is a toolbar (Open, Save, Previous / Предыдущий, Next / Следующий, Rotate ↻, Crop, Delete, Slideshow, Fullscreen), a View row (Fit / Fill / 100%), an Enhance row (Enhance with Enlarge, Photo / Drawing), an Info line, and the picture. Toolbar buttons that do not fit fold into More. Expert mode adds a C++ side panel on the right of the picture. The panel reads and writes the same settings document as the chips.
+The interactive window is the viewer variant of the shared shell. Simple mode is a toolbar (Open, Save, Previous / Предыдущий, Next / Следующий, ↻ Rotate / ↻ Повернуть, Crop, Move to trash / В корзину, Slideshow, Fullscreen, and a checkable Expert mode / Режим эксперта button beside More), a View row (Fit / Fill / 100%), an Enhance row (Enhance with Enlarge, Photo / Drawing), an Info line, and the picture. Toolbar buttons that do not fit fold into More. Expert mode and More stay visible. The picture rectangle starts below the chip rows. Expert mode adds a C++ side panel on the right of the picture. The panel reads and writes the same settings document as the chips. When Enlarge is missing, Enhance with Enlarge asks to install it and then downloads the release package with progress and Cancel.
 
 Preset documents use schema `voxprint-presets/1`. Lucent's file is `share/presets/lucent.json`. Choosing a chip writes only that option's keys. A close hand edit reads "{name} + changes". A far edit reads Custom. Reset restores the stored option. Reserved safety keys are rejected.
 
@@ -47,4 +47,4 @@ Lucent reads the JSON lines Enlarge prints. Cancel kills that process. Open in E
 
 ## Theme
 
-The C++ viewer reads `share/tokens.json` and `share/locales`, schema 1, vendored from voxprint-common commit `0d1e30de68cc49549a2a94cb3695e5601c17e7db` at `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/`. It does not import that package. The pin file is `share/voxprint-common.pin.json`. Changing that commit is the re-pin. The C++ build writes `lucent.qss` from `share/lucent.qss.in` and those tokens. The focus ring is 2 px in the accent colour. Lucent has no models and does not use MDL.
+The C++ viewer reads `share/tokens.json` and `share/locales`, schema 1, vendored from voxprint-common commit `0d1e30de68cc49549a2a94cb3695e5601c17e7db` at `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/`. It does not import that package. The pin file is `share/voxprint-common.pin.json`. Changing that commit is the re-pin. The C++ build writes `lucent.qss` from `share/lucent.qss.in` and those tokens. The focus ring is 2 px in the accent colour. Lucent has no models. An MDL catalog is read only when the install dialog needs a download size.

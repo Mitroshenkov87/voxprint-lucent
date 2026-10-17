@@ -22,4 +22,7 @@ QString label(const QString &key);
 /// Replace `{name}` in `pattern`.
 QString labelWithName(const QString &pattern, const QString &name);
 
+/// File size with the catalog unit for the active language.
+QString formatDataSize(qint64 bytes);
+
 }  // namespace lucent

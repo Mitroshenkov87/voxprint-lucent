@@ -99,20 +99,26 @@ options:
 
 ```text
 usage: voxprint-lucent-tools [-h] [--ping] [--path PATH] [--enlarge]
-                             [--frame FRAME] [--check-update] [--shell]
+                             [--frame FRAME] [--check-update] [--enlarge-size]
+                             [--install-enlarge] [--shell]
 
 VOXPrint AI Lucent tools host. Not part of viewer startup.
 
 options:
-  -h, --help      show this help message and exit
-  --ping          Answer without loading Qt. Used to prove this process is
-                  separate.
-  --path PATH     Image the viewer had open.
-  --enlarge       Open the Enlarge hand-off for --path instead of the info
-                  panel.
-  --frame FRAME   Frame index to enlarge when the file has more than one. A
-                  still ignores this.
-  --check-update  Read this repository's GitHub releases and print a newer
-                  tag.
-  --shell         Open the shared viewer screen. Not part of viewer startup.
+  -h, --help         show this help message and exit
+  --ping             Answer without loading Qt. Used to prove this process is
+                     separate.
+  --path PATH        Image the viewer had open.
+  --enlarge          Open the Enlarge hand-off for --path instead of the info
+                     panel.
+  --frame FRAME      Frame index to enlarge when the file has more than one. A
+                     still ignores this.
+  --check-update     Read this repository's GitHub releases and print a newer
+                     tag.
+  --enlarge-size     Print the Enlarge download size in bytes, or 0 when the
+                     release metadata has none.
+  --install-enlarge  Download the Enlarge release package and print progress.
+                     Not part of viewer startup.
+  --shell            Open the shared viewer screen. Not part of viewer
+                     startup.
 ```

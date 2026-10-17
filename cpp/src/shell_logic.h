@@ -201,4 +201,17 @@ ResizeSpec resizeFromPercent(ResizeSpec spec, int percent);
 /// Turn aspect lock on or off. On recomputes the side the unit does not own.
 ResizeSpec resizeKeepAspect(ResizeSpec spec, bool keep);
 
+/// Vertical bands of the viewer window. The picture starts below the chip rows.
+struct ViewerBands {
+    int barTop = 0;
+    int barHeight = 0;
+    int chipTop = 0;
+    int chipHeight = 0;
+    int pictureTop = 0;
+    int pictureHeight = 0;
+};
+
+/// `historyVisible` reserves the thumbnail strip. The picture never overlaps the chips.
+ViewerBands viewerBands(int windowHeight, bool historyVisible);
+
 }  // namespace lucent

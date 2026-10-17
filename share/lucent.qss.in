@@ -21,7 +21,7 @@ QLabel#muted, QLabel#status, QLabel#presetLabel, QLabel#emptyHint, QLabel#expert
 QLabel#faint {
     color: @TEXT_FAINT@;
 }
-QLabel#progressText, QLabel#blockedText, QLabel#featureText {
+QLabel#progressText, QLabel#blockedText {
     color: @TEXT@;
     font-size: 15px;
 }
@@ -91,7 +91,7 @@ QPushButton[chip="true"] {
     padding: 4px 12px;
     min-width: 72px;
 }
-QPushButton#infoToggle:checked {
+QPushButton#expertToggle:checked, QPushButton#infoToggle:checked {
     background-color: @PRIMARY@;
     color: @TEXT_ON_PRIMARY@;
     border: @BORDER_PX@px solid @PRIMARY_BORDER@;

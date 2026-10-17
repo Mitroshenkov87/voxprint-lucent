@@ -184,13 +184,15 @@ private:
     void commitCombo(QComboBox *box, const char *key);
     void resizeExpert(int delta);
     void startJob();
+    void offerEnlargeInstall();
+    void startInstall();
     void readJob();
     void finishJob(int code);
     void cancelJob();
     void setExpert(bool enabled);
     void openFile();
     void openMenu();
-    void addKeptActions(QMenu &menu);
+    void addKeptActions(QMenu &menu, bool crop);
     void openResizeDialog();
     void editResize(const ResizeSpec &spec);
     void syncResizeFields();
