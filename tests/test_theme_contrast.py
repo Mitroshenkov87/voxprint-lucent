@@ -73,7 +73,7 @@ def test_vendored_tokens_match_the_pin() -> None:
     pin = json.loads(Path("share/tokens.pin.json").read_text(encoding="utf-8"))
     body = Path("share/tokens.json").read_bytes()
     assert pin["package"] == "voxprint-common"
-    assert pin["pr"] == 13
+    assert pin["tag"] == "v0.2.5"
     assert pin["commit"] == "8a94b531cb4f3526425a80a86a1e64624b5de606"
     tokens = json.loads(body)
     assert tokens["schema"] == 1
