@@ -754,16 +754,18 @@ void Chrome::buildBar() {
             impl_->cb.save();
         }
     });
-    add("simple.viewer.previous", [this] {
+    auto *previous = add("simple.viewer.previous", [this] {
         if (impl_->cb.step) {
             impl_->cb.step(-1);
         }
     });
-    add("simple.viewer.next", [this] {
+    previous->setToolTip(previous->text());
+    auto *next = add("simple.viewer.next", [this] {
         if (impl_->cb.step) {
             impl_->cb.step(1);
         }
     });
+    next->setToolTip(next->text());
     row->addStretch(1);
     auto *more = new QPushButton(label(QStringLiteral("lucent.action.more")), impl_->bar);
     QObject::connect(more, &QPushButton::clicked, impl_->host, [this] { openMenu(); });
@@ -1901,16 +1903,18 @@ void Chrome::openMenu() {
 void Chrome::contextMenu(const QPoint &globalPos) {
     QMenu menu(impl_->host);
     menu.addAction(label(QStringLiteral("simple.viewer.open")), [this] { openFile(); });
-    menu.addAction(label(QStringLiteral("simple.viewer.previous")), [this] {
+    QAction *previousImage = menu.addAction(label(QStringLiteral("simple.viewer.previous")), [this] {
         if (impl_->cb.step) {
             impl_->cb.step(-1);
         }
     });
-    menu.addAction(label(QStringLiteral("simple.viewer.next")), [this] {
+    previousImage->setToolTip(previousImage->text());
+    QAction *nextImage = menu.addAction(label(QStringLiteral("simple.viewer.next")), [this] {
         if (impl_->cb.step) {
             impl_->cb.step(1);
         }
     });
+    nextImage->setToolTip(nextImage->text());
     menu.addSeparator();
     menu.addAction(label(QStringLiteral("simple.viewer.save")), [this] {
         if (impl_->cb.save) {

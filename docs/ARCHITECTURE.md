@@ -8,7 +8,7 @@ Lucent is two programs.
 
 ## Shell
 
-The interactive window is the viewer variant of the shared shell. Simple mode is a toolbar (Open, Save, Previous, Next), the Fit / 100% / Enhance with Enlarge chips, and the picture. Expert mode adds a C++ side panel on the right of the picture. The panel reads and writes the same settings document as the chips.
+The interactive window is the viewer variant of the shared shell. Simple mode is a toolbar (Open, Save, Previous / Предыдущий, Next / Следующий), the Fit / 100% / Enhance with Enlarge chips, and the picture. Expert mode adds a C++ side panel on the right of the picture. The panel reads and writes the same settings document as the chips.
 
 Preset documents use schema `voxprint-presets/1`. Lucent's file is `share/presets/lucent.json`. Choosing a chip writes only that option's keys. A close hand edit reads "{name} + changes". A far edit reads Custom. Reset restores the stored option. Reserved safety keys are rejected.
 

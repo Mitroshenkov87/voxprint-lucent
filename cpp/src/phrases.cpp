@@ -52,9 +52,9 @@ Row rowFor(Text id) {
     case Text::Language:
         return {"Language", "Язык", "Sprache"};
     case Text::Next:
-        return {"Next", "Следующее", "Weiter"};
+        return {"Next", "Следующий", "Weiter"};
     case Text::Previous:
-        return {"Previous", "Предыдущее", "Zurück"};
+        return {"Previous", "Предыдущий", "Zurück"};
     case Text::Fullscreen:
         return {"Fullscreen", "Полный экран", "Vollbild"};
     case Text::Frameless:

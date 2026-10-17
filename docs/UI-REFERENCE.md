@@ -6,7 +6,7 @@ The window opens at 1200×900 the first time, and at a minimum of 640×400 after
 
 ## Simple mode
 
-A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous, and Next. The overflow menu and the picture's context menu carry the other everyday actions: save as, save a copy, export, download, the other zoom modes, rotate, flip, crop, Resize…, trash, thumbnails, frameless, window fit, and Tools. Resize… takes a width and height or a percent, with keep aspect and resampling. Under the toolbar, one row of preset chips reads Fit, 100%, and Enhance with Enlarge. The full list is `docs/ui/FEATURE-MAP.md`. The chips scroll sideways; they do not wrap. The picture fills everything left under that row.
+A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous (Предыдущий), and Next (Следующий). The overflow menu and the picture's context menu carry the other everyday actions: save as, save a copy, export, download, the other zoom modes, rotate, flip, crop, Resize…, trash, thumbnails, frameless, window fit, and Tools. Resize… takes a width and height or a percent, with keep aspect and resampling. Under the toolbar, one row of preset chips reads Fit, 100%, and Enhance with Enlarge. The full list is `docs/ui/FEATURE-MAP.md`. The chips scroll sideways; they do not wrap. The picture fills everything left under that row.
 
 Enhance with Enlarge writes scale 2 and Enlarge's `photo` preset, then runs the Enlarge command. When Enlarge is not installed the chip stays grey, with the reason and Install Enlarge. Choosing the grey chip does not write values.
 

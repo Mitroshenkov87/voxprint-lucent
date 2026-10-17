@@ -12,8 +12,8 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | Save a copy | Toolbar, application menu, context menu, Ctrl+S | Overflow menu, context menu, Ctrl+S | simple |
 | Export the current view | Toolbar, application menu, context menu | Overflow menu, context menu | simple |
 | Download a copy | Toolbar, application menu, context menu | Overflow menu, context menu | simple |
-| Previous picture | Toolbar, context menu, Left | Toolbar, context menu, Left | simple |
-| Next picture | Toolbar, context menu, Right | Toolbar, context menu, Right | simple |
+| Previous picture | Toolbar, context menu, Left | Toolbar and context menu, labelled Previous / Предыдущий, Left | simple |
+| Next picture | Toolbar, context menu, Right | Toolbar and context menu, labelled Next / Следующий, Right | simple |
 | Fit | Toolbar, context menu zoom menu, 2 | Preset chip, overflow and context zoom menu, 2 | simple |
 | 100% / 1:1 | Toolbar, context menu zoom menu, 1 | Preset chip, overflow and context zoom menu, 1 | simple |
 | Fill | Toolbar, context menu zoom menu, 3 | Overflow and context zoom menu, 3 | simple |

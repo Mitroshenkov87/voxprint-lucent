@@ -1,5 +1,7 @@
 {
   "splash.app.viewer": "VOXPrint AI Lucent",
+  "simple.viewer.previous": "Предыдущий",
+  "simple.viewer.next": "Следующий",
   "lucent.viewer.enhance": "Улучшить с Enlarge",
   "lucent.expert.zoom": "Масштаб",
   "lucent.expert.colour": "Управление цветом",
