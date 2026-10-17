@@ -8,7 +8,7 @@ Lucent is two programs.
 
 ## Shell
 
-The interactive window is the viewer variant of the shared shell. Simple mode is a toolbar (Open, Save, Previous / Предыдущий, Next / Следующий), the Fit / 100% / Enhance with Enlarge chips, and the picture. Expert mode adds a C++ side panel on the right of the picture. The panel reads and writes the same settings document as the chips.
+The interactive window is the viewer variant of the shared shell. Simple mode is a toolbar (Open, Save, Previous / Предыдущий, Next / Следующий, Rotate ↻, Crop, Delete, Slideshow, Fullscreen), a View row (Fit / Fill / 100%), an Enhance row (Enhance with Enlarge, Photo / Drawing), an Info line, and the picture. Toolbar buttons that do not fit fold into More. Expert mode adds a C++ side panel on the right of the picture. The panel reads and writes the same settings document as the chips.
 
 Preset documents use schema `voxprint-presets/1`. Lucent's file is `share/presets/lucent.json`. Choosing a chip writes only that option's keys. A close hand edit reads "{name} + changes". A far edit reads Custom. Reset restores the stored option. Reserved safety keys are rejected.
 
@@ -16,7 +16,7 @@ Preset documents use schema `voxprint-presets/1`. Lucent's file is `share/preset
 
 Suite state is `<data home>/state/suite.json`. The data home is `%LOCALAPPDATA%\VOXPrint AI Suite` on Windows and `${XDG_DATA_HOME:-~/.local/share}/voxprint-ai-suite` on Linux. `VOXPRINT_HOME`, when set and not empty, replaces that directory. The spelling of the directory lives in one function in each program: `dataHome()` in `cpp/src/shell_logic.cpp` and `data_home()` in `voxprint_lucent/suite_state.py`.
 
-`ui.expert_mode` is a boolean in `suite.json`. The viewer screen's surface id is `viewer`. The native document is `<data home>/state/viewer/image-settings.json`, schema 1, with `values`, `chosen`, and `overrides`, plus `ui.geometry` and `ui.history_visible`. The helper's reference screen writes `viewer-settings.json` in that same directory, which is the file name `state_names` gives the viewer variant.
+`ui.expert_mode` is a boolean in `suite.json`. The viewer screen's surface id is `viewer`. The native document is `<data home>/state/viewer/image-settings.json`, schema 1, with `values`, `chosen`, and `overrides`, plus `ui.geometry`, `ui.history_visible`, and `ui.info_visible`. The helper's reference screen writes `viewer-settings.json` in that same directory, which is the file name `state_names` gives the viewer variant.
 
 A writer locks `<file>.lock`, re-reads, changes only its own keys, writes a temporary file, fsyncs it, and replaces the destination. A reader keeps the last good document when the file is invalid. A missing file means the defaults.
 
@@ -29,7 +29,7 @@ A writer locks `<file>.lock`, re-reads, changes only its own keys, writes a temp
 
 `--benchmark` measures that first paint and exits. It does not start the tools process. The cold first-pixel gate is 450 ms. The warm gate is 250 ms.
 
-The first launch uses 1200×900. After that the window restores `ui.geometry`. The viewer's minimum is 640×400. Fullscreen and slideshow restore that geometry when they end.
+The first launch uses 1200×900. After that the window restores `ui.geometry`. The viewer's minimum is 640×400. At 960×640 the two chip rows stay intact, and the toolbar folds into More only when a button does not fit. Fullscreen and slideshow restore that geometry when they end.
 
 ## Enlarge
 
@@ -40,7 +40,7 @@ Discovery looks for an installed copy: the per-user registry on Windows, a `.des
 Enhance with Enlarge runs:
 
 ```text
-voxprint-enlarge --input FILE --output FILE --scale 2 --preset photo --quality-tier fast --format avif --quality N --json-progress
+voxprint-enlarge --input FILE --output FILE --scale 2 --preset photo|art --quality-tier fast --format avif --quality N --json-progress
 ```
 
 Lucent reads the JSON lines Enlarge prints. Cancel kills that process. Open in Enlarge still starts the tools process, which opens Enlarge's window. `--dry-run` on Lucent checks discovery and prints one JSON object. It does not open a window.

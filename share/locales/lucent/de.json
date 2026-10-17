@@ -1,6 +1,10 @@
 {
   "splash.app.viewer": "VOXPrint AI Lucent",
   "lucent.viewer.enhance": "Mit Enlarge verbessern",
+  "lucent.preset.enhance": "Verbessern",
+  "lucent.simple.photo": "Foto",
+  "lucent.simple.drawing": "Zeichnung",
+  "lucent.action.delete": "Löschen",
   "lucent.expert.zoom": "Zoom",
   "lucent.expert.colour": "Farbverwaltung",
   "lucent.expert.icc": "Profil",

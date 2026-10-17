@@ -89,7 +89,12 @@ QPushButton[chip="true"] {
     border: @BORDER_PX@px solid @CONTROL_BORDER@;
     border-radius: 15px;
     padding: 4px 12px;
-    min-width: 156px;
+    min-width: 72px;
+}
+QPushButton#infoToggle:checked {
+    background-color: @PRIMARY@;
+    color: @TEXT_ON_PRIMARY@;
+    border: @BORDER_PX@px solid @PRIMARY_BORDER@;
 }
 QPushButton[chip="true"]:checked {
     background-color: @PRIMARY@;

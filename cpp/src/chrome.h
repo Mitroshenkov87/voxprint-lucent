@@ -175,6 +175,9 @@ private:
     void refreshChips();
     void refreshExpert();
     void chooseChip(const QString &id);
+    void choosePicture(const QString &id);
+    void chooseEnhance();
+    void fitToolbar();
     void resetView();
     void applyZoom();
     void commitZoomSpin();

@@ -67,6 +67,7 @@ namespace lucent {
 namespace {
 
 constexpr int kTop = 40;
+constexpr int kChip = 44;
 constexpr int kPageLeft = 16;
 constexpr int kPageTop = 12;
 constexpr int kPageRight = 16;
@@ -525,6 +526,69 @@ private:
     ExpertPage *page_ = nullptr;
 };
 
+class ElideLabel : public QLabel {
+public:
+    explicit ElideLabel(QWidget *parent = nullptr) : QLabel(parent) {
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    }
+
+    void setFullText(const QString &text) {
+        full_ = text;
+        applyElide();
+    }
+
+protected:
+    void resizeEvent(QResizeEvent *event) override {
+        QLabel::resizeEvent(event);
+        applyElide();
+    }
+
+private:
+    void applyElide() {
+        const int width = std::max(0, this->width());
+        const QString shown = fontMetrics().elidedText(full_, Qt::ElideRight, width > 0 ? width : 100000);
+        if (text() != shown) {
+            QLabel::setText(shown);
+        }
+    }
+
+    QString full_;
+};
+
+void clearLayout(QLayout *layout) {
+    if (layout == nullptr) {
+        return;
+    }
+    while (QLayoutItem *item = layout->takeAt(0)) {
+        if (item->widget() != nullptr) {
+            item->widget()->deleteLater();
+        }
+        delete item;
+    }
+}
+
+QString percentText(double scale) {
+    return QString::number(static_cast<int>(std::lround(scale * 100.0))) + QStringLiteral("%");
+}
+
+QString zoomText(ZoomMode mode, double scale) {
+    switch (mode) {
+    case ZoomMode::Fit:
+        return label(QStringLiteral("simple.viewer.fit"));
+    case ZoomMode::Fill:
+        return label(QStringLiteral("lucent.action.fill"));
+    case ZoomMode::FitWidth:
+        return label(QStringLiteral("lucent.action.fit_width"));
+    case ZoomMode::FitHeight:
+        return label(QStringLiteral("lucent.action.fit_height"));
+    case ZoomMode::OneToOne:
+    case ZoomMode::Free:
+        return percentText(scale);
+    }
+    return percentText(scale);
+}
+
 }  // namespace
 
 struct Chrome::Impl {
@@ -534,6 +598,7 @@ struct Chrome::Impl {
     SettingState state;
     bool presetsOk = false;
     bool historyOn = true;
+    bool infoOn = true;
     bool expertOn = false;
     bool shotOverride = false;
     bool shotExpert = false;
@@ -545,12 +610,20 @@ struct Chrome::Impl {
     bool geometryReady = false;
 
     QWidget *bar = nullptr;
+    std::vector<QPushButton *> barButtons;
+    QPushButton *moreButton = nullptr;
     QWidget *presetRow = nullptr;
-    QHBoxLayout *chips = nullptr;
+    QWidget *viewRow = nullptr;
+    QHBoxLayout *viewChips = nullptr;
+    QWidget *enhanceRow = nullptr;
+    QHBoxLayout *enhanceChips = nullptr;
     QLabel *customLabel = nullptr;
     QPushButton *resetButton = nullptr;
-    QLabel *featureText = nullptr;
+    ElideLabel *featureText = nullptr;
     QPushButton *installButton = nullptr;
+    QPushButton *infoToggle = nullptr;
+    QLabel *infoLine = nullptr;
+    QPushButton *cancelButton = nullptr;
     QFrame *expert = nullptr;
     SplitHandle *split = nullptr;
     QWidget *statusRow = nullptr;
@@ -683,7 +756,7 @@ void Chrome::loadPresets() {
     }
     impl_->presetsOk = true;
     const bool enlarge = !enlargeCliCommand().isEmpty();
-    setOptionAvailable(impl_->presets, "view", "enhance", enlarge);
+    setOptionAvailable(impl_->presets, "enhance", "enhance", enlarge);
     const Json stored = readDocument(appSettingsPath(kAppId));
     impl_->state = mergePresets(impl_->presets, {}, stored.kind == Json::Kind::Object ? &stored : nullptr);
     if (impl_->state.values.count("viewer.colour") == 0) {
@@ -699,6 +772,7 @@ void Chrome::loadPresets() {
         impl_->state.values["export.quality"] = Json::fromInt(60);
     }
     impl_->historyOn = jsonBool(stored, "ui.history_visible", true);
+    impl_->infoOn = jsonBool(stored, "ui.info_visible", true);
     impl_->expertWidth = std::clamp(jsonInt(stored, "ui.expert_width", kExpertDefault), kExpertMin, kExpertMax);
     if (!qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
         bool forcedOk = false;
@@ -737,75 +811,143 @@ bool Chrome::panelOpen() const {
 }
 
 void Chrome::buildBar() {
+    impl_->barButtons.clear();
     impl_->bar = new QWidget(impl_->host);
     impl_->bar->setObjectName(QStringLiteral("topBar"));
     auto *row = new QHBoxLayout(impl_->bar);
     row->setContentsMargins(8, 0, 8, 0);
-    row->setSpacing(8);
-    const auto add = [this, row](const char *key, const std::function<void()> &fn) {
-        auto *button = new QPushButton(label(QString::fromUtf8(key)), impl_->bar);
+    row->setSpacing(6);
+    const auto add = [this, row](const QString &text, const QString &tip, const std::function<void()> &fn) {
+        auto *button = new QPushButton(text, impl_->bar);
+        if (!tip.isEmpty()) {
+            button->setToolTip(tip);
+        }
         QObject::connect(button, &QPushButton::clicked, impl_->host, fn);
         row->addWidget(button);
+        impl_->barButtons.push_back(button);
         return button;
     };
-    add("simple.viewer.open", [this] { openFile(); });
-    add("simple.viewer.save", [this] {
+    const auto labeled = [this, add](const char *key, const std::function<void()> &fn, const char *tipKey = nullptr) {
+        const QString text = label(QString::fromUtf8(key));
+        const QString tip = tipKey == nullptr ? text : label(QString::fromUtf8(tipKey));
+        return add(text, tip, fn);
+    };
+    labeled("simple.viewer.open", [this] { openFile(); });
+    labeled("simple.viewer.save", [this] {
         if (impl_->cb.save) {
             impl_->cb.save();
         }
     });
-    auto *previous = add("simple.viewer.previous", [this] {
+    labeled("simple.viewer.previous", [this] {
         if (impl_->cb.step) {
             impl_->cb.step(-1);
         }
     });
-    previous->setToolTip(previous->text());
-    auto *next = add("simple.viewer.next", [this] {
+    labeled("simple.viewer.next", [this] {
         if (impl_->cb.step) {
             impl_->cb.step(1);
         }
     });
-    next->setToolTip(next->text());
+    auto *rotate = add(QStringLiteral("↻"), label(QStringLiteral("lucent.action.rotate_right")), [this] {
+        if (impl_->cb.rotate) {
+            impl_->cb.rotate(true);
+        }
+    });
+    rotate->setAccessibleName(rotate->toolTip());
+    labeled("lucent.action.crop", [this] {
+        if (impl_->cb.crop) {
+            impl_->cb.crop();
+        }
+    });
+    labeled("lucent.action.delete", [this] {
+        if (impl_->cb.trash) {
+            impl_->cb.trash();
+        }
+    }, "lucent.action.trash");
+    labeled("lucent.action.slideshow", [this] {
+        if (impl_->cb.slideshow) {
+            impl_->cb.slideshow();
+        }
+    });
+    labeled("lucent.action.fullscreen", [this] {
+        if (impl_->cb.fullscreen) {
+            impl_->cb.fullscreen();
+        }
+    });
     row->addStretch(1);
-    auto *more = new QPushButton(label(QStringLiteral("lucent.action.more")), impl_->bar);
-    QObject::connect(more, &QPushButton::clicked, impl_->host, [this] { openMenu(); });
-    row->addWidget(more);
+    impl_->moreButton = new QPushButton(label(QStringLiteral("lucent.action.more")), impl_->bar);
+    QObject::connect(impl_->moreButton, &QPushButton::clicked, impl_->host, [this] { openMenu(); });
+    row->addWidget(impl_->moreButton);
+}
+
+void Chrome::fitToolbar() {
+    if (impl_->bar == nullptr || impl_->moreButton == nullptr || impl_->bar->layout() == nullptr) {
+        return;
+    }
+    for (QPushButton *button : impl_->barButtons) {
+        button->setVisible(true);
+    }
+    impl_->moreButton->setVisible(true);
+    impl_->bar->layout()->activate();
+    const QMargins margins = impl_->bar->layout()->contentsMargins();
+    const int spacing = impl_->bar->layout()->spacing();
+    const int inner = std::max(0, impl_->bar->width() - margins.left() - margins.right());
+    const auto widthOf = [](const QWidget *widget) {
+        return std::max(widget->sizeHint().width(), widget->minimumSizeHint().width());
+    };
+    int used = widthOf(impl_->moreButton);
+    int visible = 1;
+    for (QPushButton *button : impl_->barButtons) {
+        used += widthOf(button);
+        visible += 1;
+    }
+    used += spacing * std::max(0, visible - 1);
+    for (auto it = impl_->barButtons.rbegin(); it != impl_->barButtons.rend() && used > inner; ++it) {
+        used -= widthOf(*it) + spacing;
+        (*it)->setVisible(false);
+    }
 }
 
 void Chrome::buildPresets() {
     impl_->presetRow = new QWidget(impl_->host);
-    auto *outer = new QHBoxLayout(impl_->presetRow);
-    outer->setContentsMargins(0, 0, 0, 0);
-    outer->setSpacing(8);
-    auto *scroll = new QScrollArea(impl_->presetRow);
-    scroll->setObjectName(QStringLiteral("presetScroll"));
-    scroll->viewport()->setObjectName(QStringLiteral("presetViewport"));
-    scroll->verticalScrollBar()->setObjectName(QStringLiteral("presetBar"));
-    polishScrollBar(scroll->verticalScrollBar());
-    scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setWidgetResizable(true);
-    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    auto *inner = new QWidget(scroll);
-    impl_->chips = new QHBoxLayout(inner);
-    impl_->chips->setContentsMargins(0, 0, 0, 0);
-    impl_->chips->setSpacing(8);
-    scroll->setWidget(inner);
-    outer->addWidget(scroll, 1);
-    impl_->customLabel = new QLabel(impl_->presetRow);
+    auto *stack = new QVBoxLayout(impl_->presetRow);
+    stack->setContentsMargins(0, 0, 0, 0);
+    stack->setSpacing(kRowGap);
+
+    impl_->viewRow = new QWidget(impl_->presetRow);
+    auto *view = new QHBoxLayout(impl_->viewRow);
+    view->setContentsMargins(0, 0, 0, 0);
+    view->setSpacing(8);
+    impl_->viewChips = new QHBoxLayout;
+    impl_->viewChips->setContentsMargins(0, 0, 0, 0);
+    impl_->viewChips->setSpacing(8);
+    view->addLayout(impl_->viewChips, 1);
+    impl_->customLabel = new QLabel(impl_->viewRow);
     impl_->customLabel->setObjectName(QStringLiteral("presetLabel"));
-    impl_->resetButton = new QPushButton(impl_->presetRow);
-    impl_->featureText = new QLabel(impl_->presetRow);
-    impl_->featureText->setObjectName(QStringLiteral("featureText"));
-    impl_->installButton = new QPushButton(impl_->presetRow);
+    impl_->resetButton = new QPushButton(impl_->viewRow);
     QObject::connect(impl_->resetButton, &QPushButton::clicked, impl_->host, [this] { resetView(); });
+    view->addWidget(impl_->customLabel);
+    view->addWidget(impl_->resetButton);
+
+    impl_->enhanceRow = new QWidget(impl_->presetRow);
+    auto *enhance = new QHBoxLayout(impl_->enhanceRow);
+    enhance->setContentsMargins(0, 0, 0, 0);
+    enhance->setSpacing(8);
+    impl_->enhanceChips = new QHBoxLayout;
+    impl_->enhanceChips->setContentsMargins(0, 0, 0, 0);
+    impl_->enhanceChips->setSpacing(8);
+    enhance->addLayout(impl_->enhanceChips, 0);
+    impl_->featureText = new ElideLabel(impl_->enhanceRow);
+    impl_->featureText->setObjectName(QStringLiteral("featureText"));
+    impl_->installButton = new QPushButton(impl_->enhanceRow);
     QObject::connect(impl_->installButton, &QPushButton::clicked, impl_->host, [] {
         QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
     });
-    outer->addWidget(impl_->customLabel);
-    outer->addWidget(impl_->resetButton);
-    outer->addWidget(impl_->featureText);
-    outer->addWidget(impl_->installButton);
+    enhance->addWidget(impl_->featureText, 1);
+    enhance->addWidget(impl_->installButton, 0);
+
+    stack->addWidget(impl_->viewRow);
+    stack->addWidget(impl_->enhanceRow);
 }
 
 void Chrome::buildExpert() {
@@ -1084,16 +1226,36 @@ void Chrome::buildStatus() {
     auto *row = new QHBoxLayout(impl_->statusRow);
     row->setContentsMargins(0, 4, 0, 4);
     row->setSpacing(8);
+    impl_->infoToggle = new QPushButton(label(QStringLiteral("lucent.expert.info")), impl_->statusRow);
+    impl_->infoToggle->setObjectName(QStringLiteral("infoToggle"));
+    impl_->infoToggle->setCheckable(true);
+    impl_->infoToggle->setChecked(impl_->infoOn);
+    impl_->infoLine = new QLabel(impl_->statusRow);
+    impl_->infoLine->setObjectName(QStringLiteral("status"));
+    impl_->infoLine->setMinimumWidth(0);
+    impl_->infoLine->setVisible(impl_->infoOn);
     impl_->progressText = new QLabel(impl_->statusRow);
     impl_->progressText->setObjectName(QStringLiteral("progressText"));
     impl_->progress = new QProgressBar(impl_->statusRow);
     impl_->progress->setObjectName(QStringLiteral("progress"));
     impl_->progress->setTextVisible(false);
-    auto *cancel = new QPushButton(label(QStringLiteral("mdl.cancel")), impl_->statusRow);
-    QObject::connect(cancel, &QPushButton::clicked, impl_->host, [this] { cancelJob(); });
+    impl_->cancelButton = new QPushButton(label(QStringLiteral("mdl.cancel")), impl_->statusRow);
+    QObject::connect(impl_->infoToggle, &QPushButton::toggled, impl_->host, [this](bool on) {
+        if (impl_->applying) {
+            return;
+        }
+        impl_->infoOn = on;
+        persistFlag("ui.info_visible", Json::fromBool(on));
+        if (impl_->infoLine != nullptr) {
+            impl_->infoLine->setVisible(on);
+        }
+    });
+    QObject::connect(impl_->cancelButton, &QPushButton::clicked, impl_->host, [this] { cancelJob(); });
+    row->addWidget(impl_->infoToggle);
+    row->addWidget(impl_->infoLine, 1);
     row->addWidget(impl_->progressText, 1);
     row->addWidget(impl_->progress, 1);
-    row->addWidget(cancel);
+    row->addWidget(impl_->cancelButton);
 }
 
 void Chrome::buildCompare() {
@@ -1122,58 +1284,79 @@ void Chrome::buildCompare() {
 }
 
 void Chrome::refreshChips() {
-    if (impl_->chips == nullptr) {
+    if (impl_->viewChips == nullptr || impl_->enhanceChips == nullptr) {
         return;
     }
-    while (QLayoutItem *item = impl_->chips->takeAt(0)) {
-        if (item->widget() != nullptr) {
-            item->widget()->deleteLater();
-        }
-        delete item;
-    }
-    auto *groupLabel = new QLabel(label(QStringLiteral("simple.preset.view")), impl_->presetRow);
-    groupLabel->setObjectName(QStringLiteral("presetLabel"));
-    groupLabel->setMinimumWidth(96);
-    impl_->chips->addWidget(groupLabel);
-    const PresetGroup *group = findGroup(impl_->presets, "view");
-    const ChipStatus status = impl_->presetsOk ? chipFor(impl_->presets, impl_->state, "view") : ChipStatus{};
-    if (group != nullptr) {
-        for (const PresetOption &option : group->options) {
+    clearLayout(impl_->viewChips);
+    clearLayout(impl_->enhanceChips);
+    const auto chipButton = [](QWidget *parent, const QString &caption, bool available, bool checked) {
+        auto *chip = new QPushButton(caption, parent);
+        chip->setProperty("chip", true);
+        chip->setProperty("available", available ? QStringLiteral("true") : QStringLiteral("false"));
+        chip->setCheckable(available);
+        chip->setChecked(available && checked);
+        chip->setMinimumWidth(0);
+        return chip;
+    };
+    const auto groupLabel = [](QWidget *parent, const QString &text) {
+        auto *label = new QLabel(text, parent);
+        label->setObjectName(QStringLiteral("presetLabel"));
+        return label;
+    };
+    impl_->viewChips->addWidget(groupLabel(impl_->viewRow, label(QStringLiteral("simple.preset.view"))));
+    const PresetGroup *view = findGroup(impl_->presets, "view");
+    const ChipStatus viewStatus = impl_->presetsOk ? chipFor(impl_->presets, impl_->state, "view") : ChipStatus{};
+    if (view != nullptr) {
+        for (const PresetOption &option : view->options) {
             const QString name = label(qs(option.labelKey));
             QString caption = name;
-            const bool stored = status.optionId == option.id && status.kind != ChipKind::Custom;
-            if (stored && status.kind == ChipKind::Modified) {
+            const bool stored = viewStatus.optionId == option.id && viewStatus.kind != ChipKind::Custom;
+            if (stored && viewStatus.kind == ChipKind::Modified) {
                 caption = qs(formatChip(ChipKind::Modified, ss(name), ss(label(QStringLiteral("simple.preset.changed"))),
                                          ss(label(QStringLiteral("simple.preset.custom")))));
             }
-            auto *chip = new QPushButton(caption, impl_->presetRow);
-            chip->setProperty("chip", true);
-            chip->setProperty("available", option.available ? QStringLiteral("true") : QStringLiteral("false"));
-            chip->setCheckable(option.available);
-            chip->setChecked(stored && status.kind == ChipKind::Exact);
-            if (stored && status.kind == ChipKind::Modified) {
-                chip->setChecked(true);
-            }
-            chip->setMinimumWidth(156);
+            const bool checked = stored && (viewStatus.kind == ChipKind::Exact || viewStatus.kind == ChipKind::Modified);
+            auto *chip = chipButton(impl_->viewRow, caption, option.available, checked);
             const QString id = qs(option.id);
             QObject::connect(chip, &QPushButton::clicked, impl_->host, [this, id] { chooseChip(id); });
-            impl_->chips->addWidget(chip);
+            impl_->viewChips->addWidget(chip);
         }
     }
-    impl_->chips->addStretch(1);
-    const bool custom = status.kind == ChipKind::Custom;
-    const bool changed = status.kind != ChipKind::Exact;
+    impl_->viewChips->addStretch(1);
+    const bool custom = viewStatus.kind == ChipKind::Custom;
+    const bool changed = viewStatus.kind != ChipKind::Exact;
     impl_->customLabel->setVisible(custom);
     impl_->customLabel->setText(label(QStringLiteral("simple.preset.custom")));
-    const QString storedName = label(qs(status.labelKey));
-    impl_->resetButton->setVisible(changed && !status.optionId.empty());
+    const QString storedName = label(qs(viewStatus.labelKey));
+    impl_->resetButton->setVisible(changed && !viewStatus.optionId.empty());
     impl_->resetButton->setText(labelWithName(label(QStringLiteral("simple.preset.reset")), storedName));
-    const PresetOption *enhance = group == nullptr ? nullptr : findOption(*group, "enhance");
+
+    impl_->enhanceChips->addWidget(groupLabel(impl_->enhanceRow, label(QStringLiteral("lucent.preset.enhance"))));
+    const PresetGroup *enhanceGroup = findGroup(impl_->presets, "enhance");
+    const PresetOption *enhance = enhanceGroup == nullptr ? nullptr : findOption(*enhanceGroup, "enhance");
+    const ChipStatus enhanceStatus = impl_->presetsOk ? chipFor(impl_->presets, impl_->state, "enhance") : ChipStatus{};
+    if (enhance != nullptr) {
+        const bool checked = enhanceStatus.optionId == enhance->id && enhanceStatus.kind == ChipKind::Exact;
+        auto *chip = chipButton(impl_->enhanceRow, label(qs(enhance->labelKey)), enhance->available, checked);
+        QObject::connect(chip, &QPushButton::clicked, impl_->host, [this] { chooseEnhance(); });
+        impl_->enhanceChips->addWidget(chip);
+    }
+    const PresetGroup *pictures = findGroup(impl_->presets, "pictures");
+    const ChipStatus pictureStatus = impl_->presetsOk ? chipFor(impl_->presets, impl_->state, "pictures") : ChipStatus{};
+    if (pictures != nullptr) {
+        for (const PresetOption &option : pictures->options) {
+            const bool checked = pictureStatus.optionId == option.id && pictureStatus.kind == ChipKind::Exact;
+            auto *chip = chipButton(impl_->enhanceRow, label(qs(option.labelKey)), option.available, checked);
+            const QString id = qs(option.id);
+            QObject::connect(chip, &QPushButton::clicked, impl_->host, [this, id] { choosePicture(id); });
+            impl_->enhanceChips->addWidget(chip);
+        }
+    }
     const bool missing = enhance != nullptr && !enhance->available;
     impl_->featureText->setVisible(missing);
     impl_->installButton->setVisible(missing);
     if (enhance != nullptr) {
-        impl_->featureText->setText(label(qs(enhance->reasonKey)));
+        impl_->featureText->setFullText(label(qs(enhance->reasonKey)));
         impl_->installButton->setText(label(qs(enhance->actionLabelKey)));
     }
 }
@@ -1256,10 +1439,29 @@ void Chrome::chooseChip(const QString &id) {
     }
     persistState();
     refreshChips();
+    refreshExpert();
     applyZoom();
-    if (id == QStringLiteral("enhance")) {
-        startJob();
+}
+
+void Chrome::choosePicture(const QString &id) {
+    if (!chooseOption(impl_->presets, impl_->state, "pictures", ss(id))) {
+        refreshChips();
+        return;
     }
+    persistState();
+    refreshChips();
+    refreshExpert();
+}
+
+void Chrome::chooseEnhance() {
+    if (!chooseOption(impl_->presets, impl_->state, "enhance", "enhance")) {
+        refreshChips();
+        return;
+    }
+    persistState();
+    refreshChips();
+    refreshExpert();
+    startJob();
 }
 
 void Chrome::resetView() {
@@ -1280,6 +1482,10 @@ void Chrome::applyZoom() {
     const Json &zoom = found->second;
     if (zoom.kind == Json::Kind::String && zoom.text == "fit") {
         impl_->cb.zoom(ZoomMode::Fit);
+        return;
+    }
+    if (zoom.kind == Json::Kind::String && zoom.text == "fill") {
+        impl_->cb.zoom(ZoomMode::Fill);
         return;
     }
     if (zoom.kind == Json::Kind::String && zoom.text == "100") {
@@ -1321,12 +1527,21 @@ void Chrome::commitCombo(QComboBox *box, const char *key) {
 
 void Chrome::noteZoom(ZoomMode mode, double scale) {
     Json value = Json::fromString("fit");
-    if (mode == ZoomMode::OneToOne) {
+    switch (mode) {
+    case ZoomMode::Fit:
+        value = Json::fromString("fit");
+        break;
+    case ZoomMode::Fill:
+        value = Json::fromString("fill");
+        break;
+    case ZoomMode::OneToOne:
         value = Json::fromString("100");
-    } else if (mode == ZoomMode::Free) {
+        break;
+    case ZoomMode::FitWidth:
+    case ZoomMode::FitHeight:
+    case ZoomMode::Free:
         value = Json::fromString(std::to_string(std::max(1, static_cast<int>(std::lround(scale * 100.0)))));
-    } else if (mode != ZoomMode::Fit) {
-        value = Json::fromString(std::to_string(std::max(1, static_cast<int>(std::lround(scale * 100.0)))));
+        break;
     }
     editValue(impl_->presets, impl_->state, "viewer.zoom", value);
     if (impl_->stateTimer != nullptr) {
@@ -1341,10 +1556,10 @@ void Chrome::setLive(const LiveView &live) {
         return;
     }
     impl_->applying = true;
-    if (live.mode == ZoomMode::Fit) {
-        impl_->zoomValue->setText(label(QStringLiteral("simple.viewer.fit")));
-    } else {
-        impl_->zoomValue->setText(QString::number(static_cast<int>(std::lround(live.scale * 100.0))) + QStringLiteral("%"));
+    impl_->zoomValue->setText(zoomText(live.mode, live.scale));
+    if (impl_->infoLine != nullptr) {
+        impl_->infoLine->setText(live.info);
+        impl_->infoLine->setVisible(impl_->infoOn);
     }
     impl_->zoomSpin->setValue(std::clamp(static_cast<int>(std::lround(live.scale * 100.0)), 5, 800));
     impl_->cropX->setValue(live.cropX);
@@ -1382,19 +1597,26 @@ void Chrome::relayout() {
     const int height = impl_->host->height();
     const bool history = impl_->historyOn && height > kViewerMinH;
     const bool running = impl_->job != nullptr && impl_->job->state() != QProcess::NotRunning;
-    const int statusH = running ? kStatus : 0;
+    const int statusH = kStatus;
     const int historyH = history ? kHistory : 0;
     const int expertW = panelOpen() ? impl_->expertWidth : 0;
     int y = kPageTop;
     impl_->bar->setFixedHeight(kTop);
     impl_->bar->setGeometry(kPageLeft, y, std::max(0, width - kPageLeft - kPageRight), kTop);
     impl_->bar->show();
+    fitToolbar();
     impl_->presetRow->show();
-    if (impl_->bar->layout() != nullptr) {
-        impl_->bar->layout()->activate();
+    if (impl_->progressText != nullptr) {
+        impl_->progressText->setVisible(running);
+    }
+    if (impl_->progress != nullptr) {
+        impl_->progress->setVisible(running);
+    }
+    if (impl_->cancelButton != nullptr) {
+        impl_->cancelButton->setVisible(running);
     }
     y += kTop + kBarGap;
-    const int presetH = 44;
+    const int presetH = kChip + kRowGap + kChip;
     impl_->presetRow->setGeometry(kPageLeft, y, std::max(0, width - kPageLeft - kPageRight), presetH);
     y += presetH + kRowGap;
     const int bottom = height - kPageBottom - historyH - statusH;
@@ -1452,10 +1674,21 @@ void Chrome::setCurrent(int index) {
 void Chrome::mouseAt(const QPoint &) {}
 
 void Chrome::retranslate() {
+    impl_->barButtons.clear();
+    impl_->moreButton = nullptr;
     delete impl_->bar;
     impl_->bar = nullptr;
     buildBar();
     refreshChips();
+    if (impl_->infoToggle != nullptr) {
+        impl_->applying = true;
+        impl_->infoToggle->setText(label(QStringLiteral("lucent.expert.info")));
+        impl_->infoToggle->setChecked(impl_->infoOn);
+        impl_->applying = false;
+    }
+    if (impl_->cancelButton != nullptr) {
+        impl_->cancelButton->setText(label(QStringLiteral("mdl.cancel")));
+    }
     refreshExpert();
     relayout();
 }

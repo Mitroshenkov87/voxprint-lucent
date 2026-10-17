@@ -14,43 +14,43 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | Download a copy | Toolbar, application menu, context menu | Overflow menu, context menu | simple |
 | Previous picture | Toolbar, context menu, Left | Toolbar and context menu, labelled Previous / Предыдущий, Left | simple |
 | Next picture | Toolbar, context menu, Right | Toolbar and context menu, labelled Next / Следующий, Right | simple |
-| Fit | Toolbar, context menu zoom menu, 2 | Preset chip, overflow and context zoom menu, 2 | simple |
-| 100% / 1:1 | Toolbar, context menu zoom menu, 1 | Preset chip, overflow and context zoom menu, 1 | simple |
-| Fill | Toolbar, context menu zoom menu, 3 | Overflow and context zoom menu, 3 | simple |
+| Fit | Toolbar, context menu zoom menu, 2 | View chip, overflow and context zoom menu, 2 | simple |
+| 100% / 1:1 | Toolbar, context menu zoom menu, 1 | View chip, overflow and context zoom menu, 1 | simple |
+| Fill | Toolbar, context menu zoom menu, 3 | View chip, overflow and context zoom menu, 3 | simple |
 | Fit width | Toolbar, context menu zoom menu, 4 | Overflow and context zoom menu, 4 | simple |
 | Fit height | Toolbar, context menu zoom menu, 5 | Overflow and context zoom menu, 5 | simple |
 | Free zoom (wheel, cursor-anchored) | Wheel on the picture | Wheel on the picture | simple |
 | Pan | Drag the picture | Drag the picture | simple |
 | Rotate left | Toolbar, context menu, Ctrl+Left | Overflow menu, context menu, Ctrl+Left | simple |
-| Rotate right | Toolbar, context menu, Ctrl+Right | Overflow menu, context menu, Ctrl+Right; Expert rotate field | simple |
+| Rotate right | Toolbar, context menu, Ctrl+Right | Toolbar button ↻ with a Rotate right tooltip, overflow menu, context menu, Ctrl+Right; Expert rotate field | simple |
 | Flip horizontal | Toolbar, context menu, Ctrl+H | Overflow menu, context menu, Expert button, Ctrl+H | simple |
 | Flip vertical | Toolbar, context menu, Ctrl+V | Overflow menu, context menu, Expert button, Ctrl+V | simple |
-| Crop (drag) | Toolbar, context menu, Ctrl+Shift+X, drag | Overflow menu, context menu, drag on the picture, Ctrl+Shift+X | simple |
+| Crop (drag) | Toolbar, context menu, Ctrl+Shift+X, drag | Toolbar, overflow menu, context menu, drag on the picture, Ctrl+Shift+X | simple |
 | Numeric crop | Tools window spin boxes | Expert panel crop fields | Expert |
 | Resize | No typed pixel size in rc7 | Resize… on the overflow menu and the context menu. Width and height, or a percent, with keep aspect and resampling. The Expert panel shows the same values and applies them with Resize. | simple |
 | Convert | Save as, Export, Export frame, `--export --format` | Save as and Export. Export frame and `--export --format` stay. There is no convert wizard. | simple |
-| Move to trash | Toolbar, context menu, Delete | Overflow menu, context menu, Expert button, Delete. Asks before moving. | simple |
+| Move to trash | Toolbar, context menu, Delete | Toolbar button Delete / Удалить, overflow menu, context menu, Expert button, Delete. Asks before moving the file to the trash. | simple |
 | Copy image | Context menu, Ctrl+C | Context menu, Expert button, Ctrl+C | simple |
 | Copy path | Context menu, Ctrl+Shift+C | Context menu, Expert button, Ctrl+Shift+C | simple |
 | Reveal in folder | Context menu, Ctrl+R | Context menu, Expert button, Ctrl+R | simple |
-| Fullscreen | Toolbar, context menu, F11. Escape leaves it. | Overflow menu, context menu, F11. Escape leaves it. | simple |
-| Slideshow | Toolbar, context menu, S. Escape stops it. | Overflow menu, context menu, S. Escape stops it. | simple |
+| Fullscreen | Toolbar, context menu, F11. Escape leaves it. | Toolbar, overflow menu, context menu, F11. Escape leaves it. | simple |
+| Slideshow | Toolbar, context menu, S. Escape stops it. | Toolbar, overflow menu, context menu, S. Escape stops it. | simple |
 | Slideshow seconds | Settings dialog | Expert panel | Expert |
 | Thumbnails | Toolbar, settings checkbox, G | Overflow menu, context menu, Expert checkbox, G. Hidden means absent. | simple |
 | Frameless | Ctrl+Shift+F | Overflow menu, context menu, Ctrl+Shift+F | simple |
 | Window fit | Ctrl+Shift+W | Overflow menu, context menu, Ctrl+Shift+W | simple |
 | Tools / info window | I | Overflow menu, context menu, I. Still the on-demand tools process. | simple |
-| Info (size, format, profile, EXIF, GPS, frame) | Tools window | Tools window, and the Expert info line | simple |
+| Info (size, format, profile, EXIF, GPS, frame) | Tools window | Tools window, the Expert info line, and an Info toggle on the status row. The toggle shows one line with the file name, file size, and pixel size. Expert shows that same line. | simple |
 | Colour sample (click the preview) | Tools window preview | Tools window preview | simple |
 | Frame previous / next / play | Tools window | Expert panel, and comma / period | Expert |
 | Export one frame (AVIF, JPEG XL, WebP) | Tools window | Tools window Export frame. PNG is still rejected. | simple |
 | Rotate and flip that rewrite a JPEG tag | Tools window | Tools window, and the viewer rotate and flip commands | simple |
 | Crop to AVIF | Tools window | Tools window, and the viewer crop | simple |
 | Compare after Enlarge (Keep, Reveal, Discard) | Enlarge window | Result overlay after Enhance, and the Enlarge tools window. This is the Enlarge before/after compare. | simple |
-| Enhance with Enlarge | Enlarge toolbar button | Preset chip. Runs the Enlarge CLI. Grey, with Install Enlarge, when Enlarge is missing. | simple |
+| Enhance with Enlarge | Enlarge toolbar button | Enhance row chip. Runs the Enlarge CLI at scale 2 with the current Photo or Drawing choice. Grey, with Install Enlarge, when Enlarge is missing. | simple |
 | Open in Enlarge | Enlarge toolbar button | Expert button, Ctrl+E. Starts the tools process. | Expert |
-| Install Enlarge | Menu and toolbar when Enlarge is missing | Chip reason and Install Enlarge button | simple |
-| Photographs / Drawings | Not on the old toolbar | Expert combo. Writes Enlarge `photo` or `art`. | Expert |
+| Install Enlarge | Menu and toolbar when Enlarge is missing | Enhance row reason and Install Enlarge button | simple |
+| Photographs / Drawings | Not on the old toolbar | Photo / Drawing chips on the Enhance row (Фото / Рисунок), and the Expert Снимки combo. Both write Enlarge `photo` or `art` and stay on the same value. | simple |
 | Export format and quality | Save-as dialog and tools export | Expert format and quality, used by Enhance. Save as still picks a file type. | Expert |
 | Colour management and profile | Not a separate control | Expert panel | Expert |
 | HDR tone-map | Not a separate control | Expert panel | Expert |
@@ -62,7 +62,7 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | About | Application menu | Overflow menu | simple |
 | Check for updates | Not on the old toolbar | Overflow menu. Runs `voxprint-lucent-tools --check-update`. | simple |
 | Quit | Q, Escape when not in fullscreen or slideshow | Q, Escape when not in fullscreen or slideshow, and the window close button | simple |
-| First launch 1200×900, then restore geometry | Stored window geometry | `ui.geometry` in the viewer settings file. Minimum 640×400. | simple |
+| First launch 1200×900, then restore geometry | Stored window geometry | `ui.geometry` in the viewer settings file. Hard minimum 640×400. At 1200×900 and at 960×640 the View and Enhance rows stay on one line each. Toolbar buttons that do not fit fold into More from the right, and More stays visible. | simple |
 | Single running instance | A second launch forwards the path | Unchanged | simple |
 | Decode errors (HEIF, RAW/EXR/HDR, unreadable file) | Status text | Status text | simple |
 | Preset chip close edit and Reset | Not in rc7 | Chip reads "{name} + changes" or Custom. Reset restores the stored choice. | simple |

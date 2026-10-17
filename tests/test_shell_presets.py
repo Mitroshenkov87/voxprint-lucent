@@ -113,12 +113,18 @@ def test_reserved_keys_are_rejected_and_adult_content_is_kept() -> None:
     assert load_preset_file(FIXTURES / "adult-ok.json").group("image") is not None
 
 
-def test_lucent_preset_writes_fit_and_enhance() -> None:
+def test_lucent_preset_writes_fit_fill_and_enhance() -> None:
     document = load_preset_file(Path("share/presets/lucent.json"))
     state = merge_presets(document, {})
     assert state.values["viewer.zoom"] == "fit"
     assert state.values["enlarge.scale"] == 0
-    assert choose_option(document, state, "view", "enhance")
-    assert state.values["enlarge.scale"] == 2
     assert state.values["enlarge.preset"] == "photo"
-    assert state.values["viewer.zoom"] == "fit"
+    assert choose_option(document, state, "view", "fill")
+    assert state.values["viewer.zoom"] == "fill"
+    assert choose_option(document, state, "pictures", "art")
+    assert state.values["enlarge.preset"] == "art"
+    assert state.values["viewer.zoom"] == "fill"
+    assert choose_option(document, state, "enhance", "enhance")
+    assert state.values["enlarge.scale"] == 2
+    assert state.values["enlarge.preset"] == "art"
+    assert state.values["viewer.zoom"] == "fill"

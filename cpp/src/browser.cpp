@@ -34,6 +34,7 @@
 #include <QProcess>
 #include <QScreen>
 #include <QSettings>
+#include <QStringList>
 #include <QStandardPaths>
 #include <QThreadPool>
 #include <QTimer>
@@ -67,10 +68,37 @@ QString failureText(const QString &path) {
     return text(Text::DecodeFailed);
 }
 
+QString fileSizeText(qint64 bytes) {
+    if (bytes < 1024) {
+        return QString::number(bytes) + QStringLiteral(" B");
+    }
+    const double kilobytes = static_cast<double>(bytes) / 1024.0;
+    if (kilobytes < 1024.0) {
+        return QString::number(kilobytes, 'f', kilobytes < 10.0 ? 1 : 0) + QStringLiteral(" KB");
+    }
+    const double megabytes = kilobytes / 1024.0;
+    if (megabytes < 1024.0) {
+        return QString::number(megabytes, 'f', megabytes < 10.0 ? 1 : 0) + QStringLiteral(" MB");
+    }
+    return QString::number(megabytes / 1024.0, 'f', 1) + QStringLiteral(" GB");
+}
+
 void restoreLaunchGeometry(QWidget *window) {
     window->setMinimumSize(640, 400);
     if (!qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
-        window->resize(1200, 900);
+        int width = 1200;
+        int height = 900;
+        const QString size = qEnvironmentVariable("LUCENT_SCREENSHOT_SIZE");
+        const int split = size.indexOf(QLatin1Char('x'));
+        if (split > 0) {
+            const int requestedWidth = size.left(split).toInt();
+            const int requestedHeight = size.mid(split + 1).toInt();
+            if (requestedWidth >= 640 && requestedHeight >= 400) {
+                width = requestedWidth;
+                height = requestedHeight;
+            }
+        }
+        window->resize(width, height);
         return;
     }
     const Json document = readDocument(appSettingsPath(kSurfaceId));
@@ -378,8 +406,14 @@ void Browser::updateChrome() {
         if (!image_.isNull()) {
             live.imageW = image_.width();
             live.imageH = image_.height();
-            live.info = QFileInfo(currentPath_).fileName() + QStringLiteral("  ") + QString::number(image_.width())
-                + QStringLiteral("×") + QString::number(image_.height());
+            const QFileInfo file(currentPath_);
+            QStringList facts;
+            facts << file.fileName();
+            if (file.exists() && file.size() > 0) {
+                facts << fileSizeText(file.size());
+            }
+            facts << QString::number(image_.width()) + QStringLiteral("×") + QString::number(image_.height());
+            live.info = facts.join(QStringLiteral("  "));
             if (image_.colorSpace().isValid()) {
                 live.profile = image_.colorSpace().description();
             }
