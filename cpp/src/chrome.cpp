@@ -28,6 +28,7 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QFrame>
+#include <QGridLayout>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #ifdef Q_OS_WIN
@@ -40,7 +41,9 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QPaintEvent>
 #include <QProcess>
+#include <QResizeEvent>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScreen>
@@ -48,12 +51,17 @@
 #include <QScrollBar>
 #include <QSettings>
 #include <QSpinBox>
+#include <QStyle>
+#include <QStyleOptionButton>
+#include <QStyleOptionComboBox>
+#include <QStylePainter>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace lucent {
 namespace {
@@ -272,6 +280,251 @@ private:
     QTimer *timer_ = nullptr;
 };
 
+constexpr int kExpertStackWidth = 300;
+
+class WrapLabel : public QLabel {
+public:
+    explicit WrapLabel(const QString &text, QWidget *parent = nullptr) : QLabel(text, parent) {
+        setWordWrap(true);
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    }
+
+    QSize minimumSizeHint() const override { return QSize(longestWord(), fontMetrics().height()); }
+
+private:
+    int longestWord() const {
+        int width = fontMetrics().horizontalAdvance(QStringLiteral("M"));
+        const QStringList words = text().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+        for (const QString &word : words) {
+            width = std::max(width, fontMetrics().horizontalAdvance(word));
+        }
+        return width;
+    }
+};
+
+class FieldCombo : public QComboBox {
+public:
+    explicit FieldCombo(QWidget *parent = nullptr) : QComboBox(parent) {
+        setMinimumContentsLength(1);
+        setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    }
+
+    QSize minimumSizeHint() const override {
+        QSize hint = QComboBox::minimumSizeHint();
+        hint.setWidth(36);
+        return hint;
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QStylePainter painter(this);
+        QStyleOptionComboBox option;
+        initStyleOption(&option);
+        const QRect field = style()->subControlRect(QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxEditField, this);
+        option.currentText = fontMetrics().elidedText(option.currentText, Qt::ElideRight, std::max(0, field.width()));
+        painter.drawComplexControl(QStyle::CC_ComboBox, option);
+        painter.drawControl(QStyle::CE_ComboBoxLabel, option);
+    }
+};
+
+class ShrinkSpin : public QSpinBox {
+public:
+    explicit ShrinkSpin(QWidget *parent = nullptr) : QSpinBox(parent) {
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    }
+
+    QSize minimumSizeHint() const override {
+        QSize hint = QSpinBox::minimumSizeHint();
+        hint.setWidth(44);
+        return hint;
+    }
+};
+
+class ShrinkButton : public QPushButton {
+public:
+    explicit ShrinkButton(const QString &text, QWidget *parent = nullptr) : QPushButton(text, parent) {
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    }
+
+    QSize minimumSizeHint() const override {
+        QSize hint = QPushButton::minimumSizeHint();
+        hint.setWidth(1);
+        return hint;
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override {
+        QStylePainter painter(this);
+        QStyleOptionButton option;
+        initStyleOption(&option);
+        const int frame = style()->pixelMetric(QStyle::PM_DefaultFrameWidth, &option, this);
+        const int margin = style()->pixelMetric(QStyle::PM_ButtonMargin, &option, this);
+        option.text = fontMetrics().elidedText(text(), Qt::ElideRight, std::max(0, width() - (frame + margin) * 2));
+        painter.drawControl(QStyle::CE_PushButton, option);
+    }
+};
+
+class ExpertRow : public QWidget {
+public:
+    ExpertRow(QLabel *caption, QWidget *field, QWidget *parent) : QWidget(parent), caption_(caption), field_(field) {
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        caption_->setParent(this);
+        field_->setParent(this);
+        box_ = new QBoxLayout(QBoxLayout::TopToBottom, this);
+        box_->setContentsMargins(0, 2, 0, 2);
+        box_->setSpacing(4);
+        box_->addWidget(caption_);
+        box_->addWidget(field_);
+    }
+
+    void setStacked(bool stacked) {
+        if (stacked_ == stacked) {
+            return;
+        }
+        stacked_ = stacked;
+        box_->setDirection(stacked ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight);
+        box_->setStretch(0, stacked ? 0 : 1);
+        box_->setStretch(1, 1);
+        updateGeometry();
+    }
+
+private:
+    QLabel *caption_ = nullptr;
+    QWidget *field_ = nullptr;
+    QBoxLayout *box_ = nullptr;
+    bool stacked_ = true;
+};
+
+class CheckLine : public QWidget {
+public:
+    CheckLine(QCheckBox *box, QLabel *caption, QWidget *parent) : QWidget(parent), box_(box), caption_(caption) {
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        box_->setParent(this);
+        box_->setText(QString());
+        caption_->setParent(this);
+        auto *row = new QHBoxLayout(this);
+        row->setContentsMargins(0, 2, 0, 2);
+        row->setSpacing(8);
+        row->addWidget(box_, 0, Qt::AlignTop);
+        row->addWidget(caption_, 1);
+        caption_->installEventFilter(this);
+    }
+
+    QSize minimumSizeHint() const override {
+        QSize hint = QWidget::minimumSizeHint();
+        hint.setWidth(24);
+        return hint;
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override {
+        if (watched == caption_ && event->type() == QEvent::MouseButtonRelease) {
+            box_->toggle();
+            return true;
+        }
+        return QWidget::eventFilter(watched, event);
+    }
+
+private:
+    QCheckBox *box_ = nullptr;
+    QLabel *caption_ = nullptr;
+};
+
+class CropGrid : public QWidget {
+public:
+    CropGrid(QSpinBox *x, QSpinBox *y, QSpinBox *widthBox, QSpinBox *heightBox, QWidget *parent) : QWidget(parent) {
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        x->setPrefix(QStringLiteral("x "));
+        y->setPrefix(QStringLiteral("y "));
+        widthBox->setPrefix(QStringLiteral("w "));
+        heightBox->setPrefix(QStringLiteral("h "));
+        auto *grid = new QGridLayout(this);
+        grid->setContentsMargins(0, 0, 0, 0);
+        grid->setHorizontalSpacing(6);
+        grid->setVerticalSpacing(4);
+        grid->addWidget(x, 0, 0);
+        grid->addWidget(y, 0, 1);
+        grid->addWidget(widthBox, 1, 0);
+        grid->addWidget(heightBox, 1, 1);
+        grid->setColumnStretch(0, 1);
+        grid->setColumnStretch(1, 1);
+    }
+
+    QSize minimumSizeHint() const override { return QSize(96, QWidget::minimumSizeHint().height()); }
+};
+
+class ExpertPage : public QWidget {
+public:
+    explicit ExpertPage(QWidget *parent = nullptr) : QWidget(parent) {
+        setObjectName(QStringLiteral("expertPage"));
+        setMinimumWidth(0);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::MinimumExpanding);
+        layout_ = new QVBoxLayout(this);
+        layout_->setContentsMargins(12, 10, 12, 10);
+        layout_->setSpacing(6);
+    }
+
+    void addRow(ExpertRow *row) {
+        rows_.push_back(row);
+        layout_->addWidget(row);
+    }
+
+    void addItem(QWidget *widget) { layout_->addWidget(widget); }
+
+    QSize sizeHint() const override {
+        QSize hint = QWidget::sizeHint();
+        hint.setWidth(0);
+        return hint;
+    }
+
+    QSize minimumSizeHint() const override {
+        QSize hint = QWidget::minimumSizeHint();
+        hint.setWidth(0);
+        return hint;
+    }
+
+protected:
+    void resizeEvent(QResizeEvent *event) override {
+        QWidget::resizeEvent(event);
+        const bool stacked = width() < kExpertStackWidth;
+        for (ExpertRow *row : rows_) {
+            row->setStacked(stacked);
+        }
+    }
+
+private:
+    QVBoxLayout *layout_ = nullptr;
+    std::vector<ExpertRow *> rows_;
+};
+
+class ViewportFit : public QObject {
+public:
+    ViewportFit(QScrollArea *scroll, ExpertPage *page, QObject *parent)
+        : QObject(parent), scroll_(scroll), page_(page) {}
+
+    bool eventFilter(QObject *object, QEvent *event) override {
+        if (object == scroll_->viewport() && event->type() == QEvent::Resize) {
+            const int width = scroll_->viewport()->width();
+            if (width > 0 && page_->width() != width) {
+                page_->setFixedWidth(width);
+            }
+        }
+        return QObject::eventFilter(object, event);
+    }
+
+private:
+    QScrollArea *scroll_ = nullptr;
+    ExpertPage *page_ = nullptr;
+};
+
 }  // namespace
 
 struct Chrome::Impl {
@@ -331,6 +584,8 @@ struct Chrome::Impl {
     QCheckBox *thumbs = nullptr;
     QCheckBox *welcome = nullptr;
     QComboBox *language = nullptr;
+    std::vector<std::pair<QString, QLabel *>> expertLabels;
+    std::vector<std::pair<QString, QPushButton *>> expertButtons;
     ResizeSpec resize;
     QComboBox *resizeUnit = nullptr;
     QSpinBox *resizeWidth = nullptr;
@@ -445,6 +700,13 @@ void Chrome::loadPresets() {
     }
     impl_->historyOn = jsonBool(stored, "ui.history_visible", true);
     impl_->expertWidth = std::clamp(jsonInt(stored, "ui.expert_width", kExpertDefault), kExpertMin, kExpertMax);
+    if (!qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        bool forcedOk = false;
+        const int forced = qEnvironmentVariableIntValue("LUCENT_EXPERT_WIDTH", &forcedOk);
+        if (forcedOk) {
+            impl_->expertWidth = std::clamp(forced, kExpertMin, kExpertMax);
+        }
+    }
     impl_->expertOn = readExpertMode();
 }
 
@@ -551,107 +813,102 @@ void Chrome::buildExpert() {
     scroll->setObjectName(QStringLiteral("expertScroll"));
     scroll->viewport()->setObjectName(QStringLiteral("expertViewport"));
     scroll->verticalScrollBar()->setObjectName(QStringLiteral("expertBar"));
+    scroll->horizontalScrollBar()->setObjectName(QStringLiteral("expertBarH"));
     polishScrollBar(scroll->verticalScrollBar());
+    polishScrollBar(scroll->horizontalScrollBar());
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
-    auto *formHost = new QWidget(scroll);
-    auto *form = new QFormLayout(formHost);
-    form->setContentsMargins(12, 10, 12, 10);
-    form->setSpacing(4);
-    scroll->setWidget(formHost);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    auto *page = new ExpertPage(scroll);
+    scroll->setWidget(page);
+    scroll->viewport()->installEventFilter(new ViewportFit(scroll, page, scroll));
     auto *wrap = new QVBoxLayout(impl_->expert);
     wrap->setContentsMargins(0, 0, 0, 0);
     wrap->addWidget(scroll);
 
-    impl_->zoomValue = new QLabel(formHost);
-    impl_->zoomSpin = new QSpinBox(formHost);
+    const auto caption = [this](const char *key) {
+        auto *text = new WrapLabel(label(QString::fromUtf8(key)));
+        impl_->expertLabels.emplace_back(QString::fromUtf8(key), text);
+        return text;
+    };
+    const auto namedRow = [this, page, caption](const char *key, QWidget *field) {
+        page->addRow(new ExpertRow(caption(key), field, page));
+    };
+    const auto commandButton = [this, page](const char *key) {
+        auto *button = new ShrinkButton(label(QString::fromUtf8(key)), page);
+        impl_->expertButtons.emplace_back(QString::fromUtf8(key), button);
+        page->addItem(button);
+        return button;
+    };
+
+    impl_->zoomValue = new WrapLabel(QString(), page);
+    impl_->zoomSpin = new ShrinkSpin(page);
     impl_->zoomSpin->setRange(5, 800);
     impl_->zoomSpin->setSuffix(QStringLiteral("%"));
-    impl_->colour = new QComboBox(formHost);
-    impl_->profile = new QLabel(formHost);
-    impl_->hdr = new QComboBox(formHost);
-    impl_->cropX = new QSpinBox(formHost);
-    impl_->cropY = new QSpinBox(formHost);
-    impl_->cropW = new QSpinBox(formHost);
-    impl_->cropH = new QSpinBox(formHost);
+    impl_->colour = new FieldCombo(page);
+    impl_->profile = new WrapLabel(QString(), page);
+    impl_->profile->setObjectName(QStringLiteral("status"));
+    impl_->hdr = new FieldCombo(page);
+    impl_->cropX = new ShrinkSpin(page);
+    impl_->cropY = new ShrinkSpin(page);
+    impl_->cropW = new ShrinkSpin(page);
+    impl_->cropH = new ShrinkSpin(page);
     for (QSpinBox *box : {impl_->cropX, impl_->cropY, impl_->cropW, impl_->cropH}) {
         box->setRange(0, 100000);
     }
-    impl_->rotate = new QComboBox(formHost);
-    impl_->format = new QComboBox(formHost);
-    impl_->quality = new QSpinBox(formHost);
+    impl_->rotate = new FieldCombo(page);
+    impl_->format = new FieldCombo(page);
+    impl_->quality = new ShrinkSpin(page);
     impl_->quality->setRange(1, 100);
-    impl_->frames = new QLabel(formHost);
-    impl_->info = new QLabel(formHost);
-    impl_->info->setWordWrap(true);
+    impl_->frames = new WrapLabel(QString(), page);
+    impl_->info = new WrapLabel(QString(), page);
     impl_->info->setObjectName(QStringLiteral("status"));
-    impl_->pictures = new QComboBox(formHost);
-    impl_->slideshow = new QSpinBox(formHost);
+    impl_->pictures = new FieldCombo(page);
+    impl_->slideshow = new ShrinkSpin(page);
     impl_->slideshow->setRange(1, 60);
     impl_->slideshow->setValue(std::max(1, QSettings().value(QStringLiteral("slideshow/ms"), 3000).toInt() / 1000));
-    impl_->thumbs = new QCheckBox(formHost);
-    impl_->welcome = new QCheckBox(formHost);
-    impl_->language = new QComboBox(formHost);
-    impl_->resizeUnit = new QComboBox(formHost);
-    impl_->resizeWidth = new QSpinBox(formHost);
-    impl_->resizeHeight = new QSpinBox(formHost);
-    impl_->resizePercent = new QSpinBox(formHost);
-    impl_->resizeAspect = new QCheckBox(label(QStringLiteral("lucent.resize.keep_aspect")), formHost);
-    impl_->resizeSample = new QComboBox(formHost);
+    impl_->thumbs = new QCheckBox(page);
+    impl_->welcome = new QCheckBox(page);
+    impl_->language = new FieldCombo(page);
+    impl_->resizeUnit = new FieldCombo(page);
+    impl_->resizeWidth = new ShrinkSpin(page);
+    impl_->resizeHeight = new ShrinkSpin(page);
+    impl_->resizePercent = new ShrinkSpin(page);
+    impl_->resizeAspect = new QCheckBox(page);
+    impl_->resizeSample = new FieldCombo(page);
     for (QSpinBox *box : {impl_->resizeWidth, impl_->resizeHeight}) {
         box->setRange(1, 100000);
     }
     impl_->resizePercent->setRange(1, 1000);
     impl_->resizePercent->setSuffix(QStringLiteral("%"));
 
-    form->addRow(label(QStringLiteral("lucent.expert.zoom")), impl_->zoomValue);
-    form->addRow(QString(), impl_->zoomSpin);
-    form->addRow(label(QStringLiteral("lucent.expert.colour")), impl_->colour);
-    form->addRow(label(QStringLiteral("lucent.expert.icc")), impl_->profile);
-    form->addRow(label(QStringLiteral("lucent.expert.hdr")), impl_->hdr);
-    auto *cropRow = new QWidget(formHost);
-    auto *cropLayout = new QHBoxLayout(cropRow);
-    cropLayout->setContentsMargins(0, 0, 0, 0);
-    cropLayout->addWidget(impl_->cropX);
-    cropLayout->addWidget(impl_->cropY);
-    cropLayout->addWidget(impl_->cropW);
-    cropLayout->addWidget(impl_->cropH);
-    form->addRow(label(QStringLiteral("lucent.expert.crop")), cropRow);
-    form->addRow(label(QStringLiteral("lucent.action.resize")), impl_->resizeUnit);
-    form->addRow(label(QStringLiteral("lucent.resize.width")), impl_->resizeWidth);
-    form->addRow(label(QStringLiteral("lucent.resize.height")), impl_->resizeHeight);
-    form->addRow(label(QStringLiteral("lucent.resize.percent")), impl_->resizePercent);
-    form->addRow(QString(), impl_->resizeAspect);
-    form->addRow(label(QStringLiteral("lucent.resize.resample")), impl_->resizeSample);
-    auto *resizeApply = new QPushButton(label(QStringLiteral("lucent.resize.apply")), formHost);
-    resizeApply->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    auto *resizeApplyRow = new QHBoxLayout();
-    resizeApplyRow->setContentsMargins(0, 0, 0, 0);
-    resizeApplyRow->addWidget(resizeApply, 0, Qt::AlignLeft);
-    resizeApplyRow->addStretch(1);
-    form->addRow(resizeApplyRow);
+    namedRow("lucent.expert.zoom", impl_->zoomValue);
+    page->addItem(impl_->zoomSpin);
+    namedRow("lucent.expert.colour", impl_->colour);
+    namedRow("lucent.expert.icc", impl_->profile);
+    namedRow("lucent.expert.hdr", impl_->hdr);
+    namedRow("lucent.expert.crop", new CropGrid(impl_->cropX, impl_->cropY, impl_->cropW, impl_->cropH, page));
+    namedRow("lucent.action.resize", impl_->resizeUnit);
+    namedRow("lucent.resize.width", impl_->resizeWidth);
+    namedRow("lucent.resize.height", impl_->resizeHeight);
+    namedRow("lucent.resize.percent", impl_->resizePercent);
+    page->addItem(new CheckLine(impl_->resizeAspect, caption("lucent.resize.keep_aspect"), page));
+    namedRow("lucent.resize.resample", impl_->resizeSample);
+    auto *resizeApply = commandButton("lucent.resize.apply");
     QObject::connect(resizeApply, &QPushButton::clicked, impl_->host, [this] { applyResize(); });
-    form->addRow(label(QStringLiteral("lucent.expert.rotate")), impl_->rotate);
-    form->addRow(label(QStringLiteral("lucent.expert.format")), impl_->format);
-    form->addRow(label(QStringLiteral("lucent.expert.quality")), impl_->quality);
-    form->addRow(label(QStringLiteral("lucent.expert.frames")), impl_->frames);
-    auto *frameButtons = new QWidget(formHost);
-    auto *frameRow = new QHBoxLayout(frameButtons);
-    frameRow->setContentsMargins(0, 0, 0, 0);
-    auto *previous = new QPushButton(label(QStringLiteral("lucent.tools.prev")), frameButtons);
-    auto *play = new QPushButton(label(QStringLiteral("lucent.tools.play")), frameButtons);
-    auto *next = new QPushButton(label(QStringLiteral("lucent.tools.next")), frameButtons);
-    frameRow->addWidget(previous);
-    frameRow->addWidget(play);
-    frameRow->addWidget(next);
-    form->addRow(QString(), frameButtons);
-    form->addRow(label(QStringLiteral("lucent.expert.info")), impl_->info);
-    form->addRow(label(QStringLiteral("lucent.expert.pictures")), impl_->pictures);
+    namedRow("lucent.expert.rotate", impl_->rotate);
+    namedRow("lucent.expert.format", impl_->format);
+    namedRow("lucent.expert.quality", impl_->quality);
+    namedRow("lucent.expert.frames", impl_->frames);
+    auto *previous = commandButton("lucent.tools.prev");
+    auto *play = commandButton("lucent.tools.play");
+    auto *next = commandButton("lucent.tools.next");
+    namedRow("lucent.expert.info", impl_->info);
+    namedRow("lucent.expert.pictures", impl_->pictures);
 
-    const auto action = [this, form, formHost](const char *key, const std::function<void()> &fn) {
-        auto *button = new QPushButton(label(QString::fromUtf8(key)), formHost);
-        QObject::connect(button, &QPushButton::clicked, impl_->host, fn);
-        form->addRow(button);
+    const auto action = [this, commandButton](const char *key, const std::function<void()> &fn) {
+        QObject::connect(commandButton(key), &QPushButton::clicked, impl_->host, fn);
     };
     action("lucent.action.flip_h", [this] {
         if (impl_->cb.flip) {
@@ -681,10 +938,10 @@ void Chrome::buildExpert() {
             impl_->cb.hotkeys();
         }
     });
-    form->addRow(label(QStringLiteral("lucent.expert.slideshow")), impl_->slideshow);
-    form->addRow(impl_->thumbs);
-    form->addRow(impl_->welcome);
-    form->addRow(label(QStringLiteral("lucent.expert.language")), impl_->language);
+    namedRow("lucent.expert.slideshow", impl_->slideshow);
+    page->addItem(new CheckLine(impl_->thumbs, caption("lucent.expert.thumbnails"), page));
+    page->addItem(new CheckLine(impl_->welcome, caption("lucent.expert.welcome"), page));
+    namedRow("lucent.expert.language", impl_->language);
 
     QObject::connect(previous, &QPushButton::clicked, impl_->host, [this] {
         if (impl_->cb.stepFrame) {
@@ -921,6 +1178,12 @@ void Chrome::refreshChips() {
 
 void Chrome::refreshExpert() {
     impl_->applying = true;
+    for (const auto &item : impl_->expertLabels) {
+        item.second->setText(label(item.first));
+    }
+    for (const auto &item : impl_->expertButtons) {
+        item.second->setText(label(item.first));
+    }
     const auto select = [](QComboBox *box, const QString &id) {
         const int index = box->findData(id);
         if (index >= 0) {
@@ -956,9 +1219,6 @@ void Chrome::refreshExpert() {
     impl_->resizeSample->clear();
     impl_->resizeSample->addItem(label(QStringLiteral("lucent.resize.smooth")));
     impl_->resizeSample->addItem(label(QStringLiteral("lucent.resize.nearest")));
-    impl_->resizeAspect->setText(label(QStringLiteral("lucent.resize.keep_aspect")));
-    impl_->thumbs->setText(label(QStringLiteral("lucent.expert.thumbnails")));
-    impl_->welcome->setText(label(QStringLiteral("lucent.expert.welcome")));
     select(impl_->colour, jsonText(objectFromValues(impl_->state.values), "viewer.colour", QStringLiteral("srgb")));
     select(impl_->hdr, jsonText(objectFromValues(impl_->state.values), "viewer.hdr", QStringLiteral("auto")));
     select(impl_->format, jsonText(objectFromValues(impl_->state.values), "export.format", QStringLiteral("avif")));
