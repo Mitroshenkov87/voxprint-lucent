@@ -82,6 +82,8 @@ struct ChromeCallbacks {
     std::function<void()> windowFit;
     /// Open the tools window.
     std::function<void()> tools;
+    /// Replace the picture with this pixel size. `smooth` picks the resampling.
+    std::function<void(int width, int height, bool smooth)> resizeImage;
 };
 
 /// Values the expert panel shows for the open picture.
@@ -101,6 +103,10 @@ struct LiveView {
     int frame = 0;
     /// Frame count. 1 for a still picture.
     int frameCount = 1;
+    /// Picture width in pixels.
+    int imageW = 0;
+    /// Picture height in pixels.
+    int imageH = 0;
     /// One-line file facts.
     QString info;
     /// Colour profile name, or empty.
@@ -182,6 +188,10 @@ private:
     void openFile();
     void openMenu();
     void addKeptActions(QMenu &menu);
+    void openResizeDialog();
+    void editResize(const ResizeSpec &spec);
+    void syncResizeFields();
+    void applyResize();
     void openSettings();
     void openAbout();
     void setGalleryVisible(bool visible);

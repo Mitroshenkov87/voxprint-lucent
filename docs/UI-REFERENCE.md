@@ -6,7 +6,7 @@ The window opens at 1200×900 the first time, and at a minimum of 640×400 after
 
 ## Simple mode
 
-A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous, and Next. The overflow menu and the picture's context menu carry the other everyday actions: save as, save a copy, export, download, the other zoom modes, rotate, flip, crop, trash, thumbnails, frameless, window fit, and Tools. Under the toolbar, one row of preset chips reads Fit, 100%, and Enhance with Enlarge. The full list is `docs/ui/FEATURE-MAP.md`. The chips scroll sideways; they do not wrap. The picture fills everything left under that row.
+A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous, and Next. The overflow menu and the picture's context menu carry the other everyday actions: save as, save a copy, export, download, the other zoom modes, rotate, flip, crop, Resize…, trash, thumbnails, frameless, window fit, and Tools. Resize… takes a width and height or a percent, with keep aspect and resampling. Under the toolbar, one row of preset chips reads Fit, 100%, and Enhance with Enlarge. The full list is `docs/ui/FEATURE-MAP.md`. The chips scroll sideways; they do not wrap. The picture fills everything left under that row.
 
 Enhance with Enlarge writes scale 2 and Enlarge's `photo` preset, then runs the Enlarge command. When Enlarge is not installed the chip stays grey, with the reason and Install Enlarge. Choosing the grey chip does not write values.
 
@@ -20,7 +20,7 @@ While Enlarge is running, a 36 px row under the picture shows the step, the tota
 
 Expert mode is a boolean in `suite.json`. The panel sits on the right of the picture only. It starts at 280 px, and the divider moves it between 220 and 420. Opening or resizing it shrinks the picture and leaves the toolbar, the chips, the status row, and the strip where they are.
 
-The panel shows the live zoom, colour management and the profile, HDR tone-map, numeric crop and rotate, export format and quality, frames, and file info. Photographs and Drawings write Enlarge's `photo` or `art` value. Open in Enlarge hands the file to Enlarge's window. Copy, reveal, and trash live here. Trash asks before it moves the file.
+The panel shows the live zoom, colour management and the profile, HDR tone-map, numeric crop, the same resize values as Resize…, rotate, export format and quality, frames, and file info. Photographs and Drawings write Enlarge's `photo` or `art` value. Open in Enlarge hands the file to Enlarge's window. Copy, reveal, and trash live here. Trash asks before it moves the file.
 
 A hand edit of a chip's values reads "{name} + changes" while the stored choice is still close, and Custom when it is not. Reset restores that choice. The rule is the shared preset rule, applied to `share/presets/lucent.json`.
 

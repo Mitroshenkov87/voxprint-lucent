@@ -1231,4 +1231,87 @@ bool writeExpertMode(bool enabled, std::string &error) {
     return writeOwnKeys(suiteSettingsPath(), own, error);
 }
 
+namespace {
+
+int clampResizePercent(int percent) {
+    return std::clamp(percent, 1, 1000);
+}
+
+int clampResizeSide(int side) {
+    return std::clamp(side, 1, 100000);
+}
+
+int pairedSide(int edited, int editedSource, int otherSource) {
+    if (editedSource < 1) {
+        return 1;
+    }
+    const double value = static_cast<double>(edited) * static_cast<double>(otherSource) / static_cast<double>(editedSource);
+    return clampResizeSide(static_cast<int>(std::lround(value)));
+}
+
+int percentOf(int side, int source) {
+    if (source < 1) {
+        return 100;
+    }
+    return clampResizePercent(static_cast<int>(std::lround(100.0 * static_cast<double>(side) / static_cast<double>(source))));
+}
+
+}  // namespace
+
+ResizeSpec resizeFromSource(int sourceWidth, int sourceHeight, bool keepAspect, bool byPercent, bool smooth) {
+    ResizeSpec spec;
+    spec.sourceWidth = std::max(1, sourceWidth);
+    spec.sourceHeight = std::max(1, sourceHeight);
+    spec.width = spec.sourceWidth;
+    spec.height = spec.sourceHeight;
+    spec.percent = 100;
+    spec.keepAspect = keepAspect;
+    spec.byPercent = byPercent;
+    spec.smooth = smooth;
+    return spec;
+}
+
+ResizeSpec resizeFromWidth(ResizeSpec spec, int width) {
+    spec.byPercent = false;
+    spec.width = clampResizeSide(width);
+    if (spec.keepAspect) {
+        spec.height = pairedSide(spec.width, spec.sourceWidth, spec.sourceHeight);
+    }
+    spec.percent = percentOf(spec.width, spec.sourceWidth);
+    return spec;
+}
+
+ResizeSpec resizeFromHeight(ResizeSpec spec, int height) {
+    spec.byPercent = false;
+    spec.height = clampResizeSide(height);
+    if (spec.keepAspect) {
+        spec.width = pairedSide(spec.height, spec.sourceHeight, spec.sourceWidth);
+    }
+    spec.percent = percentOf(spec.width, spec.sourceWidth);
+    return spec;
+}
+
+ResizeSpec resizeFromPercent(ResizeSpec spec, int percent) {
+    spec.byPercent = true;
+    spec.percent = clampResizePercent(percent);
+    spec.width = clampResizeSide(static_cast<int>(std::lround(spec.sourceWidth * (spec.percent / 100.0))));
+    if (spec.keepAspect) {
+        spec.height = pairedSide(spec.width, spec.sourceWidth, spec.sourceHeight);
+    } else {
+        spec.height = clampResizeSide(static_cast<int>(std::lround(spec.sourceHeight * (spec.percent / 100.0))));
+    }
+    return spec;
+}
+
+ResizeSpec resizeKeepAspect(ResizeSpec spec, bool keep) {
+    spec.keepAspect = keep;
+    if (!keep) {
+        return spec;
+    }
+    if (spec.byPercent) {
+        return resizeFromPercent(spec, spec.percent);
+    }
+    return resizeFromWidth(spec, spec.width);
+}
+
 }  // namespace lucent

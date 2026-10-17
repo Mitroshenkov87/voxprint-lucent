@@ -91,6 +91,7 @@ private:
     void exportImage();
     void downloadImage();
     void saveAs();
+    void resizeTo(int width, int height, bool smooth);
     void moveToTrash();
     void syncRhi();
     QRect pictureRect() const;

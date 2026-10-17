@@ -174,4 +174,31 @@ bool readExpertMode();
 /// Store Expert mode without touching any other suite key.
 bool writeExpertMode(bool enabled, std::string &error);
 
+/// Target size for Resize. `byPercent` chooses percent over width and height.
+struct ResizeSpec {
+    int sourceWidth = 1;
+    int sourceHeight = 1;
+    int width = 1;
+    int height = 1;
+    int percent = 100;
+    bool keepAspect = true;
+    bool byPercent = false;
+    bool smooth = true;
+};
+
+/// Current picture size at 100%, keeping the aspect, unit, and resampling flags.
+ResizeSpec resizeFromSource(int sourceWidth, int sourceHeight, bool keepAspect, bool byPercent, bool smooth);
+
+/// Edit the width. Aspect, when kept, sets the height. Percent follows the width.
+ResizeSpec resizeFromWidth(ResizeSpec spec, int width);
+
+/// Edit the height. Aspect, when kept, sets the width.
+ResizeSpec resizeFromHeight(ResizeSpec spec, int height);
+
+/// Edit the percent of the source size.
+ResizeSpec resizeFromPercent(ResizeSpec spec, int percent);
+
+/// Turn aspect lock on or off. On recomputes the side the unit does not own.
+ResizeSpec resizeKeepAspect(ResizeSpec spec, bool keep);
+
 }  // namespace lucent

@@ -376,6 +376,8 @@ void Browser::updateChrome() {
         live.frame = frame_;
         live.frameCount = frameCount_;
         if (!image_.isNull()) {
+            live.imageW = image_.width();
+            live.imageH = image_.height();
             live.info = QFileInfo(currentPath_).fileName() + QStringLiteral("  ") + QString::number(image_.width())
                 + QStringLiteral("×") + QString::number(image_.height());
             if (image_.colorSpace().isValid()) {
@@ -1099,6 +1101,7 @@ void Browser::ensureChrome() {
     callbacks.frameless = [this] { toggleFrameless(); };
     callbacks.windowFit = [this] { fitWindow(); };
     callbacks.tools = [this] { openTools(); };
+    callbacks.resizeImage = [this](int width, int height, bool smooth) { resizeTo(width, height, smooth); };
     chrome_ = new Chrome(this, std::move(callbacks));
     chrome_->setFolder(folder_, index_);
     chrome_->prepareShots();
@@ -1328,6 +1331,17 @@ void Browser::downloadImage() {
         base = QStringLiteral("image");
     }
     writeView(uniqueAvif(directory, base, QString()));
+}
+
+void Browser::resizeTo(int width, int height, bool smooth) {
+    if (image_.isNull() || width < 1 || height < 1) {
+        return;
+    }
+    if (width == image_.width() && height == image_.height()) {
+        return;
+    }
+    image_ = image_.scaled(width, height, Qt::IgnoreAspectRatio, smooth ? Qt::SmoothTransformation : Qt::FastTransformation);
+    showImage(image_, true);
 }
 
 void Browser::saveAs() {

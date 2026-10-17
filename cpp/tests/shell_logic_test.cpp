@@ -151,6 +151,20 @@ int main(int argc, char **argv) {
     expect(repaired.field("gpu") != nullptr && repaired.field("gpu")->text == "auto", "the repair keeps keys it does not own");
     std::filesystem::remove_all(home);
 
+    const lucent::ResizeSpec half = lucent::resizeFromPercent(lucent::resizeFromSource(1000, 500, true, false, true), 50);
+    expect(half.width == 500 && half.height == 250 && half.percent == 50, "50 percent keeps the aspect");
+    const lucent::ResizeSpec wide = lucent::resizeFromWidth(lucent::resizeFromSource(1000, 500, true, false, true), 200);
+    expect(wide.width == 200 && wide.height == 100 && wide.percent == 20, "a width edit sets the height");
+    const lucent::ResizeSpec tall = lucent::resizeFromHeight(wide, 100);
+    expect(tall.width == 200 && tall.height == 100, "a height edit sets the width");
+    lucent::ResizeSpec free = lucent::resizeKeepAspect(wide, false);
+    free = lucent::resizeFromWidth(free, 300);
+    expect(free.width == 300 && free.height == 100, "without aspect lock the other side stays");
+    free = lucent::resizeFromHeight(free, 80);
+    expect(free.width == 300 && free.height == 80, "a free height edit leaves the width");
+    const lucent::ResizeSpec tiny = lucent::resizeFromPercent(lucent::resizeFromSource(10, 10, true, true, false), 0);
+    expect(tiny.percent == 1 && tiny.width == 1 && tiny.height == 1, "percent and size stay at least 1");
+
     if (failures != 0) {
         std::cerr << failures << " failure(s)\n";
         return 1;

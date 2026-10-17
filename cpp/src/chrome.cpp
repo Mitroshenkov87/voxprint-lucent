@@ -18,6 +18,7 @@
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QEventLoop>
@@ -305,6 +306,19 @@ struct Chrome::Impl {
     QCheckBox *thumbs = nullptr;
     QCheckBox *welcome = nullptr;
     QComboBox *language = nullptr;
+    ResizeSpec resize;
+    QComboBox *resizeUnit = nullptr;
+    QSpinBox *resizeWidth = nullptr;
+    QSpinBox *resizeHeight = nullptr;
+    QSpinBox *resizePercent = nullptr;
+    QCheckBox *resizeAspect = nullptr;
+    QComboBox *resizeSample = nullptr;
+    QSpinBox *dialogWidth = nullptr;
+    QSpinBox *dialogHeight = nullptr;
+    QSpinBox *dialogPercent = nullptr;
+    QComboBox *dialogUnit = nullptr;
+    QCheckBox *dialogAspect = nullptr;
+    QComboBox *dialogSample = nullptr;
 };
 
 void requestAcrylic(QWidget *window) {
@@ -545,6 +559,17 @@ void Chrome::buildExpert() {
     impl_->thumbs = new QCheckBox(formHost);
     impl_->welcome = new QCheckBox(formHost);
     impl_->language = new QComboBox(formHost);
+    impl_->resizeUnit = new QComboBox(formHost);
+    impl_->resizeWidth = new QSpinBox(formHost);
+    impl_->resizeHeight = new QSpinBox(formHost);
+    impl_->resizePercent = new QSpinBox(formHost);
+    impl_->resizeAspect = new QCheckBox(label(QStringLiteral("lucent.resize.keep_aspect")), formHost);
+    impl_->resizeSample = new QComboBox(formHost);
+    for (QSpinBox *box : {impl_->resizeWidth, impl_->resizeHeight}) {
+        box->setRange(1, 100000);
+    }
+    impl_->resizePercent->setRange(1, 1000);
+    impl_->resizePercent->setSuffix(QStringLiteral("%"));
 
     form->addRow(label(QStringLiteral("lucent.expert.zoom")), impl_->zoomValue);
     form->addRow(QString(), impl_->zoomSpin);
@@ -559,6 +584,20 @@ void Chrome::buildExpert() {
     cropLayout->addWidget(impl_->cropW);
     cropLayout->addWidget(impl_->cropH);
     form->addRow(label(QStringLiteral("lucent.expert.crop")), cropRow);
+    form->addRow(label(QStringLiteral("lucent.action.resize")), impl_->resizeUnit);
+    form->addRow(label(QStringLiteral("lucent.resize.width")), impl_->resizeWidth);
+    form->addRow(label(QStringLiteral("lucent.resize.height")), impl_->resizeHeight);
+    form->addRow(label(QStringLiteral("lucent.resize.percent")), impl_->resizePercent);
+    form->addRow(QString(), impl_->resizeAspect);
+    form->addRow(label(QStringLiteral("lucent.resize.resample")), impl_->resizeSample);
+    auto *resizeApply = new QPushButton(label(QStringLiteral("lucent.resize.apply")), formHost);
+    resizeApply->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    auto *resizeApplyRow = new QHBoxLayout();
+    resizeApplyRow->setContentsMargins(0, 0, 0, 0);
+    resizeApplyRow->addWidget(resizeApply, 0, Qt::AlignLeft);
+    resizeApplyRow->addStretch(1);
+    form->addRow(resizeApplyRow);
+    QObject::connect(resizeApply, &QPushButton::clicked, impl_->host, [this] { applyResize(); });
     form->addRow(label(QStringLiteral("lucent.expert.rotate")), impl_->rotate);
     form->addRow(label(QStringLiteral("lucent.expert.format")), impl_->format);
     form->addRow(label(QStringLiteral("lucent.expert.quality")), impl_->quality);
@@ -661,6 +700,47 @@ void Chrome::buildExpert() {
             impl_->cb.rotate(true);
         }
         impl_->rotation = degrees;
+    });
+    QObject::connect(impl_->resizeUnit, &QComboBox::currentIndexChanged, impl_->host, [this](int index) {
+        if (impl_->applying) {
+            return;
+        }
+        if (index == 1) {
+            editResize(resizeFromPercent(impl_->resize, impl_->resize.percent));
+        } else if (index == 0) {
+            editResize(resizeFromWidth(impl_->resize, impl_->resize.width));
+        }
+    });
+    QObject::connect(impl_->resizeWidth, &QSpinBox::valueChanged, impl_->host, [this](int value) {
+        if (impl_->applying || impl_->resize.byPercent) {
+            return;
+        }
+        editResize(resizeFromWidth(impl_->resize, value));
+    });
+    QObject::connect(impl_->resizeHeight, &QSpinBox::valueChanged, impl_->host, [this](int value) {
+        if (impl_->applying || impl_->resize.byPercent) {
+            return;
+        }
+        editResize(resizeFromHeight(impl_->resize, value));
+    });
+    QObject::connect(impl_->resizePercent, &QSpinBox::valueChanged, impl_->host, [this](int value) {
+        if (impl_->applying || !impl_->resize.byPercent) {
+            return;
+        }
+        editResize(resizeFromPercent(impl_->resize, value));
+    });
+    QObject::connect(impl_->resizeAspect, &QCheckBox::toggled, impl_->host, [this](bool on) {
+        if (impl_->applying) {
+            return;
+        }
+        editResize(resizeKeepAspect(impl_->resize, on));
+    });
+    QObject::connect(impl_->resizeSample, &QComboBox::currentIndexChanged, impl_->host, [this](int index) {
+        if (impl_->applying) {
+            return;
+        }
+        impl_->resize.smooth = index != 1;
+        syncResizeFields();
     });
     QObject::connect(impl_->slideshow, &QSpinBox::valueChanged, impl_->host, [this](int seconds) {
         QSettings().setValue(QStringLiteral("slideshow/ms"), seconds * 1000);
@@ -837,6 +917,13 @@ void Chrome::refreshExpert() {
     impl_->language->addItem(QStringLiteral("English"), QStringLiteral("en"));
     impl_->language->addItem(QStringLiteral("Русский"), QStringLiteral("ru"));
     impl_->language->addItem(QStringLiteral("Deutsch"), QStringLiteral("de"));
+    impl_->resizeUnit->clear();
+    impl_->resizeUnit->addItem(label(QStringLiteral("lucent.resize.pixels")));
+    impl_->resizeUnit->addItem(label(QStringLiteral("lucent.resize.by_percent")));
+    impl_->resizeSample->clear();
+    impl_->resizeSample->addItem(label(QStringLiteral("lucent.resize.smooth")));
+    impl_->resizeSample->addItem(label(QStringLiteral("lucent.resize.nearest")));
+    impl_->resizeAspect->setText(label(QStringLiteral("lucent.resize.keep_aspect")));
     impl_->thumbs->setText(label(QStringLiteral("lucent.expert.thumbnails")));
     impl_->welcome->setText(label(QStringLiteral("lucent.expert.welcome")));
     select(impl_->colour, jsonText(objectFromValues(impl_->state.values), "viewer.colour", QStringLiteral("srgb")));
@@ -972,6 +1059,11 @@ void Chrome::setLive(const LiveView &live) {
     impl_->frames->setText(QString::number(live.frame + 1) + QStringLiteral(" / ") + QString::number(std::max(1, live.frameCount)));
     impl_->info->setText(live.info);
     impl_->profile->setText(live.profile.isEmpty() ? label(QStringLiteral("lucent.colour.srgb")) : live.profile);
+    if (live.imageW > 0 && live.imageH > 0
+        && (live.imageW != impl_->resize.sourceWidth || live.imageH != impl_->resize.sourceHeight)) {
+        impl_->resize = resizeFromSource(live.imageW, live.imageH, impl_->resize.keepAspect, impl_->resize.byPercent, impl_->resize.smooth);
+    }
+    syncResizeFields();
     impl_->applying = false;
 }
 
@@ -1242,6 +1334,170 @@ void Chrome::setExpert(bool enabled) {
     }
 }
 
+void Chrome::editResize(const ResizeSpec &spec) {
+    impl_->resize = spec;
+    syncResizeFields();
+}
+
+void Chrome::syncResizeFields() {
+    const bool wasApplying = impl_->applying;
+    impl_->applying = true;
+    const ResizeSpec &spec = impl_->resize;
+    const auto spins = [&](QSpinBox *width, QSpinBox *height, QSpinBox *percent) {
+        if (width != nullptr) {
+            width->setValue(spec.width);
+            width->setEnabled(!spec.byPercent);
+        }
+        if (height != nullptr) {
+            height->setValue(spec.height);
+            height->setEnabled(!spec.byPercent);
+        }
+        if (percent != nullptr) {
+            percent->setValue(spec.percent);
+            percent->setEnabled(spec.byPercent);
+        }
+    };
+    const auto unit = [&](QComboBox *box) {
+        if (box == nullptr || box->count() < 2) {
+            return;
+        }
+        box->setCurrentIndex(spec.byPercent ? 1 : 0);
+    };
+    const auto sample = [&](QComboBox *box) {
+        if (box == nullptr || box->count() < 2) {
+            return;
+        }
+        box->setCurrentIndex(spec.smooth ? 0 : 1);
+    };
+    const auto aspect = [&](QCheckBox *box) {
+        if (box != nullptr) {
+            box->setChecked(spec.keepAspect);
+        }
+    };
+    spins(impl_->resizeWidth, impl_->resizeHeight, impl_->resizePercent);
+    spins(impl_->dialogWidth, impl_->dialogHeight, impl_->dialogPercent);
+    unit(impl_->resizeUnit);
+    unit(impl_->dialogUnit);
+    sample(impl_->resizeSample);
+    sample(impl_->dialogSample);
+    aspect(impl_->resizeAspect);
+    aspect(impl_->dialogAspect);
+    impl_->applying = wasApplying;
+}
+
+void Chrome::applyResize() {
+    if (impl_->cb.resizeImage) {
+        impl_->cb.resizeImage(impl_->resize.width, impl_->resize.height, impl_->resize.smooth);
+    }
+}
+
+void Chrome::openResizeDialog() {
+    QDialog dialog(impl_->host);
+    struct ClearDialogFields {
+        Impl *impl;
+        ~ClearDialogFields() {
+            impl->dialogWidth = nullptr;
+            impl->dialogHeight = nullptr;
+            impl->dialogPercent = nullptr;
+            impl->dialogUnit = nullptr;
+            impl->dialogAspect = nullptr;
+            impl->dialogSample = nullptr;
+        }
+    } clear{impl_};
+    dialog.setWindowTitle(label(QStringLiteral("lucent.action.resize")));
+    dialog.setMinimumWidth(360);
+    auto *layout = new QVBoxLayout(&dialog);
+    auto *formHost = new QWidget(&dialog);
+    auto *form = new QFormLayout(formHost);
+    form->setContentsMargins(0, 0, 0, 0);
+    impl_->dialogUnit = new QComboBox(formHost);
+    impl_->dialogUnit->addItem(label(QStringLiteral("lucent.resize.pixels")));
+    impl_->dialogUnit->addItem(label(QStringLiteral("lucent.resize.by_percent")));
+    impl_->dialogWidth = new QSpinBox(formHost);
+    impl_->dialogHeight = new QSpinBox(formHost);
+    impl_->dialogPercent = new QSpinBox(formHost);
+    impl_->dialogAspect = new QCheckBox(label(QStringLiteral("lucent.resize.keep_aspect")), formHost);
+    impl_->dialogSample = new QComboBox(formHost);
+    impl_->dialogSample->addItem(label(QStringLiteral("lucent.resize.smooth")));
+    impl_->dialogSample->addItem(label(QStringLiteral("lucent.resize.nearest")));
+    for (QSpinBox *box : {impl_->dialogWidth, impl_->dialogHeight}) {
+        box->setRange(1, 100000);
+    }
+    impl_->dialogPercent->setRange(1, 1000);
+    impl_->dialogPercent->setSuffix(QStringLiteral("%"));
+    form->addRow(label(QStringLiteral("lucent.action.resize")), impl_->dialogUnit);
+    form->addRow(label(QStringLiteral("lucent.resize.width")), impl_->dialogWidth);
+    form->addRow(label(QStringLiteral("lucent.resize.height")), impl_->dialogHeight);
+    form->addRow(label(QStringLiteral("lucent.resize.percent")), impl_->dialogPercent);
+    form->addRow(QString(), impl_->dialogAspect);
+    form->addRow(label(QStringLiteral("lucent.resize.resample")), impl_->dialogSample);
+    layout->addWidget(formHost);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(impl_->dialogUnit, &QComboBox::currentIndexChanged, &dialog, [this](int index) {
+        if (impl_->applying) {
+            return;
+        }
+        if (index == 1) {
+            editResize(resizeFromPercent(impl_->resize, impl_->resize.percent));
+        } else if (index == 0) {
+            editResize(resizeFromWidth(impl_->resize, impl_->resize.width));
+        }
+    });
+    QObject::connect(impl_->dialogWidth, &QSpinBox::valueChanged, &dialog, [this](int value) {
+        if (impl_->applying || impl_->resize.byPercent) {
+            return;
+        }
+        editResize(resizeFromWidth(impl_->resize, value));
+    });
+    QObject::connect(impl_->dialogHeight, &QSpinBox::valueChanged, &dialog, [this](int value) {
+        if (impl_->applying || impl_->resize.byPercent) {
+            return;
+        }
+        editResize(resizeFromHeight(impl_->resize, value));
+    });
+    QObject::connect(impl_->dialogPercent, &QSpinBox::valueChanged, &dialog, [this](int value) {
+        if (impl_->applying || !impl_->resize.byPercent) {
+            return;
+        }
+        editResize(resizeFromPercent(impl_->resize, value));
+    });
+    QObject::connect(impl_->dialogAspect, &QCheckBox::toggled, &dialog, [this](bool on) {
+        if (impl_->applying) {
+            return;
+        }
+        editResize(resizeKeepAspect(impl_->resize, on));
+    });
+    QObject::connect(impl_->dialogSample, &QComboBox::currentIndexChanged, &dialog, [this](int index) {
+        if (impl_->applying || index < 0) {
+            return;
+        }
+        impl_->resize.smooth = index != 1;
+        syncResizeFields();
+    });
+    const bool wasApplying = impl_->applying;
+    impl_->applying = true;
+    syncResizeFields();
+    impl_->applying = wasApplying;
+    if (qgetenv("LUCENT_SCREENSHOT") == "resize") {
+        dialog.show();
+        dialog.raise();
+        QTimer::singleShot(200, &dialog, [&dialog] { saveGrab(&dialog, QStringLiteral("resize")); });
+        QEventLoop loop;
+        QTimer::singleShot(800, &loop, &QEventLoop::quit);
+        loop.exec();
+        return;
+    }
+    const ResizeSpec saved = impl_->resize;
+    if (dialog.exec() == QDialog::Accepted) {
+        applyResize();
+        return;
+    }
+    editResize(saved);
+}
+
 void Chrome::addKeptActions(QMenu &menu) {
     const auto call = [](const std::function<void()> &fn) {
         if (fn) {
@@ -1299,6 +1555,7 @@ void Chrome::addKeptActions(QMenu &menu) {
         }
     });
     menu.addAction(label(QStringLiteral("lucent.action.crop")), [this, call] { call(impl_->cb.crop); });
+    menu.addAction(label(QStringLiteral("lucent.action.resize")), [this] { openResizeDialog(); });
     menu.addAction(label(QStringLiteral("lucent.action.trash")), [this, call] { call(impl_->cb.trash); });
     menu.addAction(label(QStringLiteral("lucent.expert.thumbnails")), [this] { toggleGallery(); });
     menu.addAction(label(QStringLiteral("lucent.action.frameless")), [this, call] { call(impl_->cb.frameless); });
@@ -1479,6 +1736,8 @@ void Chrome::prepareShots() {
         impl_->shotExpert = false;
         relayout();
         QTimer::singleShot(400, impl_->host, [this] { saveGrab(impl_->host, QStringLiteral("simple")); });
+    } else if (mode == "resize") {
+        QTimer::singleShot(200, impl_->host, [this] { openResizeDialog(); });
     } else if (mode == "expert") {
         impl_->shotOverride = true;
         impl_->shotExpert = true;

@@ -27,6 +27,8 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | Flip vertical | Toolbar, context menu, Ctrl+V | Overflow menu, context menu, Expert button, Ctrl+V | simple |
 | Crop (drag) | Toolbar, context menu, Ctrl+Shift+X, drag | Overflow menu, context menu, drag on the picture, Ctrl+Shift+X | simple |
 | Numeric crop | Tools window spin boxes | Expert panel crop fields | Expert |
+| Resize | No typed pixel size in rc7 | Resize… on the overflow menu and the context menu. Width and height, or a percent, with keep aspect and resampling. The Expert panel shows the same values and applies them with Resize. | simple |
+| Convert | Save as, Export, Export frame, `--export --format` | Save as and Export. Export frame and `--export --format` stay. There is no convert wizard. | simple |
 | Move to trash | Toolbar, context menu, Delete | Overflow menu, context menu, Expert button, Delete. Asks before moving. | simple |
 | Copy image | Context menu, Ctrl+C | Context menu, Expert button, Ctrl+C | simple |
 | Copy path | Context menu, Ctrl+Shift+C | Context menu, Expert button, Ctrl+Shift+C | simple |
@@ -44,7 +46,7 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | Export one frame (AVIF, JPEG XL, WebP) | Tools window | Tools window Export frame. PNG is still rejected. | simple |
 | Rotate and flip that rewrite a JPEG tag | Tools window | Tools window, and the viewer rotate and flip commands | simple |
 | Crop to AVIF | Tools window | Tools window, and the viewer crop | simple |
-| Compare after Enlarge (Keep, Reveal, Discard) | Enlarge window | Result overlay after Enhance, and the Enlarge tools window | simple |
+| Compare after Enlarge (Keep, Reveal, Discard) | Enlarge window | Result overlay after Enhance, and the Enlarge tools window. This is the Enlarge before/after compare. | simple |
 | Enhance with Enlarge | Enlarge toolbar button | Preset chip. Runs the Enlarge CLI. Grey, with Install Enlarge, when Enlarge is missing. | simple |
 | Open in Enlarge | Enlarge toolbar button | Expert button, Ctrl+E. Starts the tools process. | Expert |
 | Install Enlarge | Menu and toolbar when Enlarge is missing | Chip reason and Install Enlarge button | simple |
@@ -82,9 +84,9 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | `voxprint-lucent-tools --check-update` | CLI | CLI. Prints a newer release tag. | simple |
 | `voxprint-lucent-tools --shell` | Not in rc7 | CLI. Opens the shared viewer surface. Not on the cold-start path. | simple |
 
-## Open questions
+## Decisions
 
-- **Resize.** Lucent has no command that resizes to a typed pixel size. Crop and Enlarge's scale change the pixel size. Where should a resize field live: the Expert panel, or a dialog?
-- **Convert.** Save as, Export, the tools window's Export frame, and `--export --format` already write another format. Is a separate convert wizard required, or are those the convert feature?
-- **Two-picture compare.** The current compare is the Enlarge result (Keep, Reveal, Discard). Comparing two arbitrary pictures is not a current command. Should that stay out of this shell?
-- **CLI mode.** The flags above do not open simple or Expert mode. The table marks them simple because they stay available without Expert.
+- Resize is the Resize… dialog on the overflow menu and the context menu: width and height, or a percent, with keep aspect and resampling. The Expert panel shows the same live values and applies them with Resize.
+- Save as and Export cover convert. Export frame and `--export --format` stay. There is no convert wizard.
+- The Enlarge before/after compare stays as it is. Comparing two arbitrary pictures is not a current feature.
+- The CLI flags stay as they are. The table marks them simple because they stay available without Expert mode.
