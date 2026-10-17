@@ -74,7 +74,7 @@ def test_vendored_tokens_match_the_pin() -> None:
     body = Path("share/tokens.json").read_bytes()
     assert pin["package"] == "voxprint-common"
     assert pin["pr"] == 13
-    assert pin["commit"] == "f4e95ccfa25780abaf50412cb095a7843725102a"
+    assert pin["commit"] == "0d1e30de68cc49549a2a94cb3695e5601c17e7db"
     tokens = json.loads(body)
     assert tokens["schema"] == 1
     assert "SPLASH" not in tokens["colors"]

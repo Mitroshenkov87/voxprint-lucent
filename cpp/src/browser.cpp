@@ -1096,6 +1096,9 @@ void Browser::ensureChrome() {
         update();
     };
     callbacks.checkUpdate = [this] { checkForUpdate(); };
+    callbacks.frameless = [this] { toggleFrameless(); };
+    callbacks.windowFit = [this] { fitWindow(); };
+    callbacks.tools = [this] { openTools(); };
     chrome_ = new Chrome(this, std::move(callbacks));
     chrome_->setFolder(folder_, index_);
     chrome_->prepareShots();

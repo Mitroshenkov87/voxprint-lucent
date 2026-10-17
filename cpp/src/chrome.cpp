@@ -1242,6 +1242,70 @@ void Chrome::setExpert(bool enabled) {
     }
 }
 
+void Chrome::addKeptActions(QMenu &menu) {
+    const auto call = [](const std::function<void()> &fn) {
+        if (fn) {
+            fn();
+        }
+    };
+    menu.addAction(label(QStringLiteral("lucent.action.save_as")), [this, call] { call(impl_->cb.saveAs); });
+    menu.addAction(label(QStringLiteral("lucent.action.save_copy")), [this, call] { call(impl_->cb.saveCopy); });
+    menu.addAction(label(QStringLiteral("lucent.action.export")), [this, call] { call(impl_->cb.exportImage); });
+    menu.addAction(label(QStringLiteral("lucent.action.download")), [this, call] { call(impl_->cb.download); });
+    QMenu *zoom = menu.addMenu(label(QStringLiteral("lucent.expert.zoom")));
+    zoom->addAction(label(QStringLiteral("simple.viewer.fit")), [this] {
+        if (impl_->cb.zoom) {
+            impl_->cb.zoom(ZoomMode::Fit);
+        }
+    });
+    zoom->addAction(label(QStringLiteral("simple.viewer.full")), [this] {
+        if (impl_->cb.zoom) {
+            impl_->cb.zoom(ZoomMode::OneToOne);
+        }
+    });
+    zoom->addAction(label(QStringLiteral("lucent.action.fill")), [this] {
+        if (impl_->cb.zoom) {
+            impl_->cb.zoom(ZoomMode::Fill);
+        }
+    });
+    zoom->addAction(label(QStringLiteral("lucent.action.fit_width")), [this] {
+        if (impl_->cb.zoom) {
+            impl_->cb.zoom(ZoomMode::FitWidth);
+        }
+    });
+    zoom->addAction(label(QStringLiteral("lucent.action.fit_height")), [this] {
+        if (impl_->cb.zoom) {
+            impl_->cb.zoom(ZoomMode::FitHeight);
+        }
+    });
+    menu.addAction(label(QStringLiteral("lucent.action.rotate_left")), [this] {
+        if (impl_->cb.rotate) {
+            impl_->cb.rotate(false);
+        }
+    });
+    menu.addAction(label(QStringLiteral("lucent.action.rotate_right")), [this] {
+        if (impl_->cb.rotate) {
+            impl_->cb.rotate(true);
+        }
+    });
+    menu.addAction(label(QStringLiteral("lucent.action.flip_h")), [this] {
+        if (impl_->cb.flip) {
+            impl_->cb.flip(true);
+        }
+    });
+    menu.addAction(label(QStringLiteral("lucent.action.flip_v")), [this] {
+        if (impl_->cb.flip) {
+            impl_->cb.flip(false);
+        }
+    });
+    menu.addAction(label(QStringLiteral("lucent.action.crop")), [this, call] { call(impl_->cb.crop); });
+    menu.addAction(label(QStringLiteral("lucent.action.trash")), [this, call] { call(impl_->cb.trash); });
+    menu.addAction(label(QStringLiteral("lucent.expert.thumbnails")), [this] { toggleGallery(); });
+    menu.addAction(label(QStringLiteral("lucent.action.frameless")), [this, call] { call(impl_->cb.frameless); });
+    menu.addAction(label(QStringLiteral("lucent.action.window_fit")), [this, call] { call(impl_->cb.windowFit); });
+    menu.addAction(label(QStringLiteral("lucent.action.tools")), [this, call] { call(impl_->cb.tools); });
+}
+
 void Chrome::openMenu() {
     QMenu menu(impl_->host);
     QAction *expert = menu.addAction(label(QStringLiteral("command.view.toggle_expert_mode")));
@@ -1258,6 +1322,7 @@ void Chrome::openMenu() {
             impl_->cb.slideshow();
         }
     });
+    addKeptActions(menu);
     menu.addAction(label(QStringLiteral("lucent.action.about")), [this] { openAbout(); });
     menu.addAction(label(QStringLiteral("lucent.action.updates")), [this] {
         if (impl_->cb.checkUpdate) {
@@ -1294,6 +1359,7 @@ void Chrome::contextMenu(const QPoint &globalPos) {
             impl_->cb.save();
         }
     });
+    addKeptActions(menu);
     menu.addAction(label(QStringLiteral("lucent.action.copy_image")), [this] { copyImage(); });
     menu.addAction(label(QStringLiteral("lucent.action.copy_path")), [this] { copyPath(); });
     menu.addAction(label(QStringLiteral("lucent.tools.reveal")), [this] { reveal(); });

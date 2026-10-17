@@ -15,6 +15,7 @@
 #include <functional>
 
 class QComboBox;
+class QMenu;
 class QWidget;
 
 namespace lucent {
@@ -75,6 +76,12 @@ struct ChromeCallbacks {
     std::function<void(double)> setScale;
     /// Read this repository's releases. Not on the cold-start path.
     std::function<void()> checkUpdate;
+    /// Hide or show the window frame.
+    std::function<void()> frameless;
+    /// Resize the window to the picture.
+    std::function<void()> windowFit;
+    /// Open the tools window.
+    std::function<void()> tools;
 };
 
 /// Values the expert panel shows for the open picture.
@@ -174,6 +181,7 @@ private:
     void setExpert(bool enabled);
     void openFile();
     void openMenu();
+    void addKeptActions(QMenu &menu);
     void openSettings();
     void openAbout();
     void setGalleryVisible(bool visible);

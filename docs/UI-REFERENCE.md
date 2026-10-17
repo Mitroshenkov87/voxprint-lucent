@@ -6,7 +6,7 @@ The window opens at 1200×900 the first time, and at a minimum of 640×400 after
 
 ## Simple mode
 
-A 40 px toolbar carries Open, Save, Previous, and Next. Under it, one row of preset chips reads Fit, 100%, and Enhance with Enlarge. The chips scroll sideways; they do not wrap. The picture fills everything left under that row.
+A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous, and Next. The overflow menu and the picture's context menu carry the other everyday actions: save as, save a copy, export, download, the other zoom modes, rotate, flip, crop, trash, thumbnails, frameless, window fit, and Tools. Under the toolbar, one row of preset chips reads Fit, 100%, and Enhance with Enlarge. The full list is `docs/ui/FEATURE-MAP.md`. The chips scroll sideways; they do not wrap. The picture fills everything left under that row.
 
 Enhance with Enlarge writes scale 2 and Enlarge's `photo` preset, then runs the Enlarge command. When Enlarge is not installed the chip stays grey, with the reason and Install Enlarge. Choosing the grey chip does not write values.
 
@@ -26,7 +26,7 @@ A hand edit of a chip's values reads "{name} + changes" while the stored choice 
 
 ## Chrome
 
-Colours and the 2 px focus ring come from `share/tokens.json` schema 1. That file, and the shell catalogs in `share/locales`, are the vendored copy of `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/` at voxprint-common `f4e95ccfa25780abaf50412cb095a7843725102a`. The C++ viewer reads those files directly. The window uses the plain colours. Lucent's own phrases live in `share/locales/lucent` (English, Russian, and German). A missing phrase falls back to English, then to the key.
+Colours and the 2 px focus ring come from `share/tokens.json` schema 1. That file, and the shell catalogs in `share/locales`, are the vendored copy of `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/` at voxprint-common `0d1e30de68cc49549a2a94cb3695e5601c17e7db`. The C++ viewer reads those files directly. The window uses the plain colours. Lucent's own phrases live in `share/locales/lucent` (English, Russian, and German). A missing phrase falls back to English, then to the key.
 
 The on-demand helper opens the same surface id, `viewer`, through `ReferenceShell`. Its dependency is `voxprint-common[ui]` at that commit. The native viewer does not import it.
 
