@@ -1,5 +1,10 @@
 # VOXPrint AI Lucent
 
+> [!WARNING]
+> **⚠️ Deep alpha.** This software is experimental; nothing is guaranteed to work. Use at your own risk.
+>
+> **⚠️ Глубокая альфа.** Программа экспериментальная, работа не гарантируется.
+
 <p align="center">
   <img src="packaging/docs/site/assets/banner.webp" alt="VOXPrint AI Lucent" width="960">
 </p>
