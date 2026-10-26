@@ -72,6 +72,7 @@ private:
     void toggleFrameless();
     void fitWindow();
     void openTools(bool enlarge = false);
+    void launchHost(const QStringList &tail);
     void cycleLanguage();
     void ensureChrome();
     void refreshFolder();
@@ -90,8 +91,13 @@ private:
     void exportImage();
     void downloadImage();
     void saveAs();
+    void resizeTo(int width, int height, bool smooth);
     void moveToTrash();
     void syncRhi();
+    QRect pictureRect() const;
+    void refit();
+    QString exportSuffix() const;
+    void checkForUpdate();
     QString cacheKey(const QString &path, int frame, bool full) const;
 
     LaunchOptions options_;

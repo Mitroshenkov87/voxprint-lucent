@@ -3,52 +3,139 @@
 
 #include "gallery.h"
 
-#include <QImageReader>
+#include "theme.h"
 
-#include <algorithm>
+#include <QButtonGroup>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QImageReader>
 #include <QMetaObject>
-#include <QMouseEvent>
 #include <QPainter>
+#include <QPixmap>
 #include <QPointer>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QVBoxLayout>
 
 #include <thread>
 
 namespace lucent {
 namespace {
 
-constexpr int kCell = 84;
-constexpr int kThumbW = 72;
-constexpr int kThumbH = 54;
+constexpr int kTile = 88;
 
 QImage decodeThumb(const QString &path) {
     QImageReader reader(path);
     reader.setAutoTransform(true);
     const QSize size = reader.size();
     if (size.isValid() && !size.isEmpty()) {
-        reader.setScaledSize(size.scaled(kThumbW, kThumbH, Qt::KeepAspectRatio));
+        reader.setScaledSize(size.scaled(kTile, kTile, Qt::KeepAspectRatio));
     }
     return reader.read();
+}
+
+QPixmap placeholderThumb() {
+    QPixmap pix(kTile - 4, kTile - 4);
+    pix.fill(Qt::transparent);
+    QPainter painter(&pix);
+    painter.setRenderHint(QPainter::Antialiasing);
+    const QColor ink(0xa8, 0xa8, 0xb8, 150);
+    painter.setPen(QPen(ink, 1.6));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRoundedRect(QRectF(22, 26, 40, 30), 3, 3);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(ink);
+    painter.drawEllipse(QPointF(32, 35), 3.2, 3.2);
+    painter.setPen(QPen(ink, 1.6));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPolyline(QPolygonF{QPointF(28, 50), QPointF(38, 40), QPointF(46, 47), QPointF(56, 38)});
+    return pix;
+}
+
+void showThumb(QPushButton *button, const QImage &image) {
+    if (image.isNull()) {
+        button->setIcon(placeholderThumb());
+        return;
+    }
+    button->setIcon(QPixmap::fromImage(image));
 }
 
 }  // namespace
 
 Gallery::Gallery(QWidget *parent) : QWidget(parent) {
-    setObjectName(QStringLiteral("lucent-gallery"));
-    setFixedHeight(76);
-    setMouseTracking(true);
+    setObjectName(QStringLiteral("history"));
+    setFixedHeight(104);
+    auto *scroll = new QScrollArea(this);
+    scroll->setObjectName(QStringLiteral("historyScroll"));
+    scroll->viewport()->setObjectName(QStringLiteral("historyViewport"));
+    scroll->horizontalScrollBar()->setObjectName(QStringLiteral("historyBar"));
+    polishScrollBar(scroll->horizontalScrollBar());
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    row_ = new QWidget(scroll);
+    rowLayout_ = new QHBoxLayout(row_);
+    rowLayout_->setContentsMargins(0, 8, 0, 8);
+    rowLayout_->setSpacing(8);
+    rowLayout_->addStretch(1);
+    scroll->setWidget(row_);
+    auto *outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->addWidget(scroll);
+    group_ = new QButtonGroup(this);
+    group_->setExclusive(true);
+}
+
+void Gallery::rebuild() {
+    for (QPushButton *button : buttons_) {
+        group_->removeButton(button);
+        button->deleteLater();
+    }
+    buttons_.clear();
+    for (int index = 0; index < files_.size(); ++index) {
+        auto *button = new QPushButton(row_);
+        button->setProperty("thumb", true);
+        button->setCheckable(true);
+        button->setFixedSize(kTile, kTile);
+        button->setIconSize(QSize(kTile - 4, kTile - 4));
+        button->setChecked(index == current_);
+        showThumb(button, thumbs_.value(files_.at(index)));
+        group_->addButton(button);
+        rowLayout_->insertWidget(rowLayout_->count() - 1, button);
+        buttons_.append(button);
+        QObject::connect(button, &QPushButton::clicked, this, [this, index] {
+            current_ = index;
+            if (onChosen) {
+                onChosen(index);
+            }
+        });
+    }
 }
 
 void Gallery::setFiles(const QStringList &files, int current) {
     files_ = files;
     current_ = current;
     ++generation_;
-    update();
-    pump();
+    if (!qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        for (const QString &path : files_) {
+            if (!thumbs_.contains(path) || thumbs_.value(path).isNull()) {
+                thumbs_.insert(path, decodeThumb(path));
+            }
+        }
+    }
+    rebuild();
+    if (qgetenv("LUCENT_SCREENSHOT").isEmpty()) {
+        pump();
+    }
 }
 
 void Gallery::setCurrent(int current) {
     current_ = current;
-    update();
+    if (current >= 0 && current < buttons_.size()) {
+        buttons_.at(current)->setChecked(true);
+    }
 }
 
 void Gallery::pump() {
@@ -82,77 +169,15 @@ void Gallery::pump() {
                     --self->workers_;
                     if (generation == self->generation_) {
                         self->thumbs_.insert(next, image);
-                        self->update();
+                        const int index = self->files_.indexOf(next);
+                        if (index >= 0 && index < self->buttons_.size()) {
+                            showThumb(self->buttons_.at(index), image);
+                        }
                     }
                     self->pump();
                 },
                 Qt::QueuedConnection);
         }).detach();
-    }
-}
-
-int Gallery::indexAt(int x) const {
-    if (files_.isEmpty()) {
-        return -1;
-    }
-    const int visible = std::max(1, width() / kCell);
-    int first = 0;
-    if (current_ >= 0) {
-        first = current_ - visible / 2;
-    }
-    if (first < 0) {
-        first = 0;
-    }
-    if (first + visible > files_.size()) {
-        first = std::max(0, static_cast<int>(files_.size() - visible));
-    }
-    const int index = first + x / kCell;
-    if (index < first || index >= files_.size() || index >= first + visible) {
-        return -1;
-    }
-    return index;
-}
-
-void Gallery::paintEvent(QPaintEvent *) {
-    QPainter painter(this);
-    painter.fillRect(rect(), QColor(16, 16, 22, 210));
-    painter.setPen(QColor(QStringLiteral("#4b4b5c")));
-    painter.drawLine(0, 0, width(), 0);
-    if (files_.isEmpty()) {
-        return;
-    }
-    const int visible = std::max(1, width() / kCell);
-    int first = 0;
-    if (current_ >= 0) {
-        first = current_ - visible / 2;
-    }
-    if (first < 0) {
-        first = 0;
-    }
-    if (first + visible > files_.size()) {
-        first = std::max(0, static_cast<int>(files_.size() - visible));
-    }
-    for (int i = 0; i < visible && first + i < files_.size(); ++i) {
-        const int index = first + i;
-        const QRect cell(i * kCell + 6, 8, kThumbW, kThumbH);
-        const QImage thumb = thumbs_.value(files_.at(index));
-        painter.fillRect(cell, QColor(QStringLiteral("#202029")));
-        if (!thumb.isNull()) {
-            const QPoint topLeft(cell.x() + (cell.width() - thumb.width()) / 2,
-                                 cell.y() + (cell.height() - thumb.height()) / 2);
-            painter.drawImage(topLeft, thumb);
-        }
-        if (index == current_) {
-            painter.setPen(QPen(QColor(QStringLiteral("#60a5fa")), 2));
-            painter.drawRect(cell.adjusted(-1, -1, 1, 1));
-        }
-    }
-}
-
-void Gallery::mousePressEvent(QMouseEvent *event) {
-    const int index = indexAt(static_cast<int>(event->position().x()));
-    if (index >= 0 && onChosen) {
-        onChosen(index);
     }
 }
 

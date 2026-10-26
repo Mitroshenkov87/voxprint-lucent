@@ -25,6 +25,8 @@ qt_add_executable(voxprint-lucent
     src/dry_run.cpp
     src/decode.cpp
     src/theme.cpp
+    src/shell_logic.cpp
+    src/labels.cpp
     src/viewer.cpp
     src/placement.cpp
     src/natural.cpp

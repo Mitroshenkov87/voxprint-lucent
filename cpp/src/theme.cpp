@@ -8,16 +8,29 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QScrollBar>
 
 namespace lucent {
 namespace {
 
-QString applyTokens(QString sheet, const QJsonObject &tokens) {
-    const QString accent = tokens.value(QStringLiteral("ACCENT")).toString();
+QJsonObject colourMap(const QJsonObject &document) {
+    const QJsonObject colours = document.value(QStringLiteral("colors")).toObject();
+    return colours.isEmpty() ? document : colours;
+}
+
+QString applyTokens(QString sheet, const QJsonObject &document) {
+    const QJsonObject colours = colourMap(document);
+    const QString accent = colours.value(QStringLiteral("ACCENT")).toString();
     sheet.replace(QStringLiteral("@SPLASH@"), accent);
     sheet.replace(QStringLiteral("@TEXT_ON_SELECTION@"), QStringLiteral("#ffffff"));
-    for (auto it = tokens.constBegin(); it != tokens.constEnd(); ++it) {
-        sheet.replace(QStringLiteral("@") + it.key() + QStringLiteral("@"), it.value().toString());
+    for (auto it = colours.constBegin(); it != colours.constEnd(); ++it) {
+        if (it.value().isString()) {
+            sheet.replace(QStringLiteral("@") + it.key() + QStringLiteral("@"), it.value().toString());
+        }
+    }
+    const QJsonObject density = document.value(QStringLiteral("density")).toObject();
+    for (auto it = density.constBegin(); it != density.constEnd(); ++it) {
+        sheet.replace(QStringLiteral("@") + it.key().toUpper() + QStringLiteral("@"), QString::number(it.value().toInt()));
     }
     return sheet;
 }
@@ -25,6 +38,8 @@ QString applyTokens(QString sheet, const QJsonObject &tokens) {
 }  // namespace
 
 QString findShareDir() {
+    // `share/tokens.json` is the vendored copy of
+    // `src/voxprint_common/ui/tokens.json` at the pinned commit.
     const QString overrideDir = qEnvironmentVariable("LUCENT_SHARE");
     if (!overrideDir.isEmpty() && QFile::exists(overrideDir + QStringLiteral("/tokens.json"))) {
         return overrideDir;
@@ -59,15 +74,38 @@ QString loadStyleSheet() {
     return applyTokens(QString::fromUtf8(templateFile.readAll()), tokens);
 }
 
-QColor rootPlain() {
+QColor tokenColour(const QString &key, const QColor &fallback) {
     const QString share = findShareDir();
     QFile tokensFile(share + QStringLiteral("/tokens.json"));
     if (!tokensFile.open(QIODevice::ReadOnly)) {
-        return QColor(0x17, 0x17, 0x1c);
+        return fallback;
     }
     const QJsonObject tokens = QJsonDocument::fromJson(tokensFile.readAll()).object();
-    const QColor colour(tokens.value(QStringLiteral("ROOT_PLAIN")).toString());
-    return colour.isValid() ? colour : QColor(0x17, 0x17, 0x1c);
+    const QColor colour(colourMap(tokens).value(key).toString());
+    return colour.isValid() ? colour : fallback;
+}
+
+QColor rootPlain() {
+    return tokenColour(QStringLiteral("ROOT_PLAIN"), QColor(0x17, 0x17, 0x1c));
+}
+
+void polishScrollBar(QScrollBar *bar) {
+    if (bar == nullptr || bar->objectName().isEmpty()) {
+        return;
+    }
+    const QString name = bar->objectName();
+    const QString root = rootPlain().name(QColor::HexRgb);
+    const QString handle = tokenColour(QStringLiteral("CONTROL_BORDER"), QColor(0x4b, 0x4b, 0x5c)).name(QColor::HexRgb);
+    const bool vertical = bar->orientation() == Qt::Vertical;
+    const QString axis = vertical ? QStringLiteral("vertical") : QStringLiteral("horizontal");
+    const QString thickness = vertical ? QStringLiteral("width: 8px;") : QStringLiteral("height: 8px;");
+    const QString minimum = vertical ? QStringLiteral("min-height: 24px;") : QStringLiteral("min-width: 24px;");
+    bar->setStyleSheet(QStringLiteral(
+                            "QScrollBar#%1:%2 { background: %3; %4 margin: 0; border: none; }"
+                            "QScrollBar#%1::handle:%2 { background: %5; border-radius: 4px; %6 }"
+                            "QScrollBar#%1::add-line:%2, QScrollBar#%1::sub-line:%2 { width: 0; height: 0; background: %3; border: none; }"
+                            "QScrollBar#%1::add-page:%2, QScrollBar#%1::sub-page:%2 { background: %3; }")
+                            .arg(name, axis, root, thickness, handle, minimum));
 }
 
 }  // namespace lucent

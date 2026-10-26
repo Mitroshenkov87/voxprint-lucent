@@ -1,0 +1,11 @@
+{
+  "package": "voxprint-common",
+  "tag": "v0.2.5",
+  "ref": "v0.2.5 (Yitro)",
+  "commit": "8a94b531cb4f3526425a80a86a1e64624b5de606",
+  "paths": {
+    "tokens": "src/voxprint_common/ui/tokens.json",
+    "locales": "src/voxprint_common/ui/locales",
+    "presets": "src/voxprint_common/ui/presets"
+  }
+}

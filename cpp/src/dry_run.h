@@ -6,6 +6,8 @@
 #include <QString>
 #include <QStringList>
 
+class QProcess;
+
 namespace lucent {
 
 /// True when `argv` contains `flag` as its own argument.
@@ -23,5 +25,11 @@ QStringList enlargeCliCommand();
 
 /// Page where the user can download Enlarge.
 QString enlargeReleasesUrl();
+
+/// Byte size from the suite manifest or an MDL catalog, or 0 when neither lists one.
+qint64 enlargeListedBytes();
+
+/// Start `voxprint-lucent-tools` with `tail`. The process is configured and not started.
+bool startToolsHost(QProcess &process, const QStringList &tail);
 
 }  // namespace lucent

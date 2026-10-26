@@ -1,9 +1,11 @@
 {
   "package": "voxprint-common",
-  "version": "0.1.0",
-  "codename": "Yesod",
-  "path": "src/voxprint_common/ui/tokens.json",
-  "commit": "7bb4f4078839cc7348e2bbe621a220c673ed7eb8",
-  "blob": "0eeb295e64c44a9d8739ded42f186318df272373",
-  "sha256": "106a37c3fc838e6da35349e59c0d8a175392faf6218af3741a13d5b4bcd74135"
+  "tag": "v0.2.5",
+  "ref": "v0.2.5 (Yitro)",
+  "commit": "8a94b531cb4f3526425a80a86a1e64624b5de606",
+  "paths": {
+    "tokens": "src/voxprint_common/ui/tokens.json",
+    "locales": "src/voxprint_common/ui/locales",
+    "presets": "src/voxprint_common/ui/presets"
+  }
 }

@@ -1,27 +1,35 @@
-# Viewer chrome reference
+# Viewer shell
 
-Lucent's window layout follows the public behaviour of [ImageGlass](https://imageglass.org/): a slim top toolbar, a right-click menu with the same commands plus clipboard and reveal, a bottom thumbnail strip for the current folder, and an app menu for settings, hotkeys, language, and about. The welcome picture opens when the app is started with no file.
+Lucent is the viewer variant of the shared VOXPrint shell. The picture is the result. There is no prompt and no primary action. Simple mode is the default.
 
-That reference is behaviour only. It comes from ImageGlass's public docs and screenshots, including the [app API list](https://imageglass.org/docs/app-apis) (open, next/previous, zoom modes, rotate, flip, crop, save, delete, slideshow, fullscreen, gallery, main menu) and the [theme-pack colour roles](https://imageglass.org/docs/theme-pack) for a toolbar and a gallery. No ImageGlass source, icons, themes, or assets were read or copied. ImageGlass is GPL-3.0. This repository is Apache-2.0.
+The window opens at 1200×900 the first time. Later launches restore the last geometry, including maximized and fullscreen. The hard minimum is 640×400. At 1200×900 and at 960×640 the View row and the Enhance row each stay on one line. Toolbar buttons that do not fit fold into More from the right, and More stays visible.
 
-## Clean-room rule
+## Simple mode
 
-Do not read or copy ImageGlass source, icons, themes, or assets. Toolbar icons are original drawings in `cpp/src/icons.cpp`, credited in `NOTICE`. The save family follows the suite artwork in `icons/` (22×22, 1.7 px stroke). The floppy-disk save mark is not used. Colours come from `share/tokens.json` (voxprint-common 0.1.0, "Yesod"). On Windows 11 the top-level window asks for an acrylic backdrop (`DWMWA_SYSTEMBACKDROP_TYPE`); other systems use the suite glass colour.
+A simple interface keeps every current feature. The 40 px toolbar carries Open, Save, Previous (Предыдущий), Next (Следующий), ↻ Rotate (↻ Повернуть, tooltip Rotate right / Повернуть вправо), Crop, Move to trash (В корзину), Slideshow, and Fullscreen. Move to trash asks, then moves the file to the trash. Expert mode (Режим эксперта) is a checkable button at the top right, beside More, and it stays when the bar overflows. More and the picture's context menu carry save as, save a copy, export, Save to downloads (В загрузки), fit width, fit height, rotate left, flip, Resize…, thumbnails, frameless, window fit, and Tools. Fullscreen, Slideshow, and Crop return to More only when those toolbar buttons do not fit. Save to downloads writes the current view into the downloads folder. Resize… takes a width and height or a percent, with keep aspect and resampling. The full list is `docs/ui/FEATURE-MAP.md`.
 
-## What we matched, and the small differences
+Under the toolbar, the View row reads Fit, Fill, and 100%. The Enhance row reads Enhance with Enlarge, then Photo and Drawing (Фото and Рисунок). Those two chips are the Снимки setting: they write Enlarge's `photo` or `art` value, and the Expert combo keeps the same value. The picture fills everything left under those rows.
 
-Toolbar order follows ImageGlass's public command groups: menu and open, previous and next, zoom modes, rotate and flip, crop, save, delete, slideshow, fullscreen, gallery, then Lucent's Enlarge hand-off and settings. The toolbar is shown at launch and hides until the pointer returns to the top edge.
+Enhance with Enlarge stays enabled. It writes scale 2 and runs the Enlarge command with the current Photo or Drawing choice. When Enlarge is not installed, the chip opens a confirm dialog: "Enhancing needs VOXPrint Enlarge. Install it?" with Install and Cancel (Russian: "Для улучшения нужен VOXPrint Enlarge. Установить?" with Установить and Отмена). The download size is added when the suite manifest, an MDL catalog, or the Enlarge release metadata lists it. Install then shows progress with Cancel and downloads the package through `voxprint-lucent-tools --install-enlarge`. If that download cannot start, the releases page opens.
 
-The context menu repeats those actions and adds copy image, copy path, and reveal in folder.
+A drag on the picture still crops it. Previous and Next walk the folder. The status row has an Info toggle. On, it shows the file name, the file size, and the pixel size. The Expert info row shows that same line.
 
-The thumbnail strip is on by default, toggleable, and decodes off the GUI thread only after the first image paint. It is not on the `--benchmark` path.
+The folder strip is 104 px tall with 88×88 thumbnails and an 8 px gap. It can be hidden. Hidden means it is absent. At the 640×400 minimum the strip collapses first, and that space returns to the picture.
 
-Settings keeps the welcome image, the thumbnail strip, the slideshow interval, and the language. Hotkeys stay on Ctrl+K. Re-enabling the welcome image resets its counter to zero. The first three launches with no file show `share/welcome.avif`. The fourth does not.
+The status row stays under the picture. While Enlarge is running it also shows the step, the total, the stage, and Cancel. Time left appears only when Enlarge reports it. Cancel returns the viewer to idle and keeps the settings. After a finished job the picture offers Keep, Reveal, and Discard. Discard deletes only the enlarged file.
 
-`share/splash.avif` is the attached splash artwork. The app name and version are drawn as text, not baked into the file. The splash is loaded off the GUI thread and is dismissed as soon as the image is presented, so it does not hold the first pixel. `--benchmark` never constructs it.
+## Expert mode
 
-Save writes `<name>.saved.avif` beside the file. Save a copy writes `<name>-copy.avif`. Export writes `<name>.export.avif`. Download writes `<name>.avif` in the downloads folder. Save as offers AVIF, JPEG XL, and WebP. PNG is not an output. Each icon has a tooltip.
+Expert mode is a boolean in `suite.json`. The panel sits on the right of the picture only. It starts at 280 px, and the divider moves it between 220 and 420. Opening or resizing it shrinks the picture and leaves the toolbar, the chips, the status row, and the strip where they are.
 
-## Startup
+The panel shows the live zoom, colour management and the profile, HDR tone-map, crop, the same resize values as Resize… under the label Size (Размер), rotate, export format and quality, frames, and file info. Crop reads No crop (Без обрезки) until a crop exists, then the x/y/w/h fields. Photographs and Drawings write the same Enlarge `photo` or `art` value as the Photo and Drawing chips. Open in Enlarge hands the file to Enlarge's window. Copy, reveal, and trash live here. Trash asks before it moves the file.
 
-`--benchmark` still constructs only `Viewer`. The interactive window creates the toolbar, menus, settings, and thumbnail strip in `armAfterFirstPaint`, after the first image is presented. The laptop gate for that warm tiny JPEG stays at 250 ms. The Ubuntu smoke job only records the sample. The v0.1.x cold first pixel is 450 ms.
+A hand edit of a chip's values reads "{name} + changes" while the stored choice is still close, and Custom when it is not. Reset restores that choice. The rule is the shared preset rule, applied to `share/presets/lucent.json`.
+
+## Chrome
+
+Colours and the 2 px focus ring come from `share/tokens.json` schema 1. That file, and the shell catalogs in `share/locales`, are the vendored copy of `src/voxprint_common/ui/tokens.json` and `src/voxprint_common/ui/locales/` at voxprint-common `8a94b531cb4f3526425a80a86a1e64624b5de606`. The C++ viewer reads those files directly. The window uses the plain colours. Lucent's own phrases live in `share/locales/lucent` (English, Russian, and German). A missing phrase falls back to English, then to the key.
+
+The on-demand helper opens the same surface id, `viewer`, through `ReferenceShell`. Its dependency is `voxprint-common[ui]` at that commit. The native viewer does not import it.
+
+Lucent does not ship models. It reads an MDL catalog only to show an Enlarge download size when that catalog lists one.

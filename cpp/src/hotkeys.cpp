@@ -4,13 +4,18 @@
 #include "hotkeys.h"
 
 #include "phrases.h"
+#include "theme.h"
 
+#include <QApplication>
 #include <QDialog>
+#include <QDir>
 #include <QHash>
 #include <QKeySequence>
 #include <QLabel>
 #include <QListWidget>
+#include <QScrollBar>
 #include <QSettings>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace lucent {
@@ -224,6 +229,10 @@ public:
         auto *layout = new QVBoxLayout(this);
         hint_ = new QLabel(text(Text::PressKey), this);
         list_ = new QListWidget(this);
+        list_->setObjectName(QStringLiteral("hotkeyList"));
+        list_->viewport()->setObjectName(QStringLiteral("hotkeyViewport"));
+        list_->verticalScrollBar()->setObjectName(QStringLiteral("hotkeyBar"));
+        polishScrollBar(list_->verticalScrollBar());
         layout->addWidget(hint_);
         layout->addWidget(list_);
         const Action actions[] = {
@@ -241,6 +250,14 @@ public:
         }
         list_->setCurrentRow(0);
         resize(420, 480);
+        if (qgetenv("LUCENT_SCREENSHOT") == "hotkeys") {
+            QTimer::singleShot(200, this, [this] {
+                const QString dir = qEnvironmentVariable("LUCENT_SCREENSHOT_DIR", QStringLiteral("/tmp/lucent-shots"));
+                QDir().mkpath(dir);
+                grab().save(dir + QStringLiteral("/hotkeys.png"));
+                QTimer::singleShot(0, qApp, &QApplication::quit);
+            });
+        }
     }
 
 protected:
