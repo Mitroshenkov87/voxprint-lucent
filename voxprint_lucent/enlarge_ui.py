@@ -70,6 +70,8 @@ class _ProbeWorker(QObject):
         """Probe, then drop the worker. The signal carries the capabilities or None."""
         caps = self._client.probe()
         self.finished.emit(caps)
+        # The event loop that called run() deletes this object before it exits.
+        self.deleteLater()
 
 
 class EnlargeWindow(QWidget):
@@ -147,26 +149,49 @@ class EnlargeWindow(QWidget):
 
     def run_check(self) -> None:
         """Probe Enlarge in the background. The gate stays red until the probe finishes."""
-        if not self._client.command or self._probe_thread is not None:
+        if not self._client.command:
             return
+        if self._probe_thread is not None and self._probe_thread.isRunning():
+            return
+        self._stop_probe()
         self._status.setText("Checking…")
         self._cancel.setEnabled(True)
-        thread = QThread(self)
+        # Not a child of the window. A child QThread is destroyed with the
+        # widget, and Qt aborts if that thread is still running.
+        thread = QThread()
         worker = _ProbeWorker(self._client)
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
         worker.finished.connect(self._finish_check)
         worker.finished.connect(thread.quit)
-        thread.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(self._clear_probe)
         self._probe_thread = thread
         self._probe_worker = worker
         thread.start()
 
-    def _clear_probe(self) -> None:
+    def _stop_probe(self) -> None:
+        """Quit the probe thread and wait until it has exited."""
+        thread = self._probe_thread
+        worker = self._probe_worker
         self._probe_thread = None
         self._probe_worker = None
+        if thread is None:
+            return
+        try:
+            running = thread.isRunning()
+        except RuntimeError:
+            return
+        if running:
+            thread.quit()
+            thread.wait(10000)
+        # Keep the worker wrapper until the thread has left run().
+        del worker
+
+    def __del__(self) -> None:
+        """Join the probe thread before this wrapper drops it."""
+        try:
+            self._stop_probe()
+        except RuntimeError:
+            return
 
     def _finish_check(self, caps: object) -> None:
         self._client.shutdown()
@@ -216,9 +241,7 @@ class EnlargeWindow(QWidget):
         """Cancel the job or the check. The probe process is unloaded."""
         if self._probe_thread is not None:
             self._status.setText("Cancelled.")
-            self._probe_thread.requestInterruption()
-            self._client.shutdown()
-            self._probe_thread.quit()
+        self._stop_probe()
         self._client.cancel()
         self._gate = False
         self._quick.setEnabled(False)
@@ -230,7 +253,8 @@ class EnlargeWindow(QWidget):
         QDesktopServices.openUrl(QUrl(ENLARGE_RELEASES_URL))
 
     def shutdown(self) -> None:
-        """Stop a local Enlarge process this window started."""
+        """Stop the probe thread and a local Enlarge process this window started."""
+        self._stop_probe()
         self._client.shutdown()
 
     def _run(self, *, scale: int | None) -> CompareWindow:
