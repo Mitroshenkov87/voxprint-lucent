@@ -1,5 +1,5 @@
-# Manual fallback. The installed viewer does this once, detached, on first launch.
-# Uninstall the v0.1.0-rc6 per-user MSI. Settings under %LOCALAPPDATA%\Voxprint stay.
+# Manual fallback for migrate-suite.ps1. Setup runs that script before the app.
+# Uninstall the old per-user MSI. Settings under the suite data home stay.
 $ErrorActionPreference = 'Stop'
 $root = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
 if (-not (Test-Path -LiteralPath $root)) { exit 0 }

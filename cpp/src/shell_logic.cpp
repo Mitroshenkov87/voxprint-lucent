@@ -1119,7 +1119,7 @@ ViewerBands viewerBands(int windowHeight, bool historyVisible) {
     bands.barTop = kPageTop;
     bands.barHeight = kTop;
     bands.chipTop = bands.barTop + bands.barHeight + kBarGap;
-    bands.chipHeight = kChip + kRowGap + kChip;
+    bands.chipHeight = kChip;
     bands.pictureTop = bands.chipTop + bands.chipHeight + kRowGap;
     const int history = historyVisible ? kHistory : 0;
     const int bottom = windowHeight - kPageBottom - history - kStatus;

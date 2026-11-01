@@ -68,7 +68,7 @@ The release measurement zip is `voxprint-lucent-<version>-win-x64.zip`. CI on `w
 A cold sample is the first launch after reboot. Runs 2 through N in that same boot are not cold, because Windows has cached the executable and the Qt DLLs. Ten independent cold medians would need ten reboots. The script records run 1 of the C++ JPEG launch as `cold_gate` and also writes the session median, nearest-rank p95, and the warm median.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Run-M0.ps1 -ScheduleCold
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\Run-M0.ps1 -ScheduleCold
 ```
 
 Reboot, sign in, and do not open the viewer yourself. The one-shot task `VoxprintLucent-M0-Cold` runs `-ColdResume` at logon and then removes itself.

@@ -48,6 +48,18 @@ def data_home() -> Path:
     return base / "voxprint-ai-suite"
 
 
+def models_dir() -> Path:
+    """Return the shared weights directory.
+
+    Every model path goes through :func:`voxprint_common.paths.models_dir`.
+    The import stays inside this function so ``tools_host`` can load without
+    pulling in voxprint-common.
+    """
+    from voxprint_common.paths import models_dir as suite_models_dir
+
+    return suite_models_dir()
+
+
 def suite_settings_path() -> Path:
     """Return ``<data home>/state/suite.json``."""
     return data_home() / "state" / "suite.json"

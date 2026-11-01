@@ -34,10 +34,10 @@ _KEYS = {
 def language() -> str:
     """Return the active tools-window language code."""
     override = os.environ.get("LUCENT_LANG", "").lower()[:2]
-    if override in {"en", "ru", "de"}:
+    if override in {"en", "de", "uk", "lv"}:
         return override
     code = ui_language()
-    if code in {"en", "ru", "de"}:
+    if code in {"en", "de", "uk", "lv"}:
         return code
     return "en"
 

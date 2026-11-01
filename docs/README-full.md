@@ -62,16 +62,16 @@ These are the Windows viewer, cropped from a 1920×1032 desktop.
 
 ## Install
 
-Release files are on this repository's GitHub releases. `v0.1.0-rc7` is a pre-release. The release title is `0.1.0 RC · build 8 "Orah"`. Check `SHA256SUMS` against the download.
+Release files are on this repository's GitHub releases. `v0.1.0-rc8` is a pre-release. The release title is `0.1.0 RC · build 9 "Bahir"`. Check `SHA256SUMS` against the download.
 
-**Windows.** Run `voxprint-lucent-setup-0.1.0-rc7-win-x64.msi`. It installs for the machine under `C:\Program Files\VOXPrint AI Suite\Lucent` and asks for an administrator. The Start menu folder is `VOXPrint AI Suite` and the shortcut is `VOXPrint AI Lucent`. The first time you open the installed viewer, it removes an older per-user install in the background and does not wait. Files under `%LOCALAPPDATA%\Voxprint` stay. `remove-legacy-user.ps1` in the install folder does the same uninstall if you want to run it yourself.
+**Windows.** Run `voxprint-lucent-setup-0.1.0-rc8-win-x64.msi`. It installs for the machine under `C:\Program Files\VOXPrint AI Suite\Lucent` and asks for an administrator. The Start menu folder is `VOXPrint AI Suite` and the shortcut is `VOXPrint AI Lucent`. Setup moves `%LOCALAPPDATA%\Voxprint` to `%LOCALAPPDATA%\VOXPrint AI Suite` before the app runs, and removes an older per-user install. Your settings stay. `migrate-suite.ps1` in the install folder is that step.
 
-The zip `voxprint-lucent-0.1.0-rc7-win-x64.zip` is the measurement bundle (the viewer, `Run-M0.ps1`, and `Run-Checks.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
+The zip `voxprint-lucent-0.1.0-rc8-win-x64.zip` is the measurement bundle (the viewer, `Run-M0.ps1`, and `Run-Checks.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
 
 **Linux.**
 
 ```bash
-sudo apt install ./voxprint-lucent_0.1.0-rc7_amd64.deb
+sudo apt install ./voxprint-lucent_0.1.0-rc8_amd64.deb
 ```
 
 ## Quick start
@@ -103,7 +103,7 @@ All of these can be remapped with Ctrl+K.
 - `.` and `,` step frames of a multi-page or animated file
 - `I` opens the tools window. Ctrl+E hands the file to Enlarge. Ctrl+O opens a file. Delete moves it to the trash
 - Ctrl+S saves an AVIF copy. Ctrl+Shift+S saves as AVIF, JPEG XL, or WebP. `G` toggles thumbnails. Ctrl+, opens settings
-- Ctrl+L cycles English, Russian, and German
+- Ctrl+L cycles English, German, Ukrainian, and Latvian
 - `Q` or Esc quits. Esc leaves fullscreen, then stops a slideshow, before it quits
 
 ## Command line

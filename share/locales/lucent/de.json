@@ -103,5 +103,9 @@
   "lucent.tools.copy_image": "Bild kopieren",
   "lucent.tools.trash": "In den Papierkorb",
   "lucent.tools.reveal": "Im Ordner zeigen",
-  "lucent.tools.color": "Farbe"
+  "lucent.tools.color": "Farbe",
+  "lucent.action.zoom": "Zoom",
+  "lucent.action.compare": "Vergleichen",
+  "lucent.action.enlarge": "Vergrößern",
+  "lucent.action.settings": "Einstellungen"
 }

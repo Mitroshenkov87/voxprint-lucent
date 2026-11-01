@@ -15,6 +15,7 @@ import imagecodecs
 import numpy as np
 import pytest
 from PySide6.QtGui import QColor, QImage, QImageReader, QPainter
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QPushButton
 
 from bench.hard_images import _animated_webp
@@ -543,6 +544,18 @@ def test_reveal_command_targets_the_result(tmp_path: Path) -> None:
         assert command == ["xdg-open", str(path.parent)]
 
 
+def _wait_check(window: EnlargeWindow) -> None:
+    window.run_check()
+    app = QApplication.instance()
+    assert app is not None
+    for _ in range(100):
+        app.processEvents()
+        if window.status_text() != "Checking…":
+            return
+        QTest.qWait(30)
+    raise AssertionError(window.status_text())
+
+
 def test_window_hides_enlarge_without_a_gpu(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -552,6 +565,8 @@ def test_window_hides_enlarge_without_a_gpu(
     _client(monkeypatch, tmp_path, gpu="none")
     window = EnlargeWindow(source)
     try:
+        assert window.status_text() == "Check the hand-off before enlarging."
+        _wait_check(window)
         button = window.findChild(QPushButton, "quick-enlarge")
         assert button is not None
         assert button.isEnabled() is False
@@ -586,8 +601,10 @@ def test_warn_keeps_the_button(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     _client(monkeypatch, tmp_path, gpu="warn")
     window = EnlargeWindow(source)
     try:
+        _wait_check(window)
         button = window.findChild(QPushButton, "quick-enlarge")
         assert button is not None
+        assert button.isEnabled() is True
         assert button.toolTip() == "warn"
     finally:
         window.shutdown()
@@ -602,6 +619,7 @@ def test_quick_enlarge_compare_keep_and_discard(
     _client(monkeypatch, tmp_path, gpu="ok")
     window = EnlargeWindow(source)
     try:
+        _wait_check(window)
         compare = window.run_quick()
         assert compare.output.is_file()
         assert compare.output.resolve() != source.resolve()

@@ -23,7 +23,7 @@ WINDOW = (1200, 900)
 
 def _viewer_picture_top(window_height: int, history: bool) -> int:
     chip_top = PAGE_TOP + BAR_HEIGHT + BAR_GAP
-    chip_height = CHIP + ROW_GAP + CHIP
+    chip_height = CHIP
     return chip_top + chip_height + ROW_GAP
 
 
@@ -105,16 +105,16 @@ def _pixel(rows: list[bytearray], channels: int, x: int, y: int) -> tuple[int, i
 
 def test_picture_band_stays_below_the_chips() -> None:
     picture_top = _viewer_picture_top(900, True)
-    chip_bottom = PAGE_TOP + BAR_HEIGHT + BAR_GAP + CHIP + ROW_GAP + CHIP
+    chip_bottom = PAGE_TOP + BAR_HEIGHT + BAR_GAP + CHIP
     assert picture_top >= chip_bottom
-    assert picture_top == 166
+    assert picture_top == 114
     short_bottom = 640 - PAGE_BOTTOM - HISTORY - STATUS
     assert short_bottom > _viewer_picture_top(640, True)
 
 
 def test_window_shots_cover_their_edges_and_leave_the_chip_margin_clear() -> None:
     picture_top = _viewer_picture_top(WINDOW[1], True)
-    for name in ("simple-en", "simple-ru", "expert-en", "expert-ru", "overflow-en", "overflow-ru"):
+    for name in ("simple-en", "expert-en", "overflow-en"):
         width, height, channels, rows = _read_png(SHOTS / f"{name}.png")
         assert (width, height) == WINDOW, name
         for x in range(width):
@@ -128,7 +128,7 @@ def test_window_shots_cover_their_edges_and_leave_the_chip_margin_clear() -> Non
 
 
 def test_enlarge_confirm_shots_exist() -> None:
-    for name in ("enlarge-confirm-en.png", "enlarge-confirm-ru.png"):
+    for name in ("enlarge-confirm-en.png",):
         path = SHOTS / name
         width, height, _channels, _rows = _read_png(path)
         assert width >= 320 and height >= 80

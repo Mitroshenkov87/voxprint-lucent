@@ -29,7 +29,7 @@ def _download_tree(remote: str, commit: str, destination: Path) -> None:
         if entry.get("type") != "file" or not str(entry.get("name", "")).endswith(".json"):
             continue
         target = destination / entry["name"]
-        if target.name == "lucent.json":
+        if target.name in {"lucent.json", "ru.json"}:
             continue
         target.write_bytes(_bytes(f"{REPO}/{commit}/{remote}/{entry['name']}"))
         print(f"wrote {target.relative_to(ROOT)}")
@@ -43,7 +43,11 @@ def main() -> int:
     tokens = SHARE / "tokens.json"
     tokens.write_bytes(_bytes(f"{REPO}/{commit}/{paths['tokens']}"))
     print(f"wrote share/tokens.json from {commit}")
-    _download_tree(paths["locales"], commit, SHARE / "locales")
+    locale_dir = SHARE / "locales"
+    _download_tree(paths["locales"], commit, locale_dir)
+    stale_ru = locale_dir / "ru.json"
+    if stale_ru.is_file():
+        stale_ru.unlink()
     _download_tree(paths["presets"], commit, SHARE / "presets")
     same = json.dumps(pin, indent=2) + "\n"
     (SHARE / "tokens.pin.json").write_text(same, encoding="utf-8")

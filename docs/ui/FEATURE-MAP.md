@@ -11,9 +11,9 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | Save as | Toolbar, application menu, context menu, Ctrl+Shift+S | Overflow menu, context menu, Ctrl+Shift+S | simple |
 | Save a copy | Toolbar, application menu, context menu, Ctrl+S | Overflow menu, context menu, Ctrl+S | simple |
 | Export the current view | Toolbar, application menu, context menu | Overflow menu, context menu | simple |
-| Save the current view into the downloads folder | Toolbar, application menu, context menu, labelled Download | Overflow menu and context menu, labelled Save to downloads / В загрузки. It writes the current view as a new file in the downloads folder. It does not fetch a URL. Save a copy writes beside the open file with a -copy suffix. Export writes beside the open file with an .export suffix. | simple |
-| Previous picture | Toolbar, context menu, Left | Toolbar and context menu, labelled Previous / Предыдущий, Left | simple |
-| Next picture | Toolbar, context menu, Right | Toolbar and context menu, labelled Next / Следующий, Right | simple |
+| Save the current view into the downloads folder | Toolbar, application menu, context menu, labelled Download | Overflow menu and context menu, labelled Save to downloads. It writes the current view as a new file in the downloads folder. It does not fetch a URL. Save a copy writes beside the open file with a -copy suffix. Export writes beside the open file with an .export suffix. | simple |
+| Previous picture | Toolbar, context menu, Left | Toolbar and context menu, labelled Previous, Left | simple |
+| Next picture | Toolbar, context menu, Right | Toolbar and context menu, labelled Next, Right | simple |
 | Fit | Toolbar, context menu zoom menu, 2 | View chip, overflow and context zoom menu, 2 | simple |
 | 100% / 1:1 | Toolbar, context menu zoom menu, 1 | View chip, overflow and context zoom menu, 1 | simple |
 | Fill | Toolbar, context menu zoom menu, 3 | View chip, overflow and context zoom menu, 3 | simple |
@@ -22,14 +22,14 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | Free zoom (wheel, cursor-anchored) | Wheel on the picture | Wheel on the picture | simple |
 | Pan | Drag the picture | Drag the picture | simple |
 | Rotate left | Toolbar, context menu, Ctrl+Left | Overflow menu, context menu, Ctrl+Left | simple |
-| Rotate right | Toolbar, context menu, Ctrl+Right | Toolbar button ↻ Rotate / ↻ Повернуть, with a Rotate right tooltip. Overflow menu, context menu, Ctrl+Right, and the Expert rotate field stay. | simple |
+| Rotate right | Toolbar, context menu, Ctrl+Right | Toolbar button Rotate, with a Rotate right tooltip. Overflow menu, context menu, Ctrl+Right, and the Expert rotate field stay. | simple |
 | Flip horizontal | Toolbar, context menu, Ctrl+H | Overflow menu, context menu, Expert button, Ctrl+H | simple |
 | Flip vertical | Toolbar, context menu, Ctrl+V | Overflow menu, context menu, Expert button, Ctrl+V | simple |
 | Crop (drag) | Toolbar, context menu, Ctrl+Shift+X, drag | Toolbar, context menu, drag on the picture, Ctrl+Shift+X. More lists Crop only when the toolbar button does not fit. | simple |
-| Numeric crop | Tools window spin boxes | Expert panel. The value reads No crop / Без обрезки until a crop exists, then the x/y/w/h fields. | Expert |
-| Resize | No typed pixel size in rc7 | Resize… on the overflow menu and the context menu. Width and height, or a percent, with keep aspect and resampling. The Expert row is labelled Size / Размер and applies the same values with Resize. | simple |
+| Numeric crop | Tools window spin boxes | Expert panel. The value reads No crop until a crop exists, then the x/y/w/h fields. | Expert |
+| Resize | No typed pixel size in rc7 | Resize… on the overflow menu and the context menu. Width and height, or a percent, with keep aspect and resampling. The Expert row is labelled Size and applies the same values with Resize. | simple |
 | Convert | Save as, Export, Export frame, `--export --format` | Save as and Export. Export frame and `--export --format` stay. There is no convert wizard. | simple |
-| Move to trash | Toolbar, context menu, Delete | Toolbar button Move to trash / В корзину, overflow menu, context menu, Expert button, Delete. Asks, then `QFile::moveToTrash` moves the file to the trash. | simple |
+| Move to trash | Toolbar, context menu, Delete | Overflow menu, context menu, Expert button, Delete. Asks, then `QFile::moveToTrash` moves the file to the trash. | simple |
 | Copy image | Context menu, Ctrl+C | Context menu, Expert button, Ctrl+C | simple |
 | Copy path | Context menu, Ctrl+Shift+C | Context menu, Expert button, Ctrl+Shift+C | simple |
 | Reveal in folder | Context menu, Ctrl+R | Context menu, Expert button, Ctrl+R | simple |
@@ -49,21 +49,21 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | Compare after Enlarge (Keep, Reveal, Discard) | Enlarge window | Result overlay after Enhance, and the Enlarge tools window. This is the Enlarge before/after compare. | simple |
 | Enhance with Enlarge | Enlarge toolbar button | Enhance row chip, kept enabled. Runs the Enlarge CLI at scale 2 with the current Photo or Drawing choice. When Enlarge is missing, the chip opens the install confirm instead of running the job. | simple |
 | Open in Enlarge | Enlarge toolbar button | Expert button, Ctrl+E. Starts the tools process. | Expert |
-| Expert mode | Application menu | Checkable Expert mode / Режим эксперта button at the top right, beside More. It stays visible when other toolbar buttons fold into More. | simple |
-| Install Enlarge | Menu and toolbar when Enlarge is missing | Confirm dialog from the Enhance chip. English: "Enhancing needs VOXPrint Enlarge. Install it?" with Install and Cancel. Russian: "Для улучшения нужен VOXPrint Enlarge. Установить?" with Установить and Отмена. The download size is added when the suite manifest, an MDL catalog (`shared/mdl.json`, `mdl/catalog.json`, or `mdl/index.json`), or the Enlarge GitHub release metadata lists it. Install then downloads that package with the status progress and Cancel (`voxprint-lucent-tools --install-enlarge`, the same releases feed the updater uses) and opens the file. If the download cannot start, the releases page opens. | simple |
-| Photographs / Drawings | Not on the old toolbar | Photo / Drawing chips on the Enhance row (Фото / Рисунок), and the Expert Снимки combo. Both write Enlarge `photo` or `art` and stay on the same value. | simple |
+| Expert mode | Application menu | Checkable Expert mode button at the top right, beside More. It stays visible when other toolbar buttons fold into More. | simple |
+| Install Enlarge | Menu and toolbar when Enlarge is missing | Confirm dialog from the Enlarge toolbar button. "Enhancing needs VOXPrint Enlarge. Install it?" with Install and Cancel. The download size is added when the suite manifest, an MDL catalog (`shared/mdl.json`, `mdl/catalog.json`, or `mdl/index.json`), or the Enlarge GitHub release metadata lists it. Install then downloads that package with the status progress and Cancel (`voxprint-lucent-tools --install-enlarge`, the same releases feed the updater uses) and opens the file. If the download cannot start, the releases page opens. | simple |
+| Photographs / Drawings | Not on the old toolbar | Photo / Drawing chips on the preset row, and the Expert pictures combo. Both write Enlarge `photo` or `art` and stay on the same value. | simple |
 | Export format and quality | Save-as dialog and tools export | Expert format and quality, used by Enhance. Save as still picks a file type. | Expert |
 | Colour management and profile | Not a separate control | Expert panel | Expert |
 | HDR tone-map | Not a separate control | Expert panel | Expert |
 | Live zoom percent | Status line | Expert zoom readout and percent field | Expert |
-| Language (English, Russian, German) | Application menu, Ctrl+L | Expert combo, Ctrl+L | Expert |
+| Language (English, German, Ukrainian, Latvian) | Application menu, Ctrl+L | Expert combo, Ctrl+L. Russian is not an interface language. | Expert |
 | Hotkey editor | Application menu, Ctrl+K | Expert button, Ctrl+K | Expert |
 | Settings | Toolbar, application menu, context menu, Ctrl+Comma | Expert panel. Ctrl+Comma opens it. | Expert |
 | Welcome image | Settings checkbox | Expert checkbox | Expert |
 | About | Application menu | Overflow menu | simple |
 | Check for updates | Not on the old toolbar | Overflow menu. Runs `voxprint-lucent-tools --check-update`. | simple |
 | Quit | Q, Escape when not in fullscreen or slideshow | Q, Escape when not in fullscreen or slideshow, and the window close button | simple |
-| First launch 1200×900, then restore geometry | Stored window geometry | `ui.geometry` in the viewer settings file. Hard minimum 640×400. At 1200×900 and at 960×640 the View and Enhance rows stay on one line each. Toolbar buttons that do not fit fold into More from the right. Expert mode and More stay visible. The picture rectangle starts below the chip rows. | simple |
+| First launch 1200×900, then restore geometry | Stored window geometry | `ui.geometry` in the viewer settings file. Hard minimum 640×400. The slim toolbar is Open, Previous, Next, Zoom, Rotate, Compare, Enlarge, and Settings. Preset chips share one row under it. Toolbar buttons that do not fit fold into More from the right. Expert mode and More stay visible. The picture fills the window under that row, and the thumbnail strip sits at the bottom. | simple |
 | Single running instance | A second launch forwards the path | Unchanged | simple |
 | Decode errors (HEIF, RAW/EXR/HDR, unreadable file) | Status text | Status text | simple |
 | Preset chip close edit and Reset | Not in rc7 | Chip reads "{name} + changes" or Custom. Reset restores the stored choice. | simple |
@@ -89,7 +89,7 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 
 ## Decisions
 
-- Resize is the Resize… dialog on the overflow menu and the context menu: width and height, or a percent, with keep aspect and resampling. The Expert row is labelled Size / Размер and applies the same live values with Resize.
+- Resize is the Resize… dialog on the overflow menu and the context menu: width and height, or a percent, with keep aspect and resampling. The Expert row is labelled Size and applies the same live values with Resize.
 - Save to downloads writes the current view into the downloads folder. It is not a URL fetch and it is not Save a copy or Export.
 - Save as and Export cover convert. Export frame and `--export --format` stay. There is no convert wizard.
 - The Enlarge before/after compare stays as it is. Comparing two arbitrary pictures is not a current feature.

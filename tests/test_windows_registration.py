@@ -26,7 +26,20 @@ def test_release_msi_writes_app_discovery_values() -> None:
     """HKLM Lucent values, both App Paths keys, and the per-machine layout."""
     text = WXS.read_text(encoding="utf-8")
     assert 'Scope="perMachine"' in text
-    assert 'Manufacturer="VOXPrint AI Suite"' in text
+    assert 'Manufacturer="Aleksandr Mitroshenkov"' in text
+    assert "VOXPrint.AISuite.Lucent" in text
+    assert 'Id="DesktopShortcut"' in text
+    assert 'INSTALLDESKTOPSHORTCUT" Value="0"' in text
+    assert "migrate-suite.ps1" in text
+    script = Path("packaging/windows/migrate-suite.ps1").read_text(encoding="utf-8")
+    assert "PowerShell-7.6.9-win-x64.msi" in script
+    choices = text.split("<ComboBox", 1)[1].split("</ComboBox>", 1)[0]
+    assert 'Value="en"' in choices
+    assert 'Value="de"' in choices
+    assert 'Value="uk"' in choices
+    assert 'Value="lv"' in choices
+    assert 'Value="ru"' not in choices
+    assert "Russian" not in choices
     assert 'Name="VOXPrint AI Lucent"' in text
     assert 'Id="ProgramFiles64Folder"' in text
     assert 'Name="VOXPrint AI Suite"' in text
@@ -72,22 +85,19 @@ def test_cold_task_unregisters_on_failure() -> None:
     assert "outcome=left-registered" not in text
 
 
-def test_viewer_spawns_legacy_uninstall_without_waiting() -> None:
-    text = Path("cpp/src/main.cpp").read_text(encoding="utf-8")
-    assert "spawnLegacyPerUserUninstall" in text
-    assert "msiexec.exe /x " in text
-    assert "Voxprint AI Lucent" in text
-    assert "legacy-uninstall.log" in text
-    assert "DETACHED_PROCESS" in text
-    assert "CREATE_NO_WINDOW" in text
-    assert ".detach()" in text
-    assert "WaitForSingleObject" not in text
-    interactive = text.split("lucent::Browser browser", 1)[1]
-    before_show, after_show = interactive.split("browser.show();", 1)
-    assert "spawnLegacyPerUserUninstall" not in before_show
-    assert "spawnLegacyPerUserUninstall();" in after_show
-    benchmark = text.split("if (options.benchmark)", 1)[1].split("lucent::Browser browser", 1)[0]
-    assert "spawnLegacyPerUserUninstall" not in benchmark
+def test_installer_moves_the_home_and_removes_the_old_install() -> None:
+    viewer = Path("cpp/src/main.cpp").read_text(encoding="utf-8")
+    assert "SetCurrentProcessExplicitAppUserModelID" in viewer
+    assert "VOXPrint.AISuite.Lucent" in viewer
+    assert "msiexec" not in viewer
+    script = Path("packaging/windows/migrate-suite.ps1").read_text(encoding="utf-8")
+    assert "VOXPrint AI Suite" in script
+    assert "Voxprint" in script
+    assert "msiexec.exe" in script
+    assert "Lucent" in script
+    wxs = WXS.read_text(encoding="utf-8")
+    assert 'After="InstallFiles"' in wxs
+    assert "NOT REMOVE" in wxs
 
 
 def test_vm_test_finds_an_msi_and_times_out() -> None:

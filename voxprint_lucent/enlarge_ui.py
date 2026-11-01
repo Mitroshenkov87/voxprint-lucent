@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import QObject, QThread, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QImageReader
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
@@ -18,6 +18,7 @@ from voxprint_lucent.enlarge_client import EnlargeClient, EnlargeError, EnlargeR
 from voxprint_lucent.enlarge_compare import CompareWindow
 from voxprint_lucent.enlarge_protocol import (
     ENLARGE_RELEASES_URL,
+    Capabilities,
     action_enabled,
     action_tooltip,
     install_offered,
@@ -56,6 +57,23 @@ def still_for_enlarge(path: Path, frame_index: int = 0) -> Path:
     return dest.resolve()
 
 
+class _ProbeWorker(QObject):
+    """Run the Enlarge capability probe off the UI thread."""
+
+    finished = Signal(object)
+
+    def __init__(self, client: EnlargeClient) -> None:
+        super().__init__()
+        self._client = client
+
+    def run(self) -> None:
+        """Probe, then drop the worker. The signal carries the capabilities or None."""
+        caps = self._client.probe()
+        self.finished.emit(caps)
+        # The event loop that called run() deletes this object before it exits.
+        self.deleteLater()
+
+
 class EnlargeWindow(QWidget):
     """Window that starts an Enlarge job for one image."""
     def __init__(
@@ -71,61 +89,163 @@ class EnlargeWindow(QWidget):
         self._frames = frame_count(path)
         self._client = client or EnlargeClient()
         self._compare: CompareWindow | None = None
+        self._caps: Capabilities | None = None
+        self._gate = False
+        self._probe_thread: QThread | None = None
+        self._probe_worker: _ProbeWorker | None = None
         self.setObjectName("lucent-window")
         self.setWindowTitle("Enlarge")
         self.setStyleSheet(build_stylesheet())
-        self._caps = self._client.probe()
         self._status = QLabel()
         self._status.setWordWrap(True)
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel(path.name))
         layout.addWidget(self._status)
-        enabled = action_enabled(self._caps)
-        status = "Ready." if enabled else action_tooltip(self._caps)
-        if self._frames > 1:
+        row = QHBoxLayout()
+        self._check = QPushButton("Check")
+        self._check.setObjectName("check-gate")
+        self._check.clicked.connect(self.run_check)
+        self._quick = QPushButton("Quick enlarge")
+        self._quick.setObjectName("quick-enlarge")
+        self._quick.clicked.connect(self.run_quick)
+        self._open = QPushButton("Open in Enlarge")
+        self._open.setObjectName("open-enlarge")
+        self._open.clicked.connect(self.run_open)
+        self._cancel = QPushButton("Cancel")
+        self._cancel.setObjectName("cancel-enlarge")
+        self._cancel.clicked.connect(self.cancel)
+        row.addWidget(self._check)
+        row.addWidget(self._quick)
+        row.addWidget(self._open)
+        row.addWidget(self._cancel)
+        self._install: QPushButton | None = None
+        if not self._client.command:
+            self._install = QPushButton("Install Enlarge")
+            self._install.setObjectName("install-enlarge")
+            self._install.clicked.connect(self.open_releases)
+            row.addWidget(self._install)
+        layout.addLayout(row)
+        self._mark_red()
+        self.resize(560, 180)
+
+    def _mark_red(self) -> None:
+        self._gate = False
+        self._check.setProperty("gate", "red")
+        self._check.style().unpolish(self._check)
+        self._check.style().polish(self._check)
+        self._quick.setEnabled(False)
+        self._open.setEnabled(False)
+        self._cancel.setEnabled(False)
+        if not self._client.command:
+            self._status.setText("Enlarge is not installed.")
+            return
+        self._status.setText("Check the hand-off before enlarging.")
+
+    def note_edit(self) -> None:
+        """An edit invalidates the last check. The gate goes red and the worker is gone."""
+        self.cancel()
+        self._caps = None
+        self._mark_red()
+
+    def run_check(self) -> None:
+        """Probe Enlarge in the background. The gate stays red until the probe finishes."""
+        if not self._client.command:
+            return
+        if self._probe_thread is not None and self._probe_thread.isRunning():
+            return
+        self._stop_probe()
+        self._status.setText("Checking…")
+        self._cancel.setEnabled(True)
+        # Not a child of the window. A child QThread is destroyed with the
+        # widget, and Qt aborts if that thread is still running.
+        thread = QThread()
+        worker = _ProbeWorker(self._client)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._finish_check)
+        worker.finished.connect(thread.quit)
+        self._probe_thread = thread
+        self._probe_worker = worker
+        thread.start()
+
+    def _stop_probe(self) -> None:
+        """Quit the probe thread and wait until it has exited."""
+        thread = self._probe_thread
+        worker = self._probe_worker
+        self._probe_thread = None
+        self._probe_worker = None
+        if thread is None:
+            return
+        try:
+            running = thread.isRunning()
+        except RuntimeError:
+            return
+        if running:
+            thread.quit()
+            thread.wait(10000)
+        # Keep the worker wrapper until the thread has left run().
+        del worker
+
+    def __del__(self) -> None:
+        """Join the probe thread before this wrapper drops it."""
+        try:
+            self._stop_probe()
+        except RuntimeError:
+            return
+
+    def _finish_check(self, caps: object) -> None:
+        self._client.shutdown()
+        if not self._gate and self._status.text() != "Checking…":
+            return
+        parsed = caps if isinstance(caps, Capabilities) else None
+        self._caps = parsed
+        enabled = action_enabled(parsed)
+        self._gate = enabled
+        self._check.setProperty("gate", "green" if enabled else "red")
+        self._check.style().unpolish(self._check)
+        self._check.style().polish(self._check)
+        self._quick.setEnabled(enabled)
+        self._open.setEnabled(enabled)
+        tip = action_tooltip(parsed)
+        self._quick.setToolTip(tip)
+        self._open.setToolTip(tip)
+        self._cancel.setEnabled(False)
+        status = "Ready." if enabled else tip
+        if self._frames > 1 and enabled:
             status = f"{status} Sending frame {self._frame_index + 1} of {self._frames} as a still."
         self._status.setText(status)
-        row = QHBoxLayout()
-        quick = QPushButton("Quick enlarge")
-        quick.setObjectName("quick-enlarge")
-        quick.setEnabled(enabled)
-        quick.setToolTip(action_tooltip(self._caps))
-        quick.clicked.connect(self.run_quick)
-        open_button = QPushButton("Open in Enlarge")
-        open_button.setObjectName("open-enlarge")
-        open_button.setEnabled(enabled)
-        open_button.setToolTip(action_tooltip(self._caps))
-        open_button.clicked.connect(self.run_open)
-        cancel = QPushButton("Cancel")
-        cancel.setObjectName("cancel-enlarge")
-        cancel.setEnabled(enabled)
-        cancel.clicked.connect(self.cancel)
-        row.addWidget(quick)
-        row.addWidget(open_button)
-        row.addWidget(cancel)
-        if install_offered(self._caps):
+        if install_offered(parsed) and self._install is None and not self._client.command:
             install = QPushButton("Install Enlarge")
             install.setObjectName("install-enlarge")
             install.clicked.connect(self.open_releases)
-            row.addWidget(install)
-        layout.addLayout(row)
-        self.resize(560, 180)
+            self.layout().itemAt(2).layout().addWidget(install)
+            self._install = install
 
     def status_text(self) -> str:
         """Return the status line currently shown."""
         return self._status.text()
 
     def run_quick(self) -> CompareWindow:
-        """Enlarge at 2x and open the compare view."""
+        """Enlarge at 2x and open the compare view. Refuses while the gate is red."""
+        if not self._gate:
+            raise EnlargeError("not_checked", "Check the hand-off before enlarging.", False)
         return self._run(scale=2)
 
     def run_open(self) -> CompareWindow:
-        """Enlarge with the CLI default and open the compare view."""
+        """Enlarge with the CLI default and open the compare view. Refuses while the gate is red."""
+        if not self._gate:
+            raise EnlargeError("not_checked", "Check the hand-off before enlarging.", False)
         return self._run(scale=None)
 
     def cancel(self) -> None:
-        """Cancel the job in progress."""
+        """Cancel the job or the check. The probe process is unloaded."""
+        if self._probe_thread is not None:
+            self._status.setText("Cancelled.")
+        self._stop_probe()
         self._client.cancel()
+        self._gate = False
+        self._quick.setEnabled(False)
+        self._open.setEnabled(False)
 
     @staticmethod
     def open_releases() -> None:
@@ -133,7 +253,8 @@ class EnlargeWindow(QWidget):
         QDesktopServices.openUrl(QUrl(ENLARGE_RELEASES_URL))
 
     def shutdown(self) -> None:
-        """Stop a local Enlarge process this window started."""
+        """Stop the probe thread and a local Enlarge process this window started."""
+        self._stop_probe()
         self._client.shutdown()
 
     def _run(self, *, scale: int | None) -> CompareWindow:

@@ -57,7 +57,7 @@ enum class Text {
     TrashFailed,      ///< The file could not be moved to the trash.
 };
 
-/// Switch the language used by text(). `en`, `ru`, and `de` are recognised.
+/// Switch the language used by text(). `en`, `de`, `uk`, and `lv` are recognised.
 void setLanguage(const QString &code);
 
 /// Return the active language code.

@@ -10,9 +10,12 @@ from pathlib import Path
 from voxprint_lucent.suite_state import app_settings_path
 from voxprint_lucent.viewer_shell import SURFACE_ID
 
-PIN = "8a94b531cb4f3526425a80a86a1e64624b5de606"
+PIN = "c3a74eaa5e834391b499af08b110efa37441209d"
+TAG = "v0.5.2"
+PR = 28
 DEPENDENCY = (
-    "voxprint-common[ui] @ git+https://github.com/Mitroshenkov87/voxprint-common@" + PIN
+    "voxprint-common[ui] @ https://github.com/Mitroshenkov87/voxprint-common/releases/download/"
+    "v0.5.2/voxprint_common-0.5.2-py3-none-any.whl"
 )
 
 
@@ -23,11 +26,15 @@ def test_helper_depends_on_the_pinned_ui_extra() -> None:
 def test_cpp_reads_tokens_and_locales_from_the_pinned_paths() -> None:
     pin = json.loads(Path("share/voxprint-common.pin.json").read_text(encoding="utf-8"))
     assert pin["commit"] == PIN
+    assert pin["tag"] == TAG
+    assert pin["pr"] == PR
     assert pin["paths"]["tokens"] == "src/voxprint_common/ui/tokens.json"
     assert pin["paths"]["locales"] == "src/voxprint_common/ui/locales"
     assert Path("share/tokens.json").is_file()
-    for code in ("en", "ru", "de", "uk", "lv"):
+    for code in ("en", "de", "uk", "lv"):
         assert (Path("share/locales") / f"{code}.json").is_file()
+    assert not (Path("share/locales") / "ru.json").exists()
+    assert not (Path("share/locales") / "lucent" / "ru.json").exists()
     header = Path("cpp/src/shell_logic.h").read_text(encoding="utf-8")
     assert 'kSurfaceId[] = "viewer"' in header
 

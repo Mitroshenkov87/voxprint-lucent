@@ -1,11 +1,11 @@
-# Build the per-user MSI skeleton with WiX Toolset 7.
+# Build the per-machine MSI skeleton with WiX Toolset 7.
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $Out = Join-Path $Root "dist"
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $Tools = Join-Path $env:USERPROFILE ".dotnet\tools"
 if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
-    dotnet tool install --global wix --version 7.0.0
+    dotnet tool install --global wix --version 7.0.1
     $env:PATH = "$Tools;$env:PATH"
 }
 $Msi = Join-Path $Out "voxprint-lucent-setup-0.1.0-win-x64.msi"
