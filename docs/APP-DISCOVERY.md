@@ -13,8 +13,8 @@ Status: **spec v2, 2026-10-11**. v1 was 2026-10-10. Installs are per-machine. Re
 | `InstallPath` | REG_SZ | `C:\Program Files\VOXPrint AI Suite\Lucent` |
 | `Exe` | REG_SZ | `voxprint-lucent.exe` |
 | `CliExe` | REG_SZ | `voxprint-lucent-cli.exe` |
-| `Version` | REG_SZ | `0.1.0-rc7` |
-| `Build` | REG_DWORD | `8` |
+| `Version` | REG_SZ | `0.1.0-rc8` |
+| `Build` | REG_DWORD | `9` |
 | `IpcName` | REG_SZ | `voxprint-lucent` |
 | `ProtocolVersion` | REG_DWORD | `1` |
 
@@ -25,8 +25,8 @@ Plus HKLM App Paths for `voxprint-<app>.exe` and `voxprint-<app>-cli.exe`. Reade
 ```
 X-Voxprint-Ipc=voxprint-<app>
 X-Voxprint-Protocol=1
-X-Voxprint-Version=0.1.0-rc7
-X-Voxprint-Build=8
+X-Voxprint-Version=0.1.0-rc8
+X-Voxprint-Build=9
 X-Voxprint-Cli=voxprint-<app>-cli
 ```
 

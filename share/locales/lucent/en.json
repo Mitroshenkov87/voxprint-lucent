@@ -105,5 +105,9 @@
   "lucent.tools.copy_image": "Copy image",
   "lucent.tools.trash": "Move to trash",
   "lucent.tools.reveal": "Reveal in folder",
-  "lucent.tools.color": "Colour"
+  "lucent.tools.color": "Colour",
+  "lucent.action.zoom": "Zoom",
+  "lucent.action.compare": "Compare",
+  "lucent.action.enlarge": "Enlarge",
+  "lucent.action.settings": "Settings"
 }

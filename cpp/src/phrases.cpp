@@ -10,121 +10,114 @@ QString gLanguage = QStringLiteral("en");
 
 struct Row {
     const char *en;
-    const char *ru;
     const char *de;
 };
 
 Row rowFor(Text id) {
     switch (id) {
     case Text::Fit:
-        return {"Fit", "Вместить", "Einpassen"};
+        return {"Fit", "Einpassen"};
     case Text::Fill:
-        return {"Fill", "Заполнить", "Füllen"};
+        return {"Fill", "Füllen"};
     case Text::OneToOne:
-        return {"1:1", "1:1", "1:1"};
+        return {"1:1", "1:1"};
     case Text::FitWidth:
-        return {"Fit width", "По ширине", "Breite"};
+        return {"Fit width", "Breite"};
     case Text::FitHeight:
-        return {"Fit height", "По высоте", "Höhe"};
+        return {"Fit height", "Höhe"};
     case Text::Free:
-        return {"Zoom", "Масштаб", "Zoom"};
+        return {"Zoom", "Zoom"};
     case Text::Slideshow:
-        return {"Slideshow", "Слайд-шоу", "Diashow"};
+        return {"Slideshow", "Diashow"};
     case Text::HeifMissing:
-        return {"HEIF needs the system codec. libde265 and x265 are not bundled.",
-                "Для HEIF нужен системный кодек. libde265 и x265 не входят в поставку.",
-                "HEIF braucht den System-Codec. libde265 und x265 werden nicht mitgeliefert."};
+        return {"HEIF needs the system codec. libde265 and x265 are not bundled.", "HEIF braucht den System-Codec. libde265 und x265 werden nicht mitgeliefert."};
     case Text::PluginMissing:
-        return {"This format needs a system image plugin (RAW, EXR, or HDR).",
-                "Для этого формата нужен системный плагин (RAW, EXR или HDR).",
-                "Dieses Format braucht ein System-Plugin (RAW, EXR oder HDR)."};
+        return {"This format needs a system image plugin (RAW, EXR, or HDR).", "Dieses Format braucht ein System-Plugin (RAW, EXR oder HDR)."};
     case Text::DecodeFailed:
-        return {"Could not decode this image.", "Не удалось декодировать изображение.",
-                "Das Bild konnte nicht dekodiert werden."};
+        return {"Could not decode this image.", "Das Bild konnte nicht dekodiert werden."};
     case Text::Frame:
-        return {"Frame", "Кадр", "Frame"};
+        return {"Frame", "Frame"};
     case Text::Tools:
-        return {"Tools", "Инструменты", "Werkzeuge"};
+        return {"Tools", "Werkzeuge"};
     case Text::Hotkeys:
-        return {"Hotkeys", "Клавиши", "Tasten"};
+        return {"Hotkeys", "Tasten"};
     case Text::PressKey:
-        return {"Press the new key", "Нажмите новую клавишу", "Neue Taste drücken"};
+        return {"Press the new key", "Neue Taste drücken"};
     case Text::Language:
-        return {"Language", "Язык", "Sprache"};
+        return {"Language", "Sprache"};
     case Text::Next:
-        return {"Next", "Следующий", "Weiter"};
+        return {"Next", "Weiter"};
     case Text::Previous:
-        return {"Previous", "Предыдущий", "Zurück"};
+        return {"Previous", "Zurück"};
     case Text::Fullscreen:
-        return {"Fullscreen", "Полный экран", "Vollbild"};
+        return {"Fullscreen", "Vollbild"};
     case Text::Frameless:
-        return {"Frameless", "Без рамки", "Rahmenlos"};
+        return {"Frameless", "Rahmenlos"};
     case Text::WindowFit:
-        return {"Window fit", "Окно по картинке", "Fenster anpassen"};
+        return {"Window fit", "Fenster anpassen"};
     case Text::Quit:
-        return {"Quit", "Выход", "Beenden"};
+        return {"Quit", "Beenden"};
     case Text::Open:
-        return {"Open", "Открыть", "Öffnen"};
+        return {"Open", "Öffnen"};
     case Text::RotateLeft:
-        return {"Rotate left", "Повернуть влево", "Links drehen"};
+        return {"Rotate left", "Links drehen"};
     case Text::RotateRight:
-        return {"Rotate right", "Повернуть вправо", "Rechts drehen"};
+        return {"Rotate right", "Rechts drehen"};
     case Text::FlipHorizontal:
-        return {"Flip horizontal", "Отразить по горизонтали", "Horizontal spiegeln"};
+        return {"Flip horizontal", "Horizontal spiegeln"};
     case Text::FlipVertical:
-        return {"Flip vertical", "Отразить по вертикали", "Vertikal spiegeln"};
+        return {"Flip vertical", "Vertikal spiegeln"};
     case Text::Crop:
-        return {"Crop", "Обрезать", "Zuschneiden"};
+        return {"Crop", "Zuschneiden"};
     case Text::Save:
-        return {"Save", "Сохранить", "Speichern"};
+        return {"Save", "Speichern"};
     case Text::SaveCopy:
-        return {"Save a copy", "Сохранить копию", "Kopie speichern"};
+        return {"Save a copy", "Kopie speichern"};
     case Text::SaveAs:
-        return {"Save as", "Сохранить как", "Speichern unter"};
+        return {"Save as", "Speichern unter"};
     case Text::Export:
-        return {"Export", "Экспорт", "Exportieren"};
+        return {"Export", "Exportieren"};
     case Text::Download:
-        return {"Download", "Скачать", "Herunterladen"};
+        return {"Download", "Herunterladen"};
     case Text::MoveToTrash:
-        return {"Move to trash", "В корзину", "In den Papierkorb"};
+        return {"Move to trash", "In den Papierkorb"};
     case Text::Enlarge:
-        return {"Enlarge", "Enlarge", "Enlarge"};
+        return {"Enlarge", "Enlarge"};
     case Text::InstallEnlarge:
-        return {"Install Enlarge", "Установить Enlarge", "Enlarge installieren"};
+        return {"Install Enlarge", "Enlarge installieren"};
     case Text::EnlargeMissing:
-        return {"Enlarge is not installed.", "Enlarge не установлен.", "Enlarge ist nicht installiert."};
+        return {"Enlarge is not installed.", "Enlarge ist nicht installiert."};
     case Text::Settings:
-        return {"Settings", "Настройки", "Einstellungen"};
+        return {"Settings", "Einstellungen"};
     case Text::About:
-        return {"About", "О программе", "Info"};
+        return {"About", "Info"};
     case Text::CopyImage:
-        return {"Copy image", "Копировать изображение", "Bild kopieren"};
+        return {"Copy image", "Bild kopieren"};
     case Text::CopyPath:
-        return {"Copy path", "Копировать путь", "Pfad kopieren"};
+        return {"Copy path", "Pfad kopieren"};
     case Text::RevealInFolder:
-        return {"Reveal in folder", "Показать в папке", "Im Ordner zeigen"};
+        return {"Reveal in folder", "Im Ordner zeigen"};
     case Text::Gallery:
-        return {"Thumbnails", "Миниатюры", "Miniaturen"};
+        return {"Thumbnails", "Miniaturen"};
     case Text::WelcomeImage:
-        return {"Welcome image", "Приветственное изображение", "Willkommensbild"};
+        return {"Welcome image", "Willkommensbild"};
     case Text::AppMenu:
-        return {"Menu", "Меню", "Menü"};
+        return {"Menu", "Menü"};
     case Text::SaveFailed:
-        return {"Could not save that file.", "Не удалось сохранить файл.", "Die Datei konnte nicht gespeichert werden."};
+        return {"Could not save that file.", "Die Datei konnte nicht gespeichert werden."};
     case Text::TrashFailed:
-        return {"Could not move that file to the trash.", "Не удалось переместить файл в корзину.",
-                "Die Datei konnte nicht in den Papierkorb verschoben werden."};
+        return {"Could not move that file to the trash.", "Die Datei konnte nicht in den Papierkorb verschoben werden."};
     }
     const Text missed = id;
     Q_UNUSED(missed);
-    return {"", "", ""};
+    return {"", ""};
 }
 
 }  // namespace
 
 void setLanguage(const QString &code) {
     const QString lower = code.trimmed().toLower().left(2);
-    if (lower == QStringLiteral("ru") || lower == QStringLiteral("de")) {
+    if (lower == QStringLiteral("de") || lower == QStringLiteral("uk") || lower == QStringLiteral("lv")) {
         gLanguage = lower;
         return;
     }
@@ -137,9 +130,6 @@ QString language() {
 
 QString text(Text id) {
     const Row row = rowFor(id);
-    if (gLanguage == QStringLiteral("ru")) {
-        return QString::fromUtf8(row.ru);
-    }
     if (gLanguage == QStringLiteral("de")) {
         return QString::fromUtf8(row.de);
     }

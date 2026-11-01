@@ -1,0 +1,41 @@
+# Reusable pin check. Copied from voxprint-common docs/ci/pin-check.yml.
+# The checker script stays in that repository and is checked out at the wanted tag.
+name: voxprint-common pin
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Wanted voxprint-common tag, such as v0.5.2
+        required: true
+        type: string
+      pyproject:
+        description: Path to pyproject.toml in the app checkout
+        required: false
+        type: string
+        default: pyproject.toml
+      lock:
+        description: Lock file to read. Empty uses uv.lock, poetry.lock, pdm.lock, or requirements.txt when present.
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: Mitroshenkov87/voxprint-common
+          ref: ${{ inputs.tag }}
+          path: .voxprint-pin
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Fail when the pin disagrees with the tag's wheel sha256
+        env:
+          WANTED_TAG: ${{ inputs.tag }}
+          PYPROJECT: ${{ inputs.pyproject }}
+          LOCK: ${{ inputs.lock }}
+        run: python .voxprint-pin/docs/ci/check_pin.py

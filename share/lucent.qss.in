@@ -56,7 +56,7 @@ QPushButton {
     background-color: @CONTROL_BG@;
     color: @TEXT@;
     border: @BORDER_PX@px solid @CONTROL_BORDER@;
-    border-radius: @CONTROL_RADIUS_PX@px;
+    border-radius: @BUTTON_RADIUS_PX@px;
     padding: 6px 12px;
 }
 QPushButton:hover {
@@ -65,6 +65,14 @@ QPushButton:hover {
 QPushButton:disabled {
     color: @TEXT_DISABLED@;
 }
+QPushButton#check-gate[gate="red"] {
+    background-color: @RED@;
+    color: @BADGE_AMBER_TEXT@;
+}
+QPushButton#check-gate[gate="green"] {
+    background-color: @GREEN@;
+    color: @BADGE_GREEN_TEXT@;
+}
 QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QAbstractSpinBox:focus {
     border: @FOCUS_RING_PX@px solid @ACCENT@;
 }
@@ -72,7 +80,7 @@ QPushButton#generate, QPushButton#primary {
     background-color: @PRIMARY@;
     color: @TEXT_ON_PRIMARY@;
     border: @BORDER_PX@px solid @PRIMARY_BORDER@;
-    border-radius: 8px;
+    border-radius: @BUTTON_RADIUS_PX@px;
     font-size: 16px;
     font-weight: 600;
 }
@@ -87,7 +95,7 @@ QPushButton[chip="true"] {
     background-color: @CONTROL_BG@;
     color: @TEXT@;
     border: @BORDER_PX@px solid @CONTROL_BORDER@;
-    border-radius: 15px;
+    border-radius: @BUTTON_RADIUS_PX@px;
     padding: 4px 12px;
     min-width: 72px;
 }

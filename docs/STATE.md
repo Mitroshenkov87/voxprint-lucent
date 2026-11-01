@@ -34,3 +34,4 @@
 6. `v0.1.0-rc5` ("Yashar") finds an installed Enlarge, tone-maps PQ and HLG for an SDR screen, and checks the image readers at startup. Notes are in [release-notes/v0.1.0-rc5.md](release-notes/v0.1.0-rc5.md).
 7. `v0.1.0-rc6` ("Tov") rolls PQ highlights off with BT.2390, and the cold-start task logs its outcome. Notes are in [release-notes/v0.1.0-rc6.md](release-notes/v0.1.0-rc6.md).
 8. `v0.1.0-rc7` ("Orah") installs per-machine as VOXPrint AI Lucent, and the cold-start task unregisters itself. Notes are in [release-notes/v0.1.0-rc7.md](release-notes/v0.1.0-rc7.md).
+9. `v0.1.0-rc8` ("Bahir") pins voxprint-common v0.5.2, uses a viewer-first window, and installs per machine with the suite data home. Notes are in [release-notes/v0.1.0-rc8.md](release-notes/v0.1.0-rc8.md).

@@ -308,13 +308,13 @@ QString voxprintHome() {
     if (local.isEmpty()) {
         local = QDir::homePath() + QStringLiteral("/AppData/Local");
     }
-    return local + QStringLiteral("/Voxprint");
+    return local + QStringLiteral("/VOXPrint AI Suite");
 #else
     QString data = qEnvironmentVariable("XDG_DATA_HOME").trimmed();
     if (data.isEmpty()) {
         data = QDir::homePath() + QStringLiteral("/.local/share");
     }
-    return data + QStringLiteral("/voxprint");
+    return data + QStringLiteral("/voxprint-ai-suite");
 #endif
 }
 

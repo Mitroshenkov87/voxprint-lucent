@@ -697,9 +697,11 @@ void Browser::checkForUpdate() { launchHost({QStringLiteral("--check-update")});
 void Browser::cycleLanguage() {
     const QString current = language();
     if (current == QStringLiteral("en")) {
-        setLanguage(QStringLiteral("ru"));
-    } else if (current == QStringLiteral("ru")) {
         setLanguage(QStringLiteral("de"));
+    } else if (current == QStringLiteral("de")) {
+        setLanguage(QStringLiteral("uk"));
+    } else if (current == QStringLiteral("uk")) {
+        setLanguage(QStringLiteral("lv"));
     } else {
         setLanguage(QStringLiteral("en"));
     }

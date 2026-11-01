@@ -811,11 +811,6 @@ void Chrome::buildBar() {
         return add(text, tip, fn);
     };
     labeled("simple.viewer.open", [this] { openFile(); });
-    labeled("simple.viewer.save", [this] {
-        if (impl_->cb.save) {
-            impl_->cb.save();
-        }
-    });
     labeled("simple.viewer.previous", [this] {
         if (impl_->cb.step) {
             impl_->cb.step(-1);
@@ -826,6 +821,7 @@ void Chrome::buildBar() {
             impl_->cb.step(1);
         }
     });
+    labeled("lucent.action.zoom", [this] { openZoomMenu(); });
     auto *rotate = add(QStringLiteral("↻ ") + label(QStringLiteral("lucent.action.rotate_plain")),
                        label(QStringLiteral("lucent.action.rotate_right")), [this] {
         if (impl_->cb.rotate) {
@@ -833,26 +829,9 @@ void Chrome::buildBar() {
         }
     });
     rotate->setAccessibleName(rotate->toolTip());
-    impl_->cropButton = labeled("lucent.action.crop", [this] {
-        if (impl_->cb.crop) {
-            impl_->cb.crop();
-        }
-    });
-    labeled("lucent.action.trash", [this] {
-        if (impl_->cb.trash) {
-            impl_->cb.trash();
-        }
-    });
-    impl_->slideshowButton = labeled("lucent.action.slideshow", [this] {
-        if (impl_->cb.slideshow) {
-            impl_->cb.slideshow();
-        }
-    });
-    impl_->fullscreenButton = labeled("lucent.action.fullscreen", [this] {
-        if (impl_->cb.fullscreen) {
-            impl_->cb.fullscreen();
-        }
-    });
+    labeled("lucent.action.compare", [this] { toggleCompare(); });
+    labeled("lucent.action.enlarge", [this] { chooseEnhance(); });
+    labeled("lucent.action.settings", [this] { openSettings(); });
     row->addStretch(1);
     impl_->expertButton = new QPushButton(label(QStringLiteral("command.view.toggle_expert_mode")), impl_->bar);
     impl_->expertButton->setObjectName(QStringLiteral("expertToggle"));
@@ -905,7 +884,7 @@ void Chrome::fitToolbar() {
 
 void Chrome::buildPresets() {
     impl_->presetRow = new QWidget(impl_->host);
-    auto *stack = new QVBoxLayout(impl_->presetRow);
+    auto *stack = new QHBoxLayout(impl_->presetRow);
     stack->setContentsMargins(0, 0, 0, 0);
     stack->setSpacing(kRowGap);
 
@@ -1387,8 +1366,9 @@ void Chrome::refreshExpert() {
     }
     impl_->language->clear();
     impl_->language->addItem(QStringLiteral("English"), QStringLiteral("en"));
-    impl_->language->addItem(QStringLiteral("Русский"), QStringLiteral("ru"));
     impl_->language->addItem(QStringLiteral("Deutsch"), QStringLiteral("de"));
+    impl_->language->addItem(QStringLiteral("Українська"), QStringLiteral("uk"));
+    impl_->language->addItem(QStringLiteral("Latviešu"), QStringLiteral("lv"));
     impl_->resizeUnit->clear();
     impl_->resizeUnit->addItem(label(QStringLiteral("lucent.resize.pixels")));
     impl_->resizeUnit->addItem(label(QStringLiteral("lucent.resize.by_percent")));
@@ -1957,6 +1937,35 @@ void Chrome::startInstall() {
     relayout();
 }
 
+void Chrome::openZoomMenu() {
+    QMenu menu(impl_->host);
+    const auto zoom = [this](ZoomMode mode) {
+        if (impl_->cb.zoom) {
+            impl_->cb.zoom(mode);
+        }
+    };
+    menu.addAction(label(QStringLiteral("simple.viewer.fit")), [zoom] { zoom(ZoomMode::Fit); });
+    menu.addAction(label(QStringLiteral("simple.viewer.full")), [zoom] { zoom(ZoomMode::OneToOne); });
+    menu.addAction(label(QStringLiteral("lucent.action.fill")), [zoom] { zoom(ZoomMode::Fill); });
+    menu.addAction(label(QStringLiteral("lucent.action.fit_width")), [zoom] { zoom(ZoomMode::FitWidth); });
+    menu.addAction(label(QStringLiteral("lucent.action.fit_height")), [zoom] { zoom(ZoomMode::FitHeight); });
+    menu.exec(impl_->bar->mapToGlobal(QPoint(0, impl_->bar->height())));
+}
+
+void Chrome::toggleCompare() {
+    if (impl_->compare == nullptr) {
+        return;
+    }
+    if (impl_->jobOutput.isEmpty() || !QFileInfo::exists(impl_->jobOutput)) {
+        impl_->compare->hide();
+        return;
+    }
+    impl_->compare->setVisible(!impl_->compare->isVisible());
+    if (impl_->compare->isVisible()) {
+        impl_->compare->raise();
+    }
+}
+
 void Chrome::openFile() {
     const QString path = QFileDialog::getOpenFileName(impl_->host, label(QStringLiteral("simple.viewer.open")));
     if (!path.isEmpty() && impl_->cb.openPath) {
@@ -2211,22 +2220,15 @@ void Chrome::addKeptActions(QMenu &menu, bool crop) {
 
 void Chrome::openMenu() {
     QMenu menu(impl_->host);
-    const auto hidden = [](const QPushButton *button) { return button != nullptr && !button->isVisible(); };
-    if (hidden(impl_->fullscreenButton)) {
-        menu.addAction(label(QStringLiteral("lucent.action.fullscreen")), [this] {
-            if (impl_->cb.fullscreen) {
-                impl_->cb.fullscreen();
-            }
-        });
-    }
-    if (hidden(impl_->slideshowButton)) {
-        menu.addAction(label(QStringLiteral("lucent.action.slideshow")), [this] {
-            if (impl_->cb.slideshow) {
-                impl_->cb.slideshow();
-            }
-        });
-    }
-    addKeptActions(menu, hidden(impl_->cropButton));
+    const auto call = [this](const std::function<void()> &fn) {
+        if (fn) {
+            fn();
+        }
+    };
+    menu.addAction(label(QStringLiteral("simple.viewer.save")), [this, call] { call(impl_->cb.save); });
+    menu.addAction(label(QStringLiteral("lucent.action.fullscreen")), [this, call] { call(impl_->cb.fullscreen); });
+    menu.addAction(label(QStringLiteral("lucent.action.slideshow")), [this, call] { call(impl_->cb.slideshow); });
+    addKeptActions(menu, true);
     menu.addAction(label(QStringLiteral("lucent.action.about")), [this] { openAbout(); });
     menu.addAction(label(QStringLiteral("lucent.action.updates")), [this] {
         if (impl_->cb.checkUpdate) {

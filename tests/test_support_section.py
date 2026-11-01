@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-_SHA256 = "ae6900ccf5c80ef10bd55e5f4a6807ea86d72341e8c2ff831f554c3e56364053"
-_LENGTH = 481
+_SHA256 = "5ed792422730ca357c6c5e807579dd848135119a382c57053dcf579bc22eecc1"
+_LENGTH = 183
 _HEADING = b"## \xe2\x98\x95 Support the Project"
 
 

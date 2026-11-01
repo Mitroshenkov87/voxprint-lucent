@@ -191,6 +191,8 @@ private:
     void cancelJob();
     void setExpert(bool enabled);
     void openFile();
+    void openZoomMenu();
+    void toggleCompare();
     void openMenu();
     void addKeptActions(QMenu &menu, bool crop);
     void openResizeDialog();

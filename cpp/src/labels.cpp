@@ -57,8 +57,7 @@ QString catalogLanguage() { return gLanguage; }
 
 void setCatalogLanguage(const QString &code) {
     const QString trimmed = code.left(2).toLower();
-    gLanguage = (trimmed == QStringLiteral("ru") || trimmed == QStringLiteral("de") || trimmed == QStringLiteral("uk")
-                 || trimmed == QStringLiteral("lv"))
+    gLanguage = (trimmed == QStringLiteral("de") || trimmed == QStringLiteral("uk") || trimmed == QStringLiteral("lv"))
         ? trimmed
         : QStringLiteral("en");
     reload();

@@ -1,19 +1,43 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <?define LucentVersion="0.1.0-rc7"?>
-  <?define LucentBuild="8"?>
+  <?define LucentVersion="0.1.0-rc8"?>
+  <?define LucentBuild="9"?>
   <Package
       Name="VOXPrint AI Lucent"
-      Manufacturer="VOXPrint AI Suite"
-      Version="0.1.0.7"
+      Manufacturer="Aleksandr Mitroshenkov"
+      Version="0.1.0.8"
       UpgradeCode="7C2A9E14-6B0F-4E3A-9D55-1A2B3C4D5E6F"
       Scope="perMachine"
       Compressed="yes">
     <MajorUpgrade DowngradeErrorMessage="A newer version of VOXPrint AI Lucent is already installed." />
     <MediaTemplate EmbedCab="yes" />
+    <Icon Id="LucentIcon" SourceFile="..\..\assets\voxprint-lucent.ico" />
+    <Property Id="ARPPRODUCTICON" Value="LucentIcon" />
+    <Property Id="SUITE_LANG" Value="en" />
+    <Property Id="INSTALL_PWSH" Value="0" />
+    <Property Id="INSTALLDESKTOPSHORTCUT" Value="0" />
     <Feature Id="Main" Title="VOXPrint AI Lucent" Level="1">
       <ComponentGroupRef Id="AppFiles" />
       <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
     </Feature>
+    <SetProperty
+        Id="MigrateSuite"
+        Before="MigrateSuite"
+        Sequence="execute"
+        Value="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]migrate-suite.ps1&quot; -InstallPwsh &quot;[INSTALL_PWSH]&quot; -Language &quot;[SUITE_LANG]&quot;" />
+    <CustomAction
+        Id="MigrateSuite"
+        BinaryRef="Wix4UtilCA_X64"
+        DllEntry="WixQuietExec64"
+        Execute="deferred"
+        Impersonate="yes"
+        Return="check" />
+    <InstallExecuteSequence>
+      <Custom Action="MigrateSuite" After="InstallFiles" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+    <InstallUISequence>
+      <Show Dialog="SuiteChoices" Before="ExecuteAction" />
+    </InstallUISequence>
   </Package>
 
   <Fragment>
@@ -22,6 +46,7 @@
         <Directory Id="INSTALLFOLDER" Name="Lucent" />
       </Directory>
     </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
   </Fragment>
 
   <Fragment>
@@ -39,7 +64,10 @@
               Name="VOXPrint AI Lucent"
               Description="Image viewer"
               Target="[INSTALLFOLDER]voxprint-lucent.exe"
-              WorkingDirectory="INSTALLFOLDER" />
+              WorkingDirectory="INSTALLFOLDER"
+              Icon="LucentIcon">
+            <ShortcutProperty Key="System.AppUserModel.ID" Value="VOXPrint.AISuite.Lucent" />
+          </Shortcut>
           <RemoveFolder Id="RemoveSuiteMenu" Directory="SuiteMenuFolder" On="uninstall" />
           <RegistryValue
               Root="HKLM"
@@ -48,66 +76,54 @@
               Type="string"
               Value="[INSTALLFOLDER]"
               KeyPath="yes" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\VOXPrint\Lucent"
-              Name="Exe"
-              Type="string"
-              Value="voxprint-lucent.exe" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\VOXPrint\Lucent"
-              Name="CliExe"
-              Type="string"
-              Value="voxprint-lucent-cli.exe" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\VOXPrint\Lucent"
-              Name="Version"
-              Type="string"
-              Value="$(var.LucentVersion)" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\VOXPrint\Lucent"
-              Name="Build"
-              Type="integer"
-              Value="$(var.LucentBuild)" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\VOXPrint\Lucent"
-              Name="IpcName"
-              Type="string"
-              Value="voxprint-lucent" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\VOXPrint\Lucent"
-              Name="ProtocolVersion"
-              Type="integer"
-              Value="1" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent.exe"
-              Type="string"
-              Value="[INSTALLFOLDER]voxprint-lucent.exe" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent.exe"
-              Name="Path"
-              Type="string"
-              Value="[INSTALLFOLDER]" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent-cli.exe"
-              Type="string"
-              Value="[INSTALLFOLDER]voxprint-lucent-cli.exe" />
-          <RegistryValue
-              Root="HKLM"
-              Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent-cli.exe"
-              Name="Path"
-              Type="string"
-              Value="[INSTALLFOLDER]" />
+          <RegistryValue Root="HKLM" Key="Software\VOXPrint\Lucent" Name="Exe" Type="string" Value="voxprint-lucent.exe" />
+          <RegistryValue Root="HKLM" Key="Software\VOXPrint\Lucent" Name="CliExe" Type="string" Value="voxprint-lucent-cli.exe" />
+          <RegistryValue Root="HKLM" Key="Software\VOXPrint\Lucent" Name="Version" Type="string" Value="$(var.LucentVersion)" />
+          <RegistryValue Root="HKLM" Key="Software\VOXPrint\Lucent" Name="Build" Type="integer" Value="$(var.LucentBuild)" />
+          <RegistryValue Root="HKLM" Key="Software\VOXPrint\Lucent" Name="IpcName" Type="string" Value="voxprint-lucent" />
+          <RegistryValue Root="HKLM" Key="Software\VOXPrint\Lucent" Name="ProtocolVersion" Type="integer" Value="1" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent.exe" Type="string" Value="[INSTALLFOLDER]voxprint-lucent.exe" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent.exe" Name="Path" Type="string" Value="[INSTALLFOLDER]" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent-cli.exe" Type="string" Value="[INSTALLFOLDER]voxprint-lucent-cli.exe" />
+          <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent-cli.exe" Name="Path" Type="string" Value="[INSTALLFOLDER]" />
         </Component>
       </Directory>
     </StandardDirectory>
+    <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="c4d8e1a2-6b33-4f70-9a15-2d7c8e90ab41" Condition="INSTALLDESKTOPSHORTCUT = 1">
+      <Shortcut
+          Id="ApplicationDesktopShortcut"
+          Name="VOXPrint AI Lucent"
+          Target="[INSTALLFOLDER]voxprint-lucent.exe"
+          WorkingDirectory="INSTALLFOLDER"
+          Icon="LucentIcon">
+        <ShortcutProperty Key="System.AppUserModel.ID" Value="VOXPrint.AISuite.Lucent" />
+      </Shortcut>
+      <RegistryValue Root="HKLM" Key="Software\VOXPrint\Lucent" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Fragment>
+
+  <Fragment>
+    <UI>
+      <Dialog Id="SuiteChoices" Width="370" Height="300" Title="VOXPrint AI Lucent">
+        <Control Id="Title" Type="Text" X="20" Y="16" Width="330" Height="20" Text="VOXPrint AI Lucent" />
+        <Control Id="LangLabel" Type="Text" X="20" Y="48" Width="330" Height="16" Text="Language" />
+        <Control Id="Lang" Type="ComboBox" X="20" Y="68" Width="180" Height="16" Property="SUITE_LANG" ComboList="yes" Sorted="no">
+          <ComboBox Property="SUITE_LANG">
+            <ListItem Text="English" Value="en" />
+            <ListItem Text="Deutsch" Value="de" />
+            <ListItem Text="Ukrainian" Value="uk" />
+            <ListItem Text="Latvian" Value="lv" />
+          </ComboBox>
+        </Control>
+        <Control Id="Pwsh" Type="CheckBox" X="20" Y="110" Width="330" Height="32" Property="INSTALL_PWSH" CheckBoxValue="1" Text="Install PowerShell 7. Leave this off to use Windows PowerShell 5.1." />
+        <Control Id="Desktop" Type="CheckBox" X="20" Y="150" Width="330" Height="32" Property="INSTALLDESKTOPSHORTCUT" CheckBoxValue="1" Text="Create a desktop shortcut" />
+        <Control Id="Next" Type="PushButton" X="230" Y="260" Width="56" Height="17" Default="yes" Text="Install">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="294" Y="260" Width="56" Height="17" Cancel="yes" Text="Cancel">
+          <Publish Event="EndDialog" Value="Exit" />
+        </Control>
+      </Dialog>
+    </UI>
   </Fragment>
 </Wix>

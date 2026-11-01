@@ -5,7 +5,7 @@ Fast, colour-accurate image viewer with AVIF, JPEG XL and WebP support.
 > [!WARNING]
 > **Deep alpha.** This software is experimental, and nothing is guaranteed to work. Use at your own risk.
 
-- **Latest pre-release:** [v0.1.0-rc7](https://github.com/Mitroshenkov87/voxprint-lucent/releases/tag/v0.1.0-rc7)
+- **Latest pre-release:** [v0.1.0-rc8](https://github.com/Mitroshenkov87/voxprint-lucent/releases/tag/v0.1.0-rc8)
 - **Full documentation:** [docs/README-full.md](docs/README-full.md) and the [docs/](docs/) folder
 
 License: [Apache-2.0](LICENSE)

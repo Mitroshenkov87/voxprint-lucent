@@ -10,7 +10,7 @@ namespace lucent {
 /// Load shell and Lucent catalogs from `shareDir`.
 void loadCatalogs(const QString &shareDir);
 
-/// Active catalog language. `en`, `ru`, and `de` are the app overlays.
+/// Active catalog language. `en` and `de` are the app overlays. `uk` and `lv` use the shell catalogs.
 QString catalogLanguage();
 
 /// Switch catalogs. Unknown codes fall back to English.

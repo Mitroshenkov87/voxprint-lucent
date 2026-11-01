@@ -50,10 +50,10 @@
     Samples per format after the protocol above. Default 10.
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\Run-M0.ps1
+    pwsh -NoProfile -ExecutionPolicy Bypass -File .\Run-M0.ps1
 
 .EXAMPLE
-    powershell -NoProfile -ExecutionPolicy Bypass -File .\bench\Run-M0.ps1 -ScheduleCold
+    pwsh -NoProfile -ExecutionPolicy Bypass -File .\bench\Run-M0.ps1 -ScheduleCold
 #>
 [CmdletBinding()]
 param(
@@ -362,7 +362,10 @@ function Register-ColdTask {
     $arg = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ColdResume"
     $workdir = $PSScriptRoot
     $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    $action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $arg -WorkingDirectory $workdir
+    $shell = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    if ($pwsh) { $shell = $pwsh.Source }
+    $action = New-ScheduledTaskAction -Execute $shell -Argument $arg -WorkingDirectory $workdir
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
     $trigger.EndBoundary = (Get-Date).AddDays(2).ToString('yyyy-MM-ddTHH:mm:ss')
     $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
@@ -424,7 +427,10 @@ function Unregister-ColdTask {
     Set-Content -LiteralPath $helper -Value ($lines -join "`r`n") -Encoding ASCII
     $when = (Get-Date).AddMinutes(2)
     $hhmm = $when.ToString('HH:mm')
-    $tr = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + $helper + '"'
+    $cleanup = 'powershell.exe'
+    $pwshCleanup = Get-Command pwsh -ErrorAction SilentlyContinue
+    if ($pwshCleanup) { $cleanup = $pwshCleanup.Source }
+    $tr = $cleanup + ' -NoProfile -ExecutionPolicy Bypass -File "' + $helper + '"'
     & schtasks.exe /Create /F /TN 'VoxprintLucent-M0-Cold-Cleanup' /SC ONCE /ST $hhmm /RL LIMITED /TR $tr | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-TaskLog "outcome=deferred-helper task=VoxprintLucent-M0-Cold-Cleanup at=$hhmm"
@@ -444,7 +450,7 @@ if ($ScheduleCold) {
     } catch {
         Write-Host "Could not register scheduled task '$TaskName': $($_.Exception.Message)"
         Write-Host "Reboot, sign in, and immediately run:"
-        Write-Host "  powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ColdResume"
+        Write-Host "  pwsh -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ColdResume"
         Write-Host "Leave Defender real-time protection on. Do not open the viewer before the script."
         exit 1
     }
@@ -473,7 +479,7 @@ if ($ColdResume -and $uptime -gt 600) {
 Write-Host "Cold gate: $(if ($coldBoot) { 'this boot qualifies (run right after reboot, Defender on)' } else { 'NOT a cold boot' })"
 if (-not $coldBoot -and -not $WarmOnly) {
     Write-Host "For a cold sample, reboot with Defender real-time protection on, then either:"
-    Write-Host "  powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ScheduleCold"
+    Write-Host "  pwsh -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`" -ScheduleCold"
     Write-Host "or, right after you sign in (uptime under ${ColdUptimeSeconds}s), run this script with no switches."
 }
 

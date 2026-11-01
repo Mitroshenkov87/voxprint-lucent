@@ -67,14 +67,16 @@ def test_stylesheet_uses_dark_ground_and_splash() -> None:
     assert "@SPLASH@" not in sheet
     assert "@ROOT_PLAIN@" not in sheet
     assert "@FOCUS_RING_PX@" not in sheet
+    assert "@BUTTON_RADIUS_PX@" not in sheet
 
 
 def test_vendored_tokens_match_the_pin() -> None:
     pin = json.loads(Path("share/tokens.pin.json").read_text(encoding="utf-8"))
     body = Path("share/tokens.json").read_bytes()
     assert pin["package"] == "voxprint-common"
-    assert pin["tag"] == "v0.2.5"
-    assert pin["commit"] == "8a94b531cb4f3526425a80a86a1e64624b5de606"
+    assert pin["tag"] == "v0.5.2"
+    assert pin["pr"] == 28
+    assert pin["commit"] == "c3a74eaa5e834391b499af08b110efa37441209d"
     tokens = json.loads(body)
     assert tokens["schema"] == 1
     assert "SPLASH" not in tokens["colors"]

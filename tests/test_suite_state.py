@@ -6,9 +6,11 @@ import json
 from pathlib import Path
 
 import pytest
+from voxprint_common.paths import models_dir as common_models_dir
 
 from voxprint_lucent.suite_state import (
     data_home,
+    models_dir,
     read_document,
     read_expert_mode,
     suite_settings_path,
@@ -17,6 +19,12 @@ from voxprint_lucent.suite_state import (
 )
 
 FIXTURES = Path(__file__).parent / "fixtures" / "shell"
+
+
+def test_models_use_the_shared_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("VOXPRINT_HOME", str(tmp_path))
+    assert models_dir() == common_models_dir()
+    assert models_dir() == tmp_path / "models"
 
 
 def test_suite_root_is_spelled_once() -> None:

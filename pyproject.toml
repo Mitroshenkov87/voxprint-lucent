@@ -1,6 +1,6 @@
 [project]
 name = "voxprint-lucent"
-version = "0.1.0rc7"
+version = "0.1.0rc8"
 description = "Fast, colour-accurate image viewer for the Voxprint AI Media Suite"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -16,7 +16,8 @@ classifiers = [
 ]
 dependencies = [
     "PySide6-Essentials==6.12.0",
-    "voxprint-common[ui] @ git+https://github.com/Mitroshenkov87/voxprint-common@8a94b531cb4f3526425a80a86a1e64624b5de606",
+    "voxprint-common[ui] @ https://github.com/Mitroshenkov87/voxprint-common/releases/download/v0.5.2/voxprint_common-0.5.2-py3-none-any.whl",
+    # voxprint-common==0.5.2 sha256 dd2ac2352a63313ff9fc23c2dfddfb2ade8d7ac49cf95802fcae1000e1f7f9c1
     "imagecodecs==2026.10.10",
     "numpy>=2.3",
 ]
