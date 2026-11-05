@@ -2363,7 +2363,8 @@ void Chrome::reveal() {
         return;
     }
 #ifdef Q_OS_WIN
-    QProcess::startDetached(QStringLiteral("explorer.exe"), {QStringLiteral("/select,"), QDir::toNativeSeparators(path)});
+    QProcess::startDetached(QStringLiteral("explorer.exe"),
+                            {QStringLiteral("/select,") + QDir::toNativeSeparators(path)});
 #else
     QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(path).absolutePath()));
 #endif
