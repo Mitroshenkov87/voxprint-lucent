@@ -2,7 +2,7 @@
 
 The mark is original: a dark rounded tile and a clear frame with a lens.
 It follows the suite icon style and does not reuse another app's artwork.
-voxprint-common v0.5.2 has no ``lucent`` identity colour, so the glyph uses
+voxprint-common v0.6.4 has no ``lucent`` identity colour, so the glyph uses
 ``#5ce1ff``, which is not one of the colours already in ``tokens.json``.
 """
 

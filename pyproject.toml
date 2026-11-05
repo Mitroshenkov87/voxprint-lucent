@@ -16,8 +16,8 @@ classifiers = [
 ]
 dependencies = [
     "PySide6-Essentials==6.12.0",
-    "voxprint-common[ui] @ https://github.com/Mitroshenkov87/voxprint-common/releases/download/v0.5.2/voxprint_common-0.5.2-py3-none-any.whl",
-    # voxprint-common==0.5.2 sha256 dd2ac2352a63313ff9fc23c2dfddfb2ade8d7ac49cf95802fcae1000e1f7f9c1
+    "voxprint-common[ui] @ https://github.com/Mitroshenkov87/voxprint-common/releases/download/v0.6.4/voxprint_common-0.6.4-py3-none-any.whl",
+    # voxprint-common==0.6.4 sha256 1b7abcc99530d6f155b4be41fba26f3f27b8b54789d49282b936430c53a4314b
     "imagecodecs==2026.10.10",
     "numpy>=2.3",
 ]

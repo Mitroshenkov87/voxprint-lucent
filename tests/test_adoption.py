@@ -10,12 +10,12 @@ from pathlib import Path
 from voxprint_lucent.suite_state import app_settings_path
 from voxprint_lucent.viewer_shell import SURFACE_ID
 
-PIN = "c3a74eaa5e834391b499af08b110efa37441209d"
-TAG = "v0.5.2"
-PR = 28
+PIN = "e47f3dccf84f04102b11c5eab87fdaa16de1655b"
+TAG = "v0.6.4"
+PR = 38
 DEPENDENCY = (
     "voxprint-common[ui] @ https://github.com/Mitroshenkov87/voxprint-common/releases/download/"
-    "v0.5.2/voxprint_common-0.5.2-py3-none-any.whl"
+    "v0.6.4/voxprint_common-0.6.4-py3-none-any.whl"
 )
 
 
