@@ -149,7 +149,7 @@ static void printHelp() {
         "    Paint IMAGE, print FIRST_PIXEL, and exit. The tools process is not started.\n"
         "    On Windows session 0 (no interactive desktop) this exits with an error.\n"
         "    A paint that has not finished in 60 seconds exits with an error.\n"
-        "    --navigate-next IMAGE opens that second image and prints NAVIGATE_PIXEL.\n"
+        "    --navigate-next IMAGE opens that second image and prints NAVIGATE_MS.\n"
         "    Exit 2 when IMAGE is missing.\n"
         "\n"
         "IMAGE\n"

@@ -52,7 +52,7 @@ Usage:
     Paint IMAGE, print FIRST_PIXEL, and exit. The tools process is not started.
     On Windows session 0 (no interactive desktop) this exits with an error.
     A paint that has not finished in 60 seconds exits with an error.
-    --navigate-next IMAGE opens that second image and prints NAVIGATE_PIXEL.
+    --navigate-next IMAGE opens that second image and prints NAVIGATE_MS.
     Exit 2 when IMAGE is missing.
 
 IMAGE

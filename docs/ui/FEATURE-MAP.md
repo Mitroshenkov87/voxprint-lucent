@@ -72,7 +72,7 @@ The old location is the rc7 chrome (toolbar, application menu, context menu, set
 | `voxprint-lucent --dry-run [IMAGE]` | CLI | CLI. JSON only. No window, GPU, or tools process. | simple |
 | `voxprint-lucent --selftest --json` | CLI | CLI. Codec and runtime checks. No window. | simple |
 | `voxprint-lucent --benchmark IMAGE` | CLI | CLI. Prints FIRST_PIXEL and exits. Does not construct the shell. | simple |
-| `voxprint-lucent --navigate-next IMAGE` | CLI, with `--benchmark` | CLI, with `--benchmark`. Prints NAVIGATE_PIXEL. | simple |
+| `voxprint-lucent --navigate-next IMAGE` | CLI, with `--benchmark` | CLI, with `--benchmark`. Prints NAVIGATE_MS. | simple |
 | `voxprint-lucent IMAGE` | CLI | CLI. Opens the viewer. A second launch forwards the path. | simple |
 | Python `--export [DEST]` | CLI | CLI. Saves a copy and quits. Default format AVIF. | simple |
 | Python `--format` | CLI, with `--export` | CLI. avif, jxl, webp, jpeg, heic. PNG is rejected. | simple |
