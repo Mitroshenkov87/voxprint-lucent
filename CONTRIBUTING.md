@@ -2,12 +2,12 @@
 
 Lucent is Apache-2.0. Open a pull request for a bug fix or a small change that matches the [roadmap](ROADMAP.md).
 
-Write English in code comments, docs, commit messages, and the pull request. The viewer is C++ and Qt 6.12. The tools window is Python 3.14.
+Write English in code comments, docs, commit messages, and the pull request. The viewer is C++ and Qt 6.12. The tools window is Python 3.15.
 
 ## Check a change
 
 ```bash
-python3.14 -m venv .venv
+python3.15 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/ruff check .
 .venv/bin/pytest

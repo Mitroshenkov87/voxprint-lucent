@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15.2"
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Qt system libraries
@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15.2"
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Cache Qt 6.12
@@ -139,7 +139,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15.2"
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Qt system libraries
@@ -227,7 +227,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15.2"
           cache: pip
           cache-dependency-path: pyproject.toml
       - uses: actions/configure-pages@v6
@@ -265,7 +265,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15.2"
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Cache Qt 6.12 and vcpkg

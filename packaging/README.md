@@ -12,7 +12,7 @@ The MSI currently installs a launcher script. That script is a packaging skeleto
 
 ## Linux: Debian package in CI, Flatpak later
 
-`packaging/linux/build-deb.sh` builds `voxprint-lucent_<version>_amd64.deb` with `dpkg-deb`. The archive contains the Python package, a `voxprint-lucent` launcher, and `ai.voxprint.Lucent.desktop`. It depends on Python 3.14 and expects the Python dependencies to be present. CI can build it in seconds.
+`packaging/linux/build-deb.sh` builds `voxprint-lucent_<version>_amd64.deb` with `dpkg-deb`. The archive contains the Python package, a `voxprint-lucent` launcher, and `ai.voxprint.Lucent.desktop`. It depends on Python 3.15 and expects the Python dependencies to be present. CI can build it in seconds.
 
 Flatpak with the `org.kde.Platform` runtime is the intended Linux delivery (that runtime already has KImageFormats). Downloading the runtime on every GitHub Actions run would spend the free minutes budget, so CI does not build a Flatpak. The manifest is `packaging/linux/ai.voxprint.Lucent.yml` for that later build.
 

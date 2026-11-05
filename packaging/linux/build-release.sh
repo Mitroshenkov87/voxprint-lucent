@@ -87,12 +87,12 @@ Section: graphics
 Priority: optional
 Architecture: amd64
 Depends: libc6, libegl1, libgl1, libglib2.0-0, libxkbcommon0, libfontconfig1, libdbus-1-3, libx11-6
-Recommends: python3 (>= 3.14)
+Recommends: python3 (>= 3.15)
 Maintainer: Aleksandr Mitroshenkov <223849179+Mitroshenkov87@users.noreply.github.com>
 Description: VOXPrint AI Lucent image viewer
  Fast, colour-accurate image viewer for the Voxprint AI Media Suite.
  The viewer does not require an NVIDIA GPU. Tools and the Enlarge client
- need Python 3.14. AVIF and JPEG XL plugins ship in the Windows installer.
+ need Python 3.15. AVIF and JPEG XL plugins ship in the Windows installer.
 Homepage: https://github.com/Mitroshenkov87/voxprint-lucent
 EOF
 printf 'tag=%s\nqt=%s\npython-package=%s\navif-jxl=windows-installer\n' \

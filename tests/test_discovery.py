@@ -62,7 +62,7 @@ def test_manifest_holder_uses_the_installer_path(tmp_path: Path, monkeypatch) ->
         json.dumps(
             {
                 "schema": 1,
-                "components": {"python": {"version": "3.14", "holders": ["enlarge"]}},
+                "components": {"python": {"version": "3.15", "holders": ["enlarge"]}},
             }
         ),
         encoding="utf-8",

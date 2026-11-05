@@ -144,7 +144,7 @@ holders=$(mktemp -d)
 mkdir -p "$holders/enlarge" "$holders/shared"
 cp "$stub" "$holders/enlarge/voxprint-enlarge"
 chmod +x "$holders/enlarge/voxprint-enlarge"
-printf '%s\n' '{"schema":1,"components":{"python":{"version":"3.14","holders":["enlarge"]}}}' > "$holders/shared/manifest.json"
+printf '%s\n' '{"schema":1,"components":{"python":{"version":"3.15","holders":["enlarge"]}}}' > "$holders/shared/manifest.json"
 held_manifest=$(VOXPRINT_HOME="$holders" "$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
 printf '%s\n' "$held_manifest"
 printf '%s\n' "$held_manifest" | grep -q '"installed":true'
