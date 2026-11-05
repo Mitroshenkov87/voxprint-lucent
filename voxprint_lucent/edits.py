@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from PySide6.QtGui import QImage, QImageReader, QTransform
 
@@ -128,9 +129,11 @@ def _trash_freedesktop(path: Path) -> None:
         number += 1
     path.rename(target)
     stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
+    # The Trash spec stores the original location URL-encoded, so a raw '%' or
+    # a space in the name cannot corrupt the record.
     (info / f"{target.name}.trashinfo").write_text(
         "[Trash Info]\n"
-        f"Path={path.resolve()}\n"
+        f"Path={quote(str(path.resolve()), safe='/')}\n"
         f"DeletionDate={stamp}\n",
         encoding="utf-8",
     )
