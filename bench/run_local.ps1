@@ -13,7 +13,7 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root
 $Python = Join-Path $Root ".venv\Scripts\python.exe"
 if (-not (Test-Path $Python)) {
-    py -3.14 -m venv (Join-Path $Root ".venv")
+    py -3.15 -m venv (Join-Path $Root ".venv")
     & $Python -m pip install -e ".[dev,nuitka]"
 }
 $ExeArgs = @()

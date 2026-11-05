@@ -16,7 +16,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
-PY="${LUCENT_PYTHON:-python3.14}"
+PY="${LUCENT_PYTHON:-python3.15}"
 if [ ! -x "$ROOT/.venv/bin/python" ]; then
     "$PY" -m venv "$ROOT/.venv"
     "$ROOT/.venv/bin/python" -m pip install -e ".[dev,nuitka]"

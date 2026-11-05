@@ -7,10 +7,11 @@ usable GPU. A missing install offers an Install Enlarge button.
 from __future__ import annotations
 
 import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QThread, QUrl, Signal
+from PySide6.QtCore import QObject, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QImageReader
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
@@ -67,11 +68,14 @@ class _ProbeWorker(QObject):
         self._client = client
 
     def run(self) -> None:
-        """Probe, then drop the worker. The signal carries the capabilities or None."""
+        """Probe. The signal carries the capabilities or None.
+
+        Called from a ``threading.Thread``. This object stays on the UI
+        thread, so the signal is queued there instead of destroying a
+        QObject on a QThread (shiboken crashes on Python 3.15).
+        """
         caps = self._client.probe()
         self.finished.emit(caps)
-        # The event loop that called run() deletes this object before it exits.
-        self.deleteLater()
 
 
 class EnlargeWindow(QWidget):
@@ -91,7 +95,7 @@ class EnlargeWindow(QWidget):
         self._compare: CompareWindow | None = None
         self._caps: Capabilities | None = None
         self._gate = False
-        self._probe_thread: QThread | None = None
+        self._probe_thread: threading.Thread | None = None
         self._probe_worker: _ProbeWorker | None = None
         self.setObjectName("lucent-window")
         self.setWindowTitle("Enlarge")
@@ -151,39 +155,28 @@ class EnlargeWindow(QWidget):
         """Probe Enlarge in the background. The gate stays red until the probe finishes."""
         if not self._client.command:
             return
-        if self._probe_thread is not None and self._probe_thread.isRunning():
+        if self._probe_thread is not None and self._probe_thread.is_alive():
             return
         self._stop_probe()
         self._status.setText("Checking…")
         self._cancel.setEnabled(True)
-        # Not a child of the window. A child QThread is destroyed with the
-        # widget, and Qt aborts if that thread is still running.
-        thread = QThread()
+        # The worker stays on the UI thread. A QThread that deletes it crashes
+        # shiboken on Python 3.15.
         worker = _ProbeWorker(self._client)
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
         worker.finished.connect(self._finish_check)
-        worker.finished.connect(thread.quit)
+        thread = threading.Thread(target=worker.run, name="lucent-enlarge-probe", daemon=True)
         self._probe_thread = thread
         self._probe_worker = worker
         thread.start()
 
     def _stop_probe(self) -> None:
-        """Quit the probe thread and wait until it has exited."""
+        """Join the probe thread. The worker is deleted on the UI thread."""
         thread = self._probe_thread
         worker = self._probe_worker
         self._probe_thread = None
         self._probe_worker = None
-        if thread is None:
-            return
-        try:
-            running = thread.isRunning()
-        except RuntimeError:
-            return
-        if running:
-            thread.quit()
-            thread.wait(10000)
-        # Keep the worker wrapper until the thread has left run().
+        if thread is not None:
+            thread.join(timeout=10)
         del worker
 
     def __del__(self) -> None:

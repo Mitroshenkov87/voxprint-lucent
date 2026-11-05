@@ -8,7 +8,7 @@ Draft 2026-10-10. Based on [DECISIONS.md](DECISIONS.md) and the viewer research.
 Double-click any image -> it is on screen in <= 250 ms, browsing a folder feels instant, modern formats just work with correct colour, and one click hands the image to Voxprint AI Enlarge and shows a before/after compare. Native, one-button, local; no default-on telemetry (diagnostics only strictly opt-in).
 
 ## 2. Architecture
-- **App:** Python 3.14 + PySide6 (Qt 6.10+), shared Voxprint acrylic/Mica UI kit and theme tokens. Lazy imports: only `QtCore/QtGui/QtWidgets` and the decoder path load before the first paint; settings, tools, info panel, updater and the Enlarge bridge load on demand.
+- **App:** Python 3.15 + PySide6 (Qt 6.10+), shared Voxprint acrylic/Mica UI kit and theme tokens. Lazy imports: only `QtCore/QtGui/QtWidgets` and the decoder path load before the first paint; settings, tools, info panel, updater and the Enlarge bridge load on demand.
 - **Decode:** Qt image plugins + KImageFormats (AVIF, JXL, HEIF via system libheif on Linux / WIC on Windows, EXR, RAW, PSD, QOI) into `QImage` on a thread pool. RAW shows the embedded preview first. Exotic/untrusted formats can move to a helper subprocess later (post-MVP).
 - **Render:** `QRhiWidget` (D3D12 / Vulkan) with textures, mip-mapped or Lanczos scaling in a shader, nearest-neighbour toggle. Any modern GPU (no RTX requirement).
 - **Cache:** look-ahead +/-2 images with a memory cap (MB), downscaled preview first, then full resolution.

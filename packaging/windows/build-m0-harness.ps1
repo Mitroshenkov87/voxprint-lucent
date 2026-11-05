@@ -6,7 +6,7 @@
 .DESCRIPTION
     Used by GitHub Actions on windows-latest. Produces dist\lucent-m0-windows.zip
     with the C++/Qt 6.12 viewer, windeployqt runtime, KImageFormats AVIF and
-    JPEG XL plugins (HEIF off, no libde265/x265), embeddable Python 3.14 plus
+    JPEG XL plugins (HEIF off, no libde265/x265), embeddable Python 3.15.2 plus
     PySide6-Essentials, the comparison viewer, 12 MP test images, Run-M0.ps1,
     and Run-Checks.ps1 with the hard image set.
 #>
@@ -22,7 +22,7 @@ $QtRoot = 'C:\Qt'
 $Stage = Join-Path $Repo 'dist\m0-harness'
 $Zip = Join-Path $Repo 'dist\lucent-m0-windows.zip'
 $Work = Join-Path $Repo 'dist\m0-work'
-$PythonVersion = '3.14.8'
+$PythonVersion = '3.15.2'
 
 function Invoke-Native {
     param([scriptblock]$Command)
@@ -210,7 +210,7 @@ $PyDir = Join-Path $Stage 'python'
 Expand-Archive -Path $PyZip -DestinationPath $PyDir -Force
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 @(
-    'python314.zip',
+    'python315.zip',
     '.',
     'Lib\site-packages',
     'import site'
@@ -242,7 +242,7 @@ Copy-Item (Join-Path $Repo 'scripts\vm_test.ps1') (Join-Path $Stage 'vm_test.ps1
 # PYTHONPATH is ignored. Paths in that file are relative to the python folder.
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 @(
-    'python314.zip',
+    'python315.zip',
     '.',
     '..\app',
     'Lib\site-packages',

@@ -26,11 +26,11 @@ Version: ${VERSION}
 Section: graphics
 Priority: optional
 Architecture: amd64
-Depends: python3 (>= 3.14)
+Depends: python3 (>= 3.15)
 Maintainer: Aleksandr Mitroshenkov <223849179+Mitroshenkov87@users.noreply.github.com>
 Description: Voxprint AI Lucent image viewer
  Fast, colour-accurate image viewer for the Voxprint AI Media Suite.
- Does not require an NVIDIA GPU. This skeleton expects Python 3.14 and
+ Does not require an NVIDIA GPU. This skeleton expects Python 3.15 and
  the project dependencies. The release package will ship a Nuitka onedir build.
 EOF
 dpkg-deb --root-owner-group --build "$STAGE" "$OUT/voxprint-lucent_${VERSION}_amd64.deb"

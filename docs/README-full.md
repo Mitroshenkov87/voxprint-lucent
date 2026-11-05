@@ -57,7 +57,7 @@ These are the Windows viewer, cropped from a 1920×1032 desktop.
 - Windows 11 24H2 or newer, or Windows Server 2025, x64. Linux distributions from 2025 onward, x86-64-v3 (AVX2). There is no 32-bit build.
 - **Viewing does not need an NVIDIA GPU.** Any modern GPU, including an integrated one, is enough. `LUCENT_RHI=0` keeps painting on the CPU.
 - The Windows installer brings its own Qt runtime, AVIF and JPEG XL plugins, and the tools program. You do not install Qt or Python yourself.
-- Tools and the Enlarge hand-off on Linux need Python 3.14. The Linux package's viewer includes Qt 6.12, JPEG, and WebP. AVIF and JPEG XL plugins are in the Windows installer.
+- Tools and the Enlarge hand-off on Linux need Python 3.15. The Linux package's viewer includes Qt 6.12, JPEG, and WebP. AVIF and JPEG XL plugins are in the Windows installer.
 - Enlarge is a separate application. Lucent only contains the client. Enlarge has its own requirements and warns below an RTX 40. Lucent itself still opens images without it.
 
 ## Install
@@ -169,10 +169,10 @@ Apache License 2.0. See [LICENSE](https://github.com/Mitroshenkov87/voxprint-luc
 
 ## Develop
 
-Build instructions, the first-pixel budgets, and the milestone notes live in `docs/`. A checkout uses Python 3.14:
+Build instructions, the first-pixel budgets, and the milestone notes live in `docs/`. A checkout uses Python 3.15:
 
 ```bash
-python3.14 -m venv .venv
+python3.15 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/ruff check .
 .venv/bin/pytest
