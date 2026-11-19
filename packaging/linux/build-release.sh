@@ -162,13 +162,20 @@ for size in 16 24 32 48 64 128 256; do
     cp "$ROOT/assets/icon-$size.png" "$STAGE/usr/share/icons/hicolor/${size}x${size}/apps/ai.voxprint.Lucent.png"
 done
 
+# libc6 floor = the newest GLIBC_x.y symbol version any staged ELF file needs.
+GLIBC_MIN=$(find "$STAGE/opt" -type f \( -perm -u+x -o -name '*.so*' \) -print0 \
+    | xargs -0 objdump -T 2>/dev/null \
+    | grep -o 'GLIBC_[0-9][0-9.]*' | sed 's/GLIBC_//' | sort -uV | tail -n 1)
+[ -n "$GLIBC_MIN" ] || { echo "could not read the glibc floor" >&2; exit 1; }
+echo "libc6 floor: $GLIBC_MIN"
+
 cat > "$STAGE/DEBIAN/control" << EOF2
 Package: voxprint-lucent
 Version: ${DEB_VERSION}
 Section: graphics
 Priority: optional
 Architecture: amd64
-Depends: libc6 (>= 2.35), libstdc++6, libegl1, libgl1, libglib2.0-0 | libglib2.0-0t64, libxkbcommon0, libxkbcommon-x11-0, libfontconfig1, libfreetype6, libdbus-1-3, libx11-6, libx11-xcb1, libxcb1, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-shape0, libxcb-xfixes0, libxcb-xkb1
+Depends: libc6 (>= ${GLIBC_MIN}), libstdc++6, libegl1, libgl1, libglib2.0-0 | libglib2.0-0t64, libxkbcommon0, libxkbcommon-x11-0, libfontconfig1, libfreetype6, libdbus-1-3, libx11-6, libx11-xcb1, libxcb1, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-shape0, libxcb-xfixes0, libxcb-xkb1
 Installed-Size: $(du -sk "$STAGE" | cut -f1)
 Maintainer: Aleksandr Mitroshenkov <223849179+Mitroshenkov87@users.noreply.github.com>
 Description: VOXPrint AI Lucent image viewer
