@@ -65,8 +65,6 @@ const char *actionId(Action action) {
         return "tools";
     case Action::Hotkeys:
         return "hotkeys";
-    case Action::Language:
-        return "language";
     case Action::Quit:
         return "quit";
     case Action::Open:
@@ -137,8 +135,6 @@ Text labelId(Action action) {
         return Text::Tools;
     case Action::Hotkeys:
         return Text::Hotkeys;
-    case Action::Language:
-        return Text::Language;
     case Action::Quit:
         return Text::Quit;
     case Action::Open:
@@ -194,7 +190,6 @@ void setDefaults() {
         {Action::PreviousFrame, Qt::Key_Comma, Qt::NoModifier},
         {Action::Tools, Qt::Key_I, Qt::NoModifier},
         {Action::Hotkeys, Qt::Key_K, Qt::ControlModifier},
-        {Action::Language, Qt::Key_L, Qt::ControlModifier},
         {Action::Quit, Qt::Key_Q, Qt::NoModifier},
         {Action::Quit, Qt::Key_Escape, Qt::NoModifier},
         {Action::Open, Qt::Key_O, Qt::ControlModifier},
@@ -238,7 +233,7 @@ public:
         const Action actions[] = {
             Action::Next,       Action::Previous, Action::Fit,        Action::Fill,      Action::OneToOne,
             Action::FitWidth,   Action::FitHeight, Action::Fullscreen, Action::Frameless, Action::WindowFit,
-            Action::Slideshow,  Action::NextFrame, Action::PreviousFrame, Action::Tools, Action::Language,
+            Action::Slideshow,  Action::NextFrame, Action::PreviousFrame, Action::Tools,
             Action::Quit,       Action::Open,      Action::RotateLeft,    Action::RotateRight, Action::FlipHorizontal,
             Action::FlipVertical, Action::Crop,    Action::SaveCopy,      Action::SaveAs, Action::Trash,
             Action::Enlarge,    Action::Settings,  Action::CopyImage,     Action::CopyPath, Action::Reveal,
@@ -332,7 +327,7 @@ void loadHotkeys() {
             Action::Next,        Action::Previous,     Action::Fit,           Action::Fill,
             Action::OneToOne,    Action::FitWidth,     Action::FitHeight,     Action::Fullscreen,
             Action::Frameless,   Action::WindowFit,    Action::Slideshow,     Action::NextFrame,
-            Action::PreviousFrame, Action::Tools,      Action::Hotkeys,       Action::Language,
+            Action::PreviousFrame, Action::Tools,      Action::Hotkeys,
             Action::Quit,       Action::Open,         Action::RotateLeft, Action::RotateRight,   Action::FlipHorizontal,
             Action::FlipVertical, Action::Crop,       Action::SaveCopy,   Action::SaveAs,        Action::Trash,
             Action::Enlarge,    Action::Settings,     Action::CopyImage,  Action::CopyPath,      Action::Reveal,

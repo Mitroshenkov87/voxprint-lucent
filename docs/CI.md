@@ -6,11 +6,12 @@ While this repository is private, GitHub Actions bills Ubuntu minutes at 1x and 
 
 | Event | Jobs |
 |---|---|
-| Pull request, and a listed path changed | Ubuntu lint and tests, Ubuntu C++ smoke, Qt 6.8 compile in a Debian 13 container |
-| Push to `main` | Those jobs, plus the docs site (built and published to GitHub Pages), Ubuntu and Windows benchmarks, the skeleton deb, the skeleton WiX package, and the M0 Windows harness |
-| Tag `v*` | [Release](../.github/workflows/release.yml) only: the Windows MSI, the measurement zip, and the Linux package, published as a GitHub release. A tag that contains `-` (such as `v0.1.0-rc1`) is a pre-release. The CI matrix does not also run, so the tag is not billed twice |
+| Pull request, and a listed path changed | voxprint-common pin (tag + commit), Ubuntu lint and tests, Ubuntu C++ smoke, Qt 6.8 compile in a Debian 13 container, Linux installer (deb build + install smoke), Windows installer (MSI build + silent-install smoke, not a required check) |
+| Push to `main` | Those jobs, plus the Ubuntu and Windows benchmarks |
 | `workflow_dispatch` | Same as a push to `main` |
 | Pull request that only touches docs or other unlisted paths | Nothing |
+
+There is no release or publish workflow and no docs site deployment. Installers are workflow artifacts: `voxprint-lucent-linux-deb` and `voxprint-lucent-windows-msi`. The Windows job is the Lucent-only Windows exception and is never a required check.
 
 Feature-branch pushes do not start a run. A pull request used to start two full matrices, one for the branch push and one for the pull request.
 

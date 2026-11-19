@@ -1,12 +1,11 @@
 # VOXPrint AI Lucent
 
-Fast, colour-accurate image viewer with AVIF, JPEG XL and WebP support.
+Image viewer for the VOXPrint AI Suite: AVIF, JPEG XL, WebP and JPEG, ICC colour, before/after compare. Upscaling goes through VOXPrint AI Enlarge (`voxprint-enlarge-cli`) when it is installed.
 
-> [!WARNING]
-> **Deep alpha.** This software is experimental, and nothing is guaranteed to work. Use at your own risk.
-
-- **Latest pre-release:** [v0.1.0-rc8](https://github.com/Mitroshenkov87/voxprint-lucent/releases/tag/v0.1.0-rc8)
-- **Full documentation:** [docs/README-full.md](docs/README-full.md) and the [docs/](docs/) folder
+- Viewer: C++ / Qt 6.12 (`cpp/`). Helper: Python 3.14 + PySide6 (`voxprint_lucent/`).
+- Shared library: voxprint-common v0.8.0 (git tag pin, commit in `share/voxprint-common.pin.json`).
+- Packages: `packaging/linux/build-release.sh` (deb), `packaging/windows/build-m0-harness.ps1` + `build-release.ps1` (MSI). CI builds both as workflow artifacts.
+- Docs: [docs/README-full.md](docs/README-full.md) and [docs/](docs/).
 
 License: [Apache-2.0](LICENSE)
 

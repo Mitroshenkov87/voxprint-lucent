@@ -1,4 +1,4 @@
-"""Image output policy. AVIF is the default. PNG is not an output format."""
+"""Image output policy. WebP is the default. PNG is not an output format."""
 
 from __future__ import annotations
 
@@ -19,9 +19,12 @@ class OutputFormat(Enum):
     HEIC = "heic"
 
 
-DEFAULT_OUTPUT_FORMAT = OutputFormat.AVIF
+DEFAULT_OUTPUT_FORMAT = OutputFormat.WEBP
 MODERN_OUTPUT_FORMATS = (OutputFormat.AVIF, OutputFormat.JXL, OutputFormat.WEBP)
 LEGACY_OUTPUT_FORMATS = (OutputFormat.JPEG, OutputFormat.HEIC)
+
+# WebP refuses to encode a raster with any side longer than this.
+WEBP_MAX_SIDE = 16383
 
 
 class PngRejected(ValueError):
@@ -43,6 +46,13 @@ def parse_output_format(name: str) -> OutputFormat:
         return OutputFormat(key)
     except ValueError as exc:
         raise ValueError(f"Unsupported output format: {name}") from exc
+
+
+def choose_output_format(width: int, height: int, wanted: OutputFormat) -> OutputFormat:
+    """Return the format to encode. WebP too large for its codec falls back to JPEG."""
+    if wanted is OutputFormat.WEBP and (width > WEBP_MAX_SIDE or height > WEBP_MAX_SIDE):
+        return OutputFormat.JPEG
+    return wanted
 
 
 def extension_for(fmt: OutputFormat) -> str:

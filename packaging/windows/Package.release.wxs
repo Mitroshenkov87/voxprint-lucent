@@ -1,10 +1,8 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <?define LucentVersion="0.1.0-rc8"?>
-  <?define LucentBuild="9"?>
   <Package
       Name="VOXPrint AI Lucent"
       Manufacturer="Aleksandr Mitroshenkov"
-      Version="0.1.0.8"
+      Version="$(var.MsiVersion)"
       UpgradeCode="7C2A9E14-6B0F-4E3A-9D55-1A2B3C4D5E6F"
       Scope="perMachine"
       Compressed="yes">
@@ -12,7 +10,6 @@
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="LucentIcon" SourceFile="..\..\assets\voxprint-lucent.ico" />
     <Property Id="ARPPRODUCTICON" Value="LucentIcon" />
-    <Property Id="SUITE_LANG" Value="en" />
     <Property Id="INSTALL_PWSH" Value="0" />
     <Property Id="INSTALLDESKTOPSHORTCUT" Value="0" />
     <Feature Id="Main" Title="VOXPrint AI Lucent" Level="1">
@@ -24,7 +21,7 @@
         Id="MigrateSuite"
         Before="MigrateSuite"
         Sequence="execute"
-        Value="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]migrate-suite.ps1&quot; -InstallPwsh &quot;[INSTALL_PWSH]&quot; -Language &quot;[SUITE_LANG]&quot;" />
+        Value="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]migrate-suite.ps1&quot; -InstallPwsh &quot;[INSTALL_PWSH]&quot; -InstallDir &quot;[INSTALLFOLDER].&quot;" />
     <CustomAction
         Id="MigrateSuite"
         BinaryRef="Wix4UtilCA_X64"
@@ -86,6 +83,29 @@
           <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent.exe" Name="Path" Type="string" Value="[INSTALLFOLDER]" />
           <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent-cli.exe" Type="string" Value="[INSTALLFOLDER]voxprint-lucent-cli.exe" />
           <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\voxprint-lucent-cli.exe" Name="Path" Type="string" Value="[INSTALLFOLDER]" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe" Name="FriendlyAppName" Type="string" Value="VOXPrint AI Lucent" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\DefaultIcon" Type="string" Value="[INSTALLFOLDER]assets\voxprint-lucent.ico" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\shell\open\command" Type="string" Value="&quot;[INSTALLFOLDER]voxprint-lucent.exe&quot; &quot;%1&quot;" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".avif" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.avif\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".jxl" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.jxl\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".webp" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.webp\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".jpg" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.jpg\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".jpeg" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.jpeg\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".png" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.png\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".gif" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.gif\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".bmp" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.bmp\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".tif" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.tif\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" Name=".tiff" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\.tiff\OpenWithList\voxprint-lucent.exe" Type="string" Value="" />
         </Component>
       </Directory>
     </StandardDirectory>
@@ -106,15 +126,6 @@
     <UI>
       <Dialog Id="SuiteChoices" Width="370" Height="300" Title="VOXPrint AI Lucent">
         <Control Id="Title" Type="Text" X="20" Y="16" Width="330" Height="20" Text="VOXPrint AI Lucent" />
-        <Control Id="LangLabel" Type="Text" X="20" Y="48" Width="330" Height="16" Text="Language" />
-        <Control Id="Lang" Type="ComboBox" X="20" Y="68" Width="180" Height="16" Property="SUITE_LANG" ComboList="yes" Sorted="no">
-          <ComboBox Property="SUITE_LANG">
-            <ListItem Text="English" Value="en" />
-            <ListItem Text="Deutsch" Value="de" />
-            <ListItem Text="Ukrainian" Value="uk" />
-            <ListItem Text="Latvian" Value="lv" />
-          </ComboBox>
-        </Control>
         <Control Id="Pwsh" Type="CheckBox" X="20" Y="110" Width="330" Height="32" Property="INSTALL_PWSH" CheckBoxValue="1" Text="Install PowerShell 7. Leave this off to use Windows PowerShell 5.1." />
         <Control Id="Desktop" Type="CheckBox" X="20" Y="150" Width="330" Height="32" Property="INSTALLDESKTOPSHORTCUT" CheckBoxValue="1" Text="Create a desktop shortcut" />
         <Control Id="Next" Type="PushButton" X="230" Y="260" Width="56" Height="17" Default="yes" Text="Install">

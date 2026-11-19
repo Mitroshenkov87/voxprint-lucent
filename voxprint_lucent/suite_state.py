@@ -34,9 +34,17 @@ _TOKEN: dict[str, tuple[int, int]] = {}
 def data_home() -> Path:
     """Return the suite data root.
 
-    ``VOXPRINT_HOME``, when set and not empty, replaces the platform directory.
-    This is the only function that spells that directory.
+    voxprint-common owns the path: ``VOXPRINT_HOME`` still wins because
+    voxprint-common honours it. The import stays inside this function so
+    ``tools_host`` can load without pulling in voxprint-common. Without
+    voxprint-common the platform directory is spelled here.
     """
+    try:
+        from voxprint_common.paths import home as suite_home
+    except ImportError:
+        suite_home = None
+    if suite_home is not None:
+        return suite_home()
     override = os.environ.get("VOXPRINT_HOME", "").strip()
     if override:
         return Path(override)

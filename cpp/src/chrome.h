@@ -56,8 +56,6 @@ struct ChromeCallbacks {
     std::function<void()> enlarge;
     /// Open the hotkey editor.
     std::function<void()> hotkeys;
-    /// Switch to this language code.
-    std::function<void(const QString &)> language;
     /// Show or hide the thumbnail strip.
     std::function<void(bool)> galleryVisible;
     /// Set the slideshow delay in milliseconds.
@@ -184,8 +182,6 @@ private:
     void commitCombo(QComboBox *box, const char *key);
     void resizeExpert(int delta);
     void startJob();
-    void offerEnlargeInstall();
-    void startInstall();
     void readJob();
     void finishJob(int code);
     void cancelJob();

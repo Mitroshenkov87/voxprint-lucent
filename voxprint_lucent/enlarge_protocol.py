@@ -13,10 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from voxprint_lucent.discovery import pipe_name, socket_path
-from voxprint_lucent.formats import OutputFormat, parse_output_format
+from voxprint_lucent.formats import DEFAULT_OUTPUT_FORMAT, OutputFormat, parse_output_format
 
 PROTOCOL = 1
-ENLARGE_RELEASES_URL = "https://github.com/Mitroshenkov87/voxprint-enlarge/releases"
 
 ERROR_CODES = frozenset(
     {
@@ -116,7 +115,7 @@ def enlarged_destination(
     directory: Path | None = None,
 ) -> Path:
     """``<name>.enlarged-<scale>x.<ext>`` beside the source. A collision starts at ``-2``."""
-    chosen = OutputFormat.AVIF if fmt is None else fmt
+    chosen = DEFAULT_OUTPUT_FORMAT if fmt is None else fmt
     folder = source.parent if directory is None else directory
     ext = _OUTPUT_EXT[chosen]
     candidate = folder / f"{source.stem}.enlarged-{scale}x{ext}"
@@ -124,9 +123,9 @@ def enlarged_destination(
 
 
 def output_format_name(name: str) -> OutputFormat:
-    """AVIF when the request leaves the format empty. PNG is rejected by the parser."""
+    """WebP when the request leaves the format empty. PNG is rejected by the parser."""
     if not name.strip():
-        return OutputFormat.AVIF
+        return DEFAULT_OUTPUT_FORMAT
     return parse_output_format(name)
 
 
@@ -213,11 +212,6 @@ def action_enabled(caps: Capabilities | None) -> bool:
 def action_visible(caps: Capabilities | None) -> bool:
     """Same rule as ``action_enabled``. The button stays on screen either way."""
     return action_enabled(caps)
-
-
-def install_offered(caps: Capabilities | None) -> bool:
-    """An Install Enlarge button is offered only when the program is absent."""
-    return caps is None
 
 
 def action_tooltip(caps: Capabilities | None) -> str:

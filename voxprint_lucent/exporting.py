@@ -1,4 +1,4 @@
-"""Save a copy. Default format is AVIF. This module is not imported for a normal open."""
+"""Save a copy. Default format is WebP. This module is not imported for a normal open."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from voxprint_lucent.formats import (
     CodecMissing,
     OutputFormat,
     PngRejected,
+    choose_output_format,
     copy_destination,
     parse_output_format,
     write_raster,
@@ -59,11 +60,25 @@ def export_copy(args) -> int:  # type: ignore[no-untyped-def]
 
 
 def write_qimage(image: QImage, dest: Path, fmt: OutputFormat, *, lossless: bool) -> Path:
-    """Encode `image` to `dest`."""
+    """Encode `image` to `dest`. WebP falls back to JPEG when it cannot be written."""
     rgba = image.convertToFormat(QImage.Format.Format_RGBA8888)
     width, height = rgba.width(), rgba.height()
     stride = rgba.bytesPerLine()
     raw = bytes(rgba.constBits())
     rows = np.frombuffer(raw, dtype=np.uint8).reshape((height, stride))
     pixels = np.ascontiguousarray(rows[:, : width * 4].reshape((height, width, 4)))
-    return write_raster(pixels, dest, fmt, lossless=lossless)
+    chosen = choose_output_format(width, height, fmt)
+    if chosen is not fmt:
+        dest = dest.with_suffix(".jpg")
+        print(
+            f"image is too large for WebP ({width}x{height}); fell back to JPEG: {dest.name}",
+            file=sys.stderr,
+        )
+    try:
+        return write_raster(pixels, dest, chosen, lossless=lossless)
+    except Exception as exc:
+        if chosen is not OutputFormat.WEBP:
+            raise
+        fallback = dest.with_suffix(".jpg")
+        print(f"WebP encoding failed ({exc}); fell back to JPEG: {fallback.name}", file=sys.stderr)
+        return write_raster(pixels, fallback, OutputFormat.JPEG, lossless=False)

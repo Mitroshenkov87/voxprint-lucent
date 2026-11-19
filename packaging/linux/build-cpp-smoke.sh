@@ -97,7 +97,7 @@ fi
 # After the timed launch. --dry-run uses QCoreApplication: no window, no GPU.
 ver=$("$ROOT/cpp/build-ci/voxprint-lucent" --version)
 printf '%s\n' "$ver"
-printf '%s\n' "$ver" | grep -q '0.1.0 RC'
+printf '%s\n' "$ver" | grep -q '0.8.0'
 printf '%s\n' "$ver" | grep -q 'build 9'
 printf '%s\n' "$ver" | grep -q Bahir
 absent=$("$ROOT/cpp/build-ci/voxprint-lucent" --dry-run /tmp/lucent-smoke.jpg)
@@ -105,7 +105,6 @@ printf '%s\n' "$absent"
 printf '%s\n' "$absent" | grep -q '"dry_run":true'
 printf '%s\n' "$absent" | grep -q '"startup":"ok"'
 printf '%s\n' "$absent" | grep -q '"installed":false'
-printf '%s\n' "$absent" | grep -q 'github.com/Mitroshenkov87/voxprint-enlarge/releases'
 stub=/tmp/lucent-enlarge-stub
 cat > "$stub" <<'EOF'
 #!/bin/sh

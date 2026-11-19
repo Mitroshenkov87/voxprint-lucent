@@ -10,10 +10,8 @@
 <p align="center">A fast image viewer that keeps the colour you expect.</p>
 
 <p align="center">
-  <a href="https://github.com/Mitroshenkov87/voxprint-lucent/releases"><img src="https://img.shields.io/github/v/release/Mitroshenkov87/voxprint-lucent?include_prereleases&amp;label=release" alt="Release"></a>
   <a href="https://github.com/Mitroshenkov87/voxprint-lucent/blob/main/LICENSE"><img src="https://img.shields.io/badge/licence-Apache--2.0-blue" alt="Apache-2.0"></a>
   <a href="https://github.com/Mitroshenkov87/voxprint-lucent/actions/workflows/ci.yml"><img src="https://github.com/Mitroshenkov87/voxprint-lucent/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://mitroshenkov87.github.io/voxprint-lucent/"><img src="https://img.shields.io/badge/docs-pages-blue" alt="Docs"></a>
 </p>
 
 Lucent is the image viewer in the [Voxprint AI Media Suite](https://github.com/Mitroshenkov87). Double-click a picture and it should be on screen immediately. Opening an image does not use the network. One later action can hand the file to Voxprint AI Enlarge.
@@ -22,7 +20,7 @@ Lucent is a clean-room project. No ImageGlass code, assets, themes, icons, or co
 
 ## Features
 
-- JPEG, WebP, PNG, GIF, TIFF, and BMP. The Windows installer also includes AVIF and JPEG XL.
+- AVIF, JPEG XL, JPEG, WebP, PNG, GIF, TIFF, and BMP on Windows and Linux.
 - Embedded colour profiles are converted for an sRGB screen. A photo stored on its side is shown upright.
 - A slim toolbar, a folder strip, slideshow, fullscreen, and keys you can remap.
 - A tools window for dimensions, format, bit depth, colour profile, and a JPEG EXIF summary.
@@ -57,21 +55,19 @@ These are the Windows viewer, cropped from a 1920×1032 desktop.
 - Windows 11 24H2 or newer, or Windows Server 2025, x64. Linux distributions from 2025 onward, x86-64-v3 (AVX2). There is no 32-bit build.
 - **Viewing does not need an NVIDIA GPU.** Any modern GPU, including an integrated one, is enough. `LUCENT_RHI=0` keeps painting on the CPU.
 - The Windows installer brings its own Qt runtime, AVIF and JPEG XL plugins, and the tools program. You do not install Qt or Python yourself.
-- Tools and the Enlarge hand-off on Linux need Python 3.15. The Linux package's viewer includes Qt 6.12, JPEG, and WebP. AVIF and JPEG XL plugins are in the Windows installer.
+- The Linux package (`voxprint-lucent_<version>_amd64.deb`) installs under `/opt/voxprint-ai-suite/lucent` and brings its own Qt 6.12 runtime, native AVIF and JPEG XL decoding, and an embedded Python 3.14 for the tools program.
 - Enlarge is a separate application. Lucent only contains the client. Enlarge has its own requirements and warns below an RTX 40. Lucent itself still opens images without it.
 
 ## Install
 
-Release files are on this repository's GitHub releases. `v0.1.0-rc8` is a pre-release. The release title is `0.1.0 RC · build 9 "Bahir"`. Check `SHA256SUMS` against the download.
+Installers are built by CI as workflow artifacts (`voxprint-lucent-linux-deb`, `voxprint-lucent-windows-msi`). There are no release pages.
 
-**Windows.** Run `voxprint-lucent-setup-0.1.0-rc8-win-x64.msi`. It installs for the machine under `C:\Program Files\VOXPrint AI Suite\Lucent` and asks for an administrator. The Start menu folder is `VOXPrint AI Suite` and the shortcut is `VOXPrint AI Lucent`. Setup moves `%LOCALAPPDATA%\Voxprint` to `%LOCALAPPDATA%\VOXPrint AI Suite` before the app runs, and removes an older per-user install. Your settings stay. `migrate-suite.ps1` in the install folder is that step.
-
-The zip `voxprint-lucent-0.1.0-rc8-win-x64.zip` is the measurement bundle (the viewer, `Run-M0.ps1`, and `Run-Checks.ps1`), not a second install method. Use it when you want the cold-start sample described in `docs/M0-RESULTS.md`.
+**Windows.** Run `voxprint-lucent-setup-<version>-win-x64.msi` (silent: `msiexec /i <file> /qn`). It installs for the machine under `C:\Program Files\VOXPrint AI Suite\Lucent` and asks for an administrator. The Start menu folder is `VOXPrint AI Suite` and the shortcut is `VOXPrint AI Lucent`. Setup moves `%LOCALAPPDATA%\Voxprint` to `%LOCALAPPDATA%\VOXPrint AI Suite`, removes an older per-user install, and records Lucent in `state\installed-apps.json`. `migrate-suite.ps1` in the install folder is that step.
 
 **Linux.**
 
 ```bash
-sudo apt install ./voxprint-lucent_0.1.0-rc8_amd64.deb
+sudo apt install ./voxprint-lucent_<version>_amd64.deb
 ```
 
 ## Quick start
@@ -108,7 +104,7 @@ All of these can be remapped with Ctrl+K.
 
 ## Command line
 
-`voxprint-lucent --version` prints the build label. `voxprint-lucent --dry-run` checks startup and the Enlarge hand-off without a window or a GPU. The full reference, generated from each program's own `--help`, is [docs/CLI.md](CLI.md). The same page is on the [docs site](https://mitroshenkov87.github.io/voxprint-lucent/CLI/).
+`voxprint-lucent --version` prints the build label. `voxprint-lucent --dry-run` checks startup and the Enlarge hand-off without a window or a GPU. The full reference, generated from each program's own `--help`, is [docs/CLI.md](CLI.md).
 
 ## Formats
 
@@ -126,7 +122,7 @@ Enlarge is optional. With Voxprint AI Enlarge installed:
 voxprint-lucent-tools --enlarge --path photo.jpg
 ```
 
-Lucent finds Enlarge from its install registration and runs `voxprint-enlarge` with `--json-progress`. It sends the file path, not the pixels, and does not open Enlarge's socket. The tools window opens a before/after split. Keep leaves the result. Reveal opens the folder. Discard deletes the result and leaves the original. If Enlarge is not installed, the action stays disabled and Install Enlarge opens the Enlarge releases page. If Enlarge reports no usable GPU, the action stays disabled and that button is not shown. A GPU that is usable but below an RTX 40 stays available and shows Enlarge's warning on the button.
+Lucent finds Enlarge from its install registration and runs `voxprint-enlarge-cli` (Windows) or `voxprint-enlarge` (Linux) with `--json-progress` and `--format webp`. It sends the file path, not the pixels, and does not open Enlarge's socket. The tools window opens a before/after split. Keep leaves the result. Reveal opens the folder. Discard deletes the result and leaves the original. If Enlarge is not installed, the action stays disabled with the tooltip "Enlarge is not installed." If Enlarge reports no usable GPU, the action stays disabled and that button is not shown. A GPU that is usable but below an RTX 40 stays available and shows Enlarge's warning on the button.
 
 The protocol is [docs/IPC-ENLARGE.md](IPC-ENLARGE.md). Discovery is [docs/APP-DISCOVERY.md](APP-DISCOVERY.md). This repository does not ship the Enlarge server. Tests use `python -m voxprint_lucent.enlarge_mock`.
 
@@ -148,9 +144,9 @@ sudo apt remove voxprint-lucent
 
 ## Roadmap
 
-The next version adds AVIF and JPEG XL to the Linux package and applies a monitor profile. Later, the command line will cover every action in the window.
+The next version applies a monitor profile. Later, the command line will cover every action in the window.
 
-The full list is in [ROADMAP.md](https://github.com/Mitroshenkov87/voxprint-lucent/blob/main/ROADMAP.md). Guides and the API reference are published at <https://mitroshenkov87.github.io/voxprint-lucent/>.
+The full list is in [ROADMAP.md](https://github.com/Mitroshenkov87/voxprint-lucent/blob/main/ROADMAP.md).
 
 ## ☕ Support the Project
 
@@ -169,10 +165,10 @@ Apache License 2.0. See [LICENSE](https://github.com/Mitroshenkov87/voxprint-luc
 
 ## Develop
 
-Build instructions, the first-pixel budgets, and the milestone notes live in `docs/`. A checkout uses Python 3.15:
+Build instructions, the first-pixel budgets, and the milestone notes live in `docs/`. A checkout uses Python 3.14:
 
 ```bash
-python3.15 -m venv .venv
+python3.14 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 .venv/bin/ruff check .
 .venv/bin/pytest

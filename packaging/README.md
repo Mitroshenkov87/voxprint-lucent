@@ -1,23 +1,26 @@
 # Packaging
 
-M0 ships installer skeletons. They produce artifacts. They are not the Nuitka onedir release from PLAN-v1 milestone M4.
+Both installers are built by `.github/workflows/ci.yml` as workflow artifacts. There are no release pages or release assets.
 
-## Windows: WiX Toolset 7
+## Linux: Debian package
 
-`packaging/windows/build-installer.ps1` builds a skeleton MSI with WiX 7 (`wix build`). The release package is `Package.release.wxs`: per-machine, under `C:\Program Files\VOXPrint AI Suite\Lucent`, publisher `VOXPrint AI Suite`.
+`packaging/linux/build-release.sh` builds `dist/voxprint-lucent_<version>_amd64.deb`. Everything installs under `/opt/voxprint-ai-suite/lucent` (the suite install root from voxprint-common):
 
-MSIX is not used. A packaged sandbox would get in the way of the later Enlarge local socket and of per-user file associations. Inno Setup is not used; WiX is the forward-only Windows installer.
+- the C++ viewer linked against libavif and libjxl (native AVIF and JPEG XL), with those libraries and their codec libraries bundled in `lib/`;
+- the Qt 6.12 runtime and plugins (aqtinstall);
+- an embedded Python 3.14 (python-build-standalone through `uv`) with PySide6-Essentials, imagecodecs, numpy, voxprint-common from its git tag, and the `voxprint_lucent` helper;
+- `/usr/bin/voxprint-lucent`, `voxprint-lucent-cli`, `voxprint-lucent-tools`, the desktop entry and hicolor icons.
 
-The MSI currently installs a launcher script. That script is a packaging skeleton. The product executable is the C++ `voxprint-lucent` binary. M4 replaces the skeleton payload with the real install layout.
+The launcher records the install in `<suite home>/state/installed-apps.json` through `python -m voxprint_lucent.register` (voxprint-common `register_app`). Build needs cmake, ninja, a C++ compiler, uv, `libavif-dev` and `libjxl-dev`.
 
-## Linux: Debian package in CI, Flatpak later
+`packaging/linux/smoke-deb.sh <deb> [--install]` installs (or unpacks) the package and opens WebP, AVIF, JPEG XL and JPEG offscreen.
 
-`packaging/linux/build-deb.sh` builds `voxprint-lucent_<version>_amd64.deb` with `dpkg-deb`. The archive contains the Python package, a `voxprint-lucent` launcher, and `ai.voxprint.Lucent.desktop`. It depends on Python 3.15 and expects the Python dependencies to be present. CI can build it in seconds.
+## Windows: WiX MSI (Lucent-only exception)
 
-Flatpak with the `org.kde.Platform` runtime is the intended Linux delivery (that runtime already has KImageFormats). Downloading the runtime on every GitHub Actions run would spend the free minutes budget, so CI does not build a Flatpak. The manifest is `packaging/linux/ai.voxprint.Lucent.yml` for that later build.
+`packaging/windows/build-m0-harness.ps1` builds the tree (C++ viewer, Qt 6.12, KImageFormats AVIF and JPEG XL plugins, embeddable Python 3.14 with the helper). `packaging/windows/build-release.ps1` packs it into `dist/voxprint-lucent-setup-<version>-win-x64.msi` with WiX 7 (`Package.release.wxs`): per machine under `C:\Program Files\VOXPrint AI Suite\Lucent`, Start menu `VOXPrint AI Suite\VOXPrint AI Lucent`, App Paths, `HKLM\Software\VOXPrint\Lucent`, and "Open with" entries for image types. Setup runs `migrate-suite.ps1`, which also registers Lucent in `installed-apps.json`.
 
-## What CI runs
+`packaging/windows/smoke-msi.ps1 -Msi <file>` installs silently, opens the same samples offscreen, checks the registry row, and uninstalls.
 
-The policy and the minute estimates are in [docs/CI.md](../docs/CI.md). Pull requests run Ubuntu lint, tests, and the C++ smoke build. Pushes to `main` and `workflow_dispatch` also run the benchmarks, the skeleton deb, the skeleton WiX package, and the Windows M0 harness. A `v*` tag runs `.github/workflows/release.yml` instead: `voxprint-lucent-setup-<version>-win-x64.msi`, `voxprint-lucent-<version>-win-x64.zip`, and `voxprint-lucent_<version>_amd64.deb`, with `SHA256SUMS`, published as a GitHub release (pre-release when the tag contains `-`).
+## Flatpak
 
-`windows-latest` builds `dist/lucent-m0-windows.zip` on those heavy runs: the C++ viewer, the Qt 6.12 runtime, KImageFormats AVIF and JPEG XL plugins, embeddable Python with the PySide6 comparison viewer, test images, and `Run-M0.ps1`. libavif in that zip is `libavif[dav1d]`: the vcpkg port enables no AV1 codec unless a feature is named, and without one the AVIF plugin loads and then rejects every file. That embeddable interpreter ignores `PYTHONPATH` while `python*._pth` exists, so the build lists `..\app` in that file (paths are relative to the `python` folder). A git checkout still uses a normal interpreter and `PYTHONPATH`. Nuitka is not part of CI. The Ubuntu smoke build uses aqtinstall Qt 6.12, not the distro's Qt 6.4, and logs in-process `first_image_presented_ms` for a warm tiny JPEG without failing the job on that time. For v0.1.x the cold first pixel is 450 ms. `Run-M0.ps1` records the 12 megapixel AVIF and JPEG XL warm budget of 350 ms.
+`packaging/linux/ai.voxprint.Lucent.yml` is kept for a later Flatpak build. CI does not build it.

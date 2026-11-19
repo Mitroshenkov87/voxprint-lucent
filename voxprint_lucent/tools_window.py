@@ -77,7 +77,7 @@ class ToolsWindow(QWidget):
         for box in (self._crop_x, self._crop_y, self._crop_w, self._crop_h):
             box.setRange(0, 100000)
         self._format = QComboBox()
-        self._format.addItems(["avif", "jxl", "webp"])
+        self._format.addItems(["webp", "jpeg", "avif", "jxl"])
         root = QHBoxLayout(self)
         root.addWidget(self._preview, 1)
         side = QVBoxLayout()

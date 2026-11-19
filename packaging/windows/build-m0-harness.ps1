@@ -6,8 +6,8 @@
 .DESCRIPTION
     Used by GitHub Actions on windows-latest. Produces dist\lucent-m0-windows.zip
     with the C++/Qt 6.12 viewer, windeployqt runtime, KImageFormats AVIF and
-    JPEG XL plugins (HEIF off, no libde265/x265), embeddable Python 3.15.2 plus
-    PySide6-Essentials, the comparison viewer, 12 MP test images, Run-M0.ps1,
+    JPEG XL plugins (HEIF off, no libde265/x265), embeddable Python 3.14 plus
+    PySide6-Essentials and voxprint-common (git tag pin), the comparison viewer, 12 MP test images, Run-M0.ps1,
     and Run-Checks.ps1 with the hard image set.
 #>
 [CmdletBinding()]
@@ -22,7 +22,11 @@ $QtRoot = 'C:\Qt'
 $Stage = Join-Path $Repo 'dist\m0-harness'
 $Zip = Join-Path $Repo 'dist\lucent-m0-windows.zip'
 $Work = Join-Path $Repo 'dist\m0-work'
-$PythonVersion = '3.15.2'
+$PythonVersion = '3.14.10'
+# voxprint-common comes from the git tag pinned in pyproject.toml (no release wheel).
+$CommonMatch = Select-String -LiteralPath (Join-Path $Repo 'pyproject.toml') -Pattern '"voxprint-common\[ui\] @ (git\+[^"]+)"'
+if (-not $CommonMatch) { throw 'voxprint-common git pin not found in pyproject.toml' }
+$CommonReq = 'voxprint-common @ ' + $CommonMatch.Matches[0].Groups[1].Value
 
 function Invoke-Native {
     param([scriptblock]$Command)
@@ -210,7 +214,7 @@ $PyDir = Join-Path $Stage 'python'
 Expand-Archive -Path $PyZip -DestinationPath $PyDir -Force
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 @(
-    'python315.zip',
+    'python314.zip',
     '.',
     'Lib\site-packages',
     'import site'
@@ -218,7 +222,7 @@ $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile (Join-Path $Work 'get-pip.py')
 Invoke-Native { & (Join-Path $PyDir 'python.exe') (Join-Path $Work 'get-pip.py') }
 Invoke-Native {
-    & (Join-Path $PyDir 'python.exe') -m pip install --disable-pip-version-check 'PySide6-Essentials==6.12.0' 'imagecodecs==2026.10.10' 'numpy>=2.3'
+    & (Join-Path $PyDir 'python.exe') -m pip install --disable-pip-version-check $CommonReq 'PySide6-Essentials==6.12.0' 'imagecodecs==2026.10.10' 'numpy>=2.3'
 }
 
 Write-Host 'Copying the PySide6 comparison tree'
@@ -242,7 +246,7 @@ Copy-Item (Join-Path $Repo 'scripts\vm_test.ps1') (Join-Path $Stage 'vm_test.ps1
 # PYTHONPATH is ignored. Paths in that file are relative to the python folder.
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 @(
-    'python315.zip',
+    'python314.zip',
     '.',
     '..\app',
     'Lib\site-packages',
@@ -315,6 +319,7 @@ try {
     "kimageformats=v6.31.0",
     "extra-cmake-modules=v6.31.0",
     "python=$PythonVersion",
+    "voxprint-common=$CommonReq",
     "pyside6-essentials=6.12.0",
     "imagecodecs=2026.10.10",
     "vcpkg=$vcpkgRev",

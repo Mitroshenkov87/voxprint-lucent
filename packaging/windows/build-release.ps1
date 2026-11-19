@@ -9,9 +9,13 @@ if (-not (Test-Path -LiteralPath $Exe)) {
     throw "Missing $Exe. Run packaging/windows/build-m0-harness.ps1 first."
 }
 
-$Tag = $env:LUCENT_RELEASE_TAG
-if (-not $Tag) { $Tag = 'v0.1.0-rc8' }
-$VersionName = $Tag -replace '^v', ''
+# The version comes from pyproject.toml and the build number from BUILD.json.
+$VersionMatch = Select-String -LiteralPath (Join-Path $Root 'pyproject.toml') -Pattern '^version = "([^"]+)"'
+if (-not $VersionMatch) { throw 'version not found in pyproject.toml' }
+$VersionName = $VersionMatch.Matches[0].Groups[1].Value
+$Build = (Get-Content -LiteralPath (Join-Path $Root 'BUILD.json') -Raw | ConvertFrom-Json).number
+if ($VersionName -notmatch '^\d+\.\d+\.\d+$') { throw "MSI needs a numeric version, got $VersionName" }
+$MsiVersion = "$VersionName.$Build"
 
 $Out = Join-Path $Root 'dist'
 $Payload = Join-Path $Out 'release-payload'
@@ -62,7 +66,7 @@ $PayloadArg = ((Resolve-Path $Payload).Path) -replace '\\', '/'
 Push-Location $PSScriptRoot
 try {
     & wix extension add -g WixToolset.Util.wixext/7.0.1
-    & wix build -acceptEula wix7 -arch x64 -ext WixToolset.Util.wixext -d "Payload=$PayloadArg" .\Package.release.wxs -o $Msi
+    & wix build -acceptEula wix7 -arch x64 -ext WixToolset.Util.wixext -d "Payload=$PayloadArg" -d "LucentVersion=$VersionName" -d "LucentBuild=$Build" -d "MsiVersion=$MsiVersion" .\Package.release.wxs -o $Msi
 } finally {
     Pop-Location
 }

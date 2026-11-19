@@ -1,14 +1,11 @@
-"""Labels for the tools window. English is the default.
+"""Labels for the tools window. English is the only UI language.
 
 The words come from the Lucent JSON catalogs. This module does not import Qt.
 """
 
 from __future__ import annotations
 
-import os
-
 from voxprint_lucent.catalog import label as catalog_label
-from voxprint_lucent.suite_state import ui_language
 
 _KEYS = {
     "title": "lucent.tools.title",
@@ -32,13 +29,11 @@ _KEYS = {
 
 
 def language() -> str:
-    """Return the active tools-window language code."""
-    override = os.environ.get("LUCENT_LANG", "").lower()[:2]
-    if override in {"en", "de", "uk", "lv"}:
-        return override
-    code = ui_language()
-    if code in {"en", "de", "uk", "lv"}:
-        return code
+    """Return the active tools-window language code.
+
+    Lucent ships English only, so this is always ``en`` regardless of
+    ``LUCENT_LANG`` or the suite ``ui_language`` setting.
+    """
     return "en"
 
 

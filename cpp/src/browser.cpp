@@ -27,7 +27,6 @@
 #include <QTransform>
 #include <QKeyEvent>
 #include <QLabel>
-#include <QLocale>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPainter>
@@ -273,17 +272,8 @@ void Browser::showImage(const QImage &image, bool resetZoom) {
 }
 
 void Browser::armAfterFirstPaint() {
-    const QByteArray env = qgetenv("LUCENT_LANG");
-    if (!env.isEmpty()) {
-        setLanguage(QString::fromUtf8(env));
-    } else {
-        const QString locale = QLocale::system().name().left(2).toLower();
-        setLanguage(locale);
-        QSettings settings;
-        if (settings.contains(QStringLiteral("language"))) {
-            setLanguage(settings.value(QStringLiteral("language")).toString());
-        }
-    }
+    // Lucent ships English only; there is no language switching at runtime.
+    setLanguage(QStringLiteral("en"));
     loadHotkeys();
     status_ = new QLabel(this);
     status_->setStyleSheet(QStringLiteral("color: #f2f2f5; background: transparent;"));
@@ -366,7 +356,7 @@ void Browser::refit() {
 }
 
 QString Browser::exportSuffix() const {
-    return chrome_ == nullptr ? QStringLiteral("avif") : chrome_->exportSuffix();
+    return chrome_ == nullptr ? QStringLiteral("webp") : chrome_->exportSuffix();
 }
 
 void Browser::applyMode(ZoomMode mode) {
@@ -694,30 +684,6 @@ void Browser::openTools(bool enlarge) {
 
 void Browser::checkForUpdate() { launchHost({QStringLiteral("--check-update")}); }
 
-void Browser::cycleLanguage() {
-    const QString current = language();
-    if (current == QStringLiteral("en")) {
-        setLanguage(QStringLiteral("de"));
-    } else if (current == QStringLiteral("de")) {
-        setLanguage(QStringLiteral("uk"));
-    } else if (current == QStringLiteral("uk")) {
-        setLanguage(QStringLiteral("lv"));
-    } else {
-        setLanguage(QStringLiteral("en"));
-    }
-    QSettings settings;
-    settings.setValue(QStringLiteral("language"), language());
-    setCatalogLanguage(language());
-    std::map<std::string, Json> own;
-    own.emplace("ui_language", Json::fromString(language().toStdString()));
-    std::string error;
-    writeOwnKeys(suiteSettingsPath(), own, error);
-    if (chrome_ != nullptr) {
-        chrome_->retranslate();
-    }
-    updateChrome();
-}
-
 void Browser::syncRhi() {
     if (rhi_ == nullptr || image_.isNull()) {
         return;
@@ -835,9 +801,6 @@ void Browser::keyPressEvent(QKeyEvent *event) {
         break;
     case Action::Hotkeys:
         editHotkeys(this);
-        break;
-    case Action::Language:
-        cycleLanguage();
         break;
     case Action::Quit:
         close();
@@ -1040,11 +1003,6 @@ void Browser::ensureChrome() {
     callbacks.fullscreen = [this] { toggleFullscreen(); };
     callbacks.enlarge = [this] { openTools(true); };
     callbacks.hotkeys = [this] { editHotkeys(this); };
-    callbacks.language = [this](const QString &code) {
-        setLanguage(code);
-        QSettings().setValue(QStringLiteral("language"), code);
-        updateChrome();
-    };
     callbacks.galleryVisible = [this](bool) { updateChrome(); };
     callbacks.slideshowMs = [this](int ms) {
         if (slideshow_ != nullptr) {
@@ -1252,7 +1210,15 @@ bool Browser::writeView(const QString &path) {
     if (chrome_ != nullptr) {
         writer.setQuality(chrome_->exportQuality());
     }
-    if (!writer.write(image_)) {
+    bool written = writer.write(image_);
+    if (!written && QFileInfo(path).suffix().compare(QStringLiteral("webp"), Qt::CaseInsensitive) == 0) {
+        // WebP is the default; JPEG is the fallback (for example past WebP's 16383 px limit). Never PNG.
+        const QFileInfo info(path);
+        QImageWriter jpeg(info.absolutePath() + QLatin1Char('/') + info.completeBaseName() + QStringLiteral(".jpg"), "jpg");
+        jpeg.setQuality(90);
+        written = jpeg.write(image_.convertToFormat(QImage::Format_RGB888));
+    }
+    if (!written) {
         error_ = text(Text::SaveFailed);
         updateChrome();
         update();

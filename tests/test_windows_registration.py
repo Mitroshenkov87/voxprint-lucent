@@ -16,10 +16,28 @@ def test_release_files_use_lower_case_names() -> None:
     assert "Voxprint" not in windows
     linux = Path("packaging/linux/build-release.sh").read_text(encoding="utf-8")
     assert "voxprint-lucent_${FILE_VERSION}_amd64.deb" in linux
-    workflow = Path(".github/workflows/release.yml").read_text(encoding="utf-8")
-    assert "dist/voxprint-lucent-*-win-x64.zip" in workflow
+    assert not Path(".github/workflows/release.yml").exists()
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert "voxprint-lucent-setup-*-win-x64.msi" in workflow
+    assert "deploy-pages" not in workflow
+    assert "gh release" not in workflow
     assert "voxprint-lucent-setup-<version>-win-x64.msi" in VM_TEST.read_text(encoding="utf-8")
     assert "voxprint-lucent-<version>-win-x64.zip" in RUN_M0.read_text(encoding="utf-8")
+
+
+def test_installers_bundle_python_314_and_the_common_git_pin() -> None:
+    linux = Path("packaging/linux/build-release.sh").read_text(encoding="utf-8")
+    windows = Path("packaging/windows/build-m0-harness.ps1").read_text(encoding="utf-8")
+    assert "PYTHON_VERSION=${LUCENT_PYTHON_VERSION:-3.14." in linux
+    assert "$PythonVersion = '3.14." in windows
+    assert "python314.zip" in windows
+    assert "git+" in linux
+    assert "$CommonReq" in windows
+    for text in (linux, windows):
+        assert "releases/download" not in text
+    assert "voxprint_lucent.register" in linux
+    script = Path("packaging/windows/migrate-suite.ps1").read_text(encoding="utf-8")
+    assert "voxprint_lucent.register" in script
 
 
 def test_release_msi_writes_app_discovery_values() -> None:
@@ -33,13 +51,10 @@ def test_release_msi_writes_app_discovery_values() -> None:
     assert "migrate-suite.ps1" in text
     script = Path("packaging/windows/migrate-suite.ps1").read_text(encoding="utf-8")
     assert "PowerShell-7.6.9-win-x64.msi" in script
-    choices = text.split("<ComboBox", 1)[1].split("</ComboBox>", 1)[0]
-    assert 'Value="en"' in choices
-    assert 'Value="de"' in choices
-    assert 'Value="uk"' in choices
-    assert 'Value="lv"' in choices
-    assert 'Value="ru"' not in choices
-    assert "Russian" not in choices
+    assert "<ComboBox" not in text
+    assert "SUITE_LANG" not in text
+    assert "Language" not in script
+    assert r"Software\Classes\Applications\voxprint-lucent.exe\SupportedTypes" in text
     assert 'Name="VOXPrint AI Lucent"' in text
     assert 'Id="ProgramFiles64Folder"' in text
     assert 'Name="VOXPrint AI Suite"' in text

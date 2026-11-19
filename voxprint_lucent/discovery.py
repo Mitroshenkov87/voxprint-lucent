@@ -64,6 +64,9 @@ def find_app(pascal: str, kebab: str) -> AppInstall | None:
     found = _from_shared_manifest(pascal, kebab)
     if found is not None:
         return found
+    found = _from_suite_root(kebab)
+    if found is not None:
+        return found
     found = _from_known_install(kebab)
     if found is not None:
         return found
@@ -289,6 +292,32 @@ def _from_shared_manifest(pascal: str, kebab: str) -> AppInstall | None:
             return found
     if _manifest_holds(data, kebab):
         return _from_known_install(kebab)
+    return None
+
+
+def _from_suite_root(kebab: str) -> AppInstall | None:
+    """Per-machine suite layout from voxprint-common, when that package is present.
+
+    Windows is ``suite_root()/<PascalWithSpaces>/voxprint-<kebab>-cli.exe`` and
+    then ``voxprint-<kebab>.exe``; Linux is ``suite_root()/<kebab>/voxprint-<kebab>``.
+    The voxprint-common import stays inside this function so importing this
+    module never pulls it in. A missing voxprint-common skips this step.
+    """
+    try:
+        from voxprint_common.mdl.catalog import suite_root
+    except ImportError:
+        return None
+    if sys.platform == "win32":
+        folder = " ".join(part.capitalize() for part in kebab.split("-"))
+        candidates = [
+            suite_root() / folder / f"voxprint-{kebab}-cli.exe",
+            suite_root() / folder / f"voxprint-{kebab}.exe",
+        ]
+    else:
+        candidates = [suite_root() / kebab / f"voxprint-{kebab}"]
+    for candidate in candidates:
+        if candidate.is_file():
+            return AppInstall([str(candidate.resolve())], "", f"voxprint-{kebab}")
     return None
 
 

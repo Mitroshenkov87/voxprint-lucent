@@ -35,12 +35,11 @@ QHash<QString, QString> readCatalog(const QString &path) {
 }
 
 void reload() {
+    // Lucent ships English only; no other catalog is read.
     gShellEn = readCatalog(gShare + QStringLiteral("/locales/en.json"));
     gAppEn = readCatalog(gShare + QStringLiteral("/locales/lucent/en.json"));
-    const QString code = gLanguage;
-    gShell = code == QStringLiteral("en") ? gShellEn : readCatalog(gShare + QStringLiteral("/locales/") + code + QStringLiteral(".json"));
-    gApp = code == QStringLiteral("en") ? gAppEn
-                                        : readCatalog(gShare + QStringLiteral("/locales/lucent/") + code + QStringLiteral(".json"));
+    gShell = gShellEn;
+    gApp = gAppEn;
 }
 
 }  // namespace
@@ -56,10 +55,9 @@ void loadCatalogs(const QString &shareDir) {
 QString catalogLanguage() { return gLanguage; }
 
 void setCatalogLanguage(const QString &code) {
-    const QString trimmed = code.left(2).toLower();
-    gLanguage = (trimmed == QStringLiteral("de") || trimmed == QStringLiteral("uk") || trimmed == QStringLiteral("lv"))
-        ? trimmed
-        : QStringLiteral("en");
+    // Lucent ships English only: any request keeps the catalogs on English.
+    Q_UNUSED(code);
+    gLanguage = QStringLiteral("en");
     reload();
 }
 

@@ -78,6 +78,32 @@ def test_export_frame_is_avif_not_png(tmp_path: Path) -> None:
     assert dest.resolve() != path.resolve()
 
 
+def test_webp_encode_failure_falls_back_to_jpeg(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _ = QApplication.instance() or QApplication([])
+    path = tmp_path / "dot.png"
+    image = QImage(2, 2, QImage.Format.Format_RGB32)
+    image.fill(0xFFFF0000)
+    assert image.save(str(path), "PNG")
+    import voxprint_lucent.exporting as exporting
+
+    real_write_raster = exporting.write_raster
+
+    def flaky(pixels, dest, fmt=None, *, lossless=False):
+        if fmt is exporting.OutputFormat.WEBP:
+            raise RuntimeError("webp codec exploded")
+        return real_write_raster(pixels, dest, fmt, lossless=lossless)
+
+    monkeypatch.setattr(exporting, "write_raster", flaky)
+    dest = tmp_path / "dot.webp"
+    written = exporting.write_qimage(image, dest, exporting.OutputFormat.WEBP, lossless=False)
+    assert written.suffix == ".jpg"
+    assert written.is_file()
+    assert not dest.exists()
+    assert "fell back to JPEG" in capsys.readouterr().err
+
+
 def test_crop_writes_avif_copy(tmp_path: Path) -> None:
     _ = QApplication.instance() or QApplication([])
     path = tmp_path / "dot.png"

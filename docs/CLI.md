@@ -35,10 +35,10 @@ Usage:
     HKCU\Software\VOXPrint\Enlarge, App Paths, Program Files\VOXPrint AI Suite\Enlarge,
     the shared suite manifest, the per-user installer path, then voxprint-enlarge on PATH.
     --input is always an absolute path.
-    When Enlarge is absent, enlarge.installed is false and enlarge.install_url is the releases page.
+    When Enlarge is absent, enlarge.installed is false.
     When Enlarge is present, Lucent runs: voxprint-enlarge --capabilities --json
     If IMAGE was given and that probe exits 0, Lucent then runs:
-    voxprint-enlarge --input IMAGE --scale 2 --preset photo --quality-tier fast --format avif --json-progress --dry-run
+    voxprint-enlarge --input IMAGE --scale 2 --preset photo --quality-tier fast --format webp --json-progress --dry-run
     A non-zero Enlarge status becomes Lucent's status. A missing image still exits 3.
     Combined with --benchmark, --dry-run wins and FIRST_PIXEL is not printed.
 
@@ -86,9 +86,9 @@ options:
   --navigate-next NAVIGATE_NEXT
                         With --benchmark, time a switch to this already-
                         decoded neighbour
-  --export [EXPORT]     Save a copy and quit. Default format is AVIF.
-  --format FORMAT       Output format for --export: avif (default), jxl, webp,
-                        jpeg, heic. PNG is rejected.
+  --export [EXPORT]     Save a copy and quit. Default format is WebP.
+  --format FORMAT       Output format for --export: webp (default), jpeg,
+                        avif, jxl. PNG is rejected.
   --lossless            Lossless JPEG XL or WebP when that format is selected
   --version             show program's version number and exit
 ```
@@ -99,26 +99,20 @@ options:
 
 ```text
 usage: voxprint-lucent-tools [-h] [--ping] [--path PATH] [--enlarge]
-                             [--frame FRAME] [--check-update] [--enlarge-size]
-                             [--install-enlarge] [--shell]
+                             [--frame FRAME] [--check-update] [--shell]
 
 VOXPrint AI Lucent tools host. Not part of viewer startup.
 
 options:
-  -h, --help         show this help message and exit
-  --ping             Answer without loading Qt. Used to prove this process is
-                     separate.
-  --path PATH        Image the viewer had open.
-  --enlarge          Open the Enlarge hand-off for --path instead of the info
-                     panel.
-  --frame FRAME      Frame index to enlarge when the file has more than one. A
-                     still ignores this.
-  --check-update     Read this repository's GitHub releases and print a newer
-                     tag.
-  --enlarge-size     Print the Enlarge download size in bytes, or 0 when the
-                     release metadata has none.
-  --install-enlarge  Download the Enlarge release package and print progress.
-                     Not part of viewer startup.
-  --shell            Open the shared viewer screen. Not part of viewer
-                     startup.
+  -h, --help      show this help message and exit
+  --ping          Answer without loading Qt. Used to prove this process is
+                  separate.
+  --path PATH     Image the viewer had open.
+  --enlarge       Open the Enlarge hand-off for --path instead of the info
+                  panel.
+  --frame FRAME   Frame index to enlarge when the file has more than one. A
+                  still ignores this.
+  --check-update  Read this repository's GitHub releases and print a newer
+                  tag.
+  --shell         Open the shared viewer screen. Not part of viewer startup.
 ```
