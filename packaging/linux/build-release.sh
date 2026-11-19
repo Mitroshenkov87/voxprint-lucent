@@ -128,9 +128,9 @@ rm -rf "$LIB/python/lib/python3.14/test" "$LIB/python/lib/python3.14/idlelib" "$
 # must not leak into PySide6.
 cat > "$LIB/bin/lucent-python" << 'EOF2'
 #!/bin/sh
-unset LD_LIBRARY_PATH QT_PLUGIN_PATH
+unset LD_LIBRARY_PATH QT_PLUGIN_PATH PYTHONPATH PYTHONHOME
 HERE=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-exec "$HERE/python/bin/python3" "$@"
+exec "$HERE/python/bin/python3" -s "$@"
 EOF2
 
 cat > "$STAGE/usr/bin/voxprint-lucent" << EOF2
