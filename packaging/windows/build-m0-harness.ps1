@@ -119,7 +119,26 @@ Write-Host 'Installing libavif (dav1d decoder), libjxl, and pkgconf'
 # The vcpkg libavif port has no default codec. Without dav1d, kimg_avif loads
 # and then refuses every file because avifCodecName(CAN_DECODE) is null.
 $env:VCPKG_DEFAULT_TRIPLET = 'x64-windows'
-Invoke-Native { & (Join-Path $env:VCPKG_ROOT 'vcpkg.exe') install 'libavif[dav1d]' libjxl pkgconf --triplet x64-windows }
+# MSVC 14.52 (runner image 20261116) no longer skips the undefined
+# __has_include_next() in dav1d 1.5.4's compat/msvc/stdatomic.h. A forced
+# include defines it as 0 for C sources only; this overlay triplet is otherwise
+# the stock x64-windows triplet.
+$Overlay = Join-Path $Work 'vcpkg-triplets'
+New-Item -ItemType Directory -Force -Path $Overlay | Out-Null
+$Compat = (Join-Path $Overlay 'has_include_next.h') -replace '\\', '/'
+Set-Content -LiteralPath $Compat -Encoding ascii -Value @(
+    '#ifndef __has_include_next',
+    '#define __has_include_next(x) 0',
+    '#endif'
+)
+Set-Content -LiteralPath (Join-Path $Overlay 'x64-windows.cmake') -Encoding ascii -Value @(
+    'set(VCPKG_TARGET_ARCHITECTURE x64)',
+    'set(VCPKG_CRT_LINKAGE dynamic)',
+    'set(VCPKG_LIBRARY_LINKAGE dynamic)',
+    "set(VCPKG_C_FLAGS `"/FI$Compat`")",
+    'set(VCPKG_CXX_FLAGS "")'
+)
+Invoke-Native { & (Join-Path $env:VCPKG_ROOT 'vcpkg.exe') install 'libavif[dav1d]' libjxl pkgconf --triplet x64-windows "--overlay-triplets=$Overlay" }
 $VcpkgInstalled = Join-Path $env:VCPKG_ROOT 'installed\x64-windows'
 $dav1d = @(Get-ChildItem (Join-Path $VcpkgInstalled 'bin') -Filter '*dav1d*.dll' -ErrorAction SilentlyContinue)
 if (-not $dav1d) {
