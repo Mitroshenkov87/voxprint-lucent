@@ -240,8 +240,17 @@ $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 ) | Set-Content -LiteralPath $Pth.FullName -Encoding ASCII
 Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile (Join-Path $Work 'get-pip.py')
 Invoke-Native { & (Join-Path $PyDir 'python.exe') (Join-Path $Work 'get-pip.py') }
+# The embeddable runtime's ._pth fixes sys.path, so pip's isolated build env
+# cannot import hatchling there. Build the voxprint-common wheel from the git pin
+# with the runner's Python 3.14, then install that wheel into the runtime.
+$Wheels = Join-Path $Work 'wheels'
+if (Test-Path $Wheels) { Remove-Item -Recurse -Force $Wheels }
+Invoke-Native { python -m pip wheel --disable-pip-version-check --no-deps -w $Wheels $CommonReq }
+$CommonWheel = Get-ChildItem $Wheels -Filter 'voxprint_common-*.whl' | Select-Object -First 1
+if (-not $CommonWheel) { throw 'voxprint-common wheel was not built from the git pin' }
+$CommonExtras = if ($CommonReq -match '\[(?<x>[^\]]+)\]') { "[$($Matches.x)]" } else { '' }
 Invoke-Native {
-    & (Join-Path $PyDir 'python.exe') -m pip install --disable-pip-version-check $CommonReq 'PySide6-Essentials==6.12.0' 'imagecodecs==2026.10.10' 'numpy>=2.3'
+    & (Join-Path $PyDir 'python.exe') -m pip install --disable-pip-version-check "$($CommonWheel.FullName)$CommonExtras" 'PySide6-Essentials==6.12.0' 'imagecodecs==2026.10.10' 'numpy>=2.3'
 }
 
 Write-Host 'Copying the PySide6 comparison tree'
