@@ -174,7 +174,7 @@ jobs:
 
   linux-installer:
     name: Linux installer (deb)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # glibc 2.39: the deb must run on Ubuntu 24.04+ and Debian 13
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
