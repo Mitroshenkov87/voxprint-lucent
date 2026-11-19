@@ -58,7 +58,7 @@ def test_missing_file_exits_3(tmp_path: Path) -> None:
     assert proc.returncode == 3
 
 
-def test_export_defaults_to_avif(tmp_path: Path) -> None:
+def test_export_defaults_to_webp(tmp_path: Path) -> None:
     source = tmp_path / "photo.jpg"
     _solid_jpeg(source, 20, 180, 40)
     proc = subprocess.run(
@@ -70,7 +70,7 @@ def test_export_defaults_to_avif(tmp_path: Path) -> None:
     )
     assert proc.returncode == 0, proc.stderr
     written = Path(proc.stdout.strip())
-    assert written.name == "photo.avif"
+    assert written.name == "photo.webp"
     assert written.is_file()
     assert written.stat().st_size > 0
 

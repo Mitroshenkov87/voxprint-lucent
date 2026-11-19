@@ -27,7 +27,6 @@ enum class Action {
     PreviousFrame,     ///< Previous frame of this file.
     Tools,             ///< Tools window.
     Hotkeys,           ///< Hotkey editor.
-    Language,          ///< Language.
     Quit,              ///< Quit.
     Open,              ///< Open a file.
     RotateLeft,        ///< Quarter turn left.

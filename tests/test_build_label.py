@@ -18,7 +18,7 @@ def test_build_json_names_bahir() -> None:
 def test_label_ignores_workflow_run_number(monkeypatch) -> None:
     monkeypatch.setenv("GITHUB_RUN_NUMBER", "99")
     payload = json.loads(Path("BUILD.json").read_text(encoding="utf-8"))
-    expected = f'0.1.0 RC · build {payload["number"]} "{payload["codename"]}"'
+    expected = f'0.8.0 · build {payload["number"]} "{payload["codename"]}"'
     assert public_build_label() == expected
 
 

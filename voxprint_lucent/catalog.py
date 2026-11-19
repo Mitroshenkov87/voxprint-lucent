@@ -1,4 +1,4 @@
-"""JSON label catalogs. English is the fallback. This module does not import Qt."""
+"""JSON label catalogs. English is the only language. This module does not import Qt."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from voxprint_lucent.suite_state import ui_language
 from voxprint_lucent.theme_tokens import share_dir
 
 
@@ -22,17 +21,16 @@ def _read(path: str) -> dict[str, str]:
 
 
 def label(key: str, language: str | None = None) -> str:
-    """Resolve `key` from the app catalog, then the shell catalog, then English.
+    """Resolve `key` from the English app catalog, then the English shell catalog.
 
-    A key missing from English is returned unchanged.
+    Lucent ships English only: `language` is kept for compatibility and any
+    non-English value is ignored. A key missing from English is returned unchanged.
     """
-    code = (language or ui_language() or "en").split("-", 1)[0].lower()
+    _ = language
     root = share_dir()
-    app = _read(str(root / "locales" / "lucent" / f"{code}.json"))
-    shell = _read(str(root / "locales" / f"{code}.json"))
     app_en = _read(str(root / "locales" / "lucent" / "en.json"))
     shell_en = _read(str(root / "locales" / "en.json"))
-    for table in (app, shell, app_en, shell_en):
+    for table in (app_en, shell_en):
         if key in table:
             return table[key]
     return key

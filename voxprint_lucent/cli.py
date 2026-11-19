@@ -28,14 +28,14 @@ def load_build_payload(start: Path | None = None) -> dict[str, Any]:
 
 
 def public_build_label() -> str:
-    """``0.1.0 RC · build N "Codename"``. N is ``BUILD.json`` ``number``."""
+    """``0.8.0 · build N "Codename"``. N is ``BUILD.json`` ``number``."""
     payload = load_build_payload()
     if "number" in payload:
         number = int(payload["number"])
     else:
         number = int(payload["offset"])
     codename = str(payload["codename"])
-    return f'0.1.0 RC · build {number} "{codename}"'
+    return f'0.8.0 · build {number} "{codename}"'
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -61,12 +61,12 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="AUTO",
         default=None,
-        help="Save a copy and quit. Default format is AVIF.",
+        help="Save a copy and quit. Default format is WebP.",
     )
     parser.add_argument(
         "--format",
         default=None,
-        help="Output format for --export: avif (default), jxl, webp, jpeg, heic. PNG is rejected.",
+        help="Output format for --export: webp (default), jpeg, avif, jxl. PNG is rejected.",
     )
     parser.add_argument(
         "--lossless",

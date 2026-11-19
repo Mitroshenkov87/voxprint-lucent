@@ -1,41 +1,29 @@
-# Reusable pin check. Copied from voxprint-common docs/ci/pin-check.yml.
-# The checker script stays in that repository and is checked out at the wanted tag.
+# Reusable voxprint-common pin check.
+# The suite pins voxprint-common by git tag and records the tag's commit in
+# share/voxprint-common.pin.json. This job fails when pyproject.toml, the pin
+# file, or the tag on the remote disagree with the wanted tag and commit.
 name: voxprint-common pin
 
 on:
   workflow_call:
     inputs:
       tag:
-        description: Wanted voxprint-common tag, such as v0.5.2
+        description: Wanted voxprint-common tag, such as v0.8.0
         required: true
         type: string
-      pyproject:
-        description: Path to pyproject.toml in the app checkout
-        required: false
+      commit:
+        description: Commit the tag must point to
+        required: true
         type: string
-        default: pyproject.toml
-      lock:
-        description: Lock file to read. Empty uses uv.lock, poetry.lock, pdm.lock, or requirements.txt when present.
-        required: false
-        type: string
-        default: ""
 
 jobs:
   pin:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
-        with:
-          repository: Mitroshenkov87/voxprint-common
-          ref: ${{ inputs.tag }}
-          path: .voxprint-pin
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.15.2"
-      - name: Fail when the pin disagrees with the tag's wheel sha256
-        env:
-          WANTED_TAG: ${{ inputs.tag }}
-          PYPROJECT: ${{ inputs.pyproject }}
-          LOCK: ${{ inputs.lock }}
-        run: python .voxprint-pin/docs/ci/check_pin.py
+          python-version: "3.14"
+      - name: Fail when the pin disagrees with the tag's commit
+        run: python scripts/check_common_pin.py --tag "${{ inputs.tag }}" --commit "${{ inputs.commit }}"

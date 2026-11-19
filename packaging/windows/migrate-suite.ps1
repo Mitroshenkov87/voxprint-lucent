@@ -1,10 +1,10 @@
-# Move the suite data home, remove the old per-user Lucent install, and
-# optionally install PowerShell 7. Runs from the MSI before any app Python.
+# Move the suite data home, remove the old per-user Lucent install, record
+# Lucent in the suite registry, and optionally install PowerShell 7. Runs from the MSI before any app Python.
 # Windows PowerShell 5.1 can run this file. Later scripts prefer pwsh 7 and
 # fall back to 5.1 when it is absent.
 param(
     [string]$InstallPwsh = '0',
-    [string]$Language = 'en'
+    [string]$InstallDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,28 +46,16 @@ function Remove-LegacyLucent {
     }
 }
 
-function Set-SuiteLanguage([string]$Code) {
-    $allowed = @('en', 'de', 'uk', 'lv')
-    if ($allowed -notcontains $Code) { $Code = 'en' }
-    $local = $env:LOCALAPPDATA
-    if (-not $local) { return }
-    $dest = Join-Path $local 'VOXPrint AI Suite'
-    $state = Join-Path $dest 'state'
-    New-Item -ItemType Directory -Force -Path $state | Out-Null
-    $file = Join-Path $state 'suite.json'
-    $doc = @{}
-    if (Test-Path -LiteralPath $file) {
-        try {
-            $parsed = Get-Content -LiteralPath $file -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($parsed) {
-                $parsed.PSObject.Properties | ForEach-Object { $doc[$_.Name] = $_.Value }
-            }
-        } catch {
-            $doc = @{}
-        }
+function Register-SuiteApp([string]$Dir) {
+    # Record Lucent in <suite home>\state\installed-apps.json through voxprint-common.
+    if (-not $Dir) { return }
+    $Dir = [System.IO.Path]::GetFullPath($Dir).TrimEnd('\')
+    $python = Join-Path $Dir 'python\python.exe'
+    if (-not (Test-Path -LiteralPath $python)) { return }
+    & $python -m voxprint_lucent.register --path $Dir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Lucent could not record itself in the suite registry (exit $LASTEXITCODE)."
     }
-    $doc['ui_language'] = $Code
-    ($doc | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath $file -Encoding UTF8
 }
 
 function Install-PowerShell7 {
@@ -91,6 +79,6 @@ function Install-PowerShell7 {
 
 Move-SuiteHome
 Remove-LegacyLucent
-if ($Language) { Set-SuiteLanguage $Language }
+Register-SuiteApp $InstallDir
 if ($InstallPwsh -eq '1') { Install-PowerShell7 }
 exit 0

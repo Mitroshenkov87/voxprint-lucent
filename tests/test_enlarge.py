@@ -39,13 +39,11 @@ from voxprint_lucent.enlarge_compare import (
 from voxprint_lucent.enlarge_mock import build_job
 from voxprint_lucent.enlarge_mock import main as enlarge_main
 from voxprint_lucent.enlarge_protocol import (
-    ENLARGE_RELEASES_URL,
     action_enabled,
     action_tooltip,
     action_visible,
     dumps,
     enlarged_destination,
-    install_offered,
     loads,
     parse_capabilities,
     pipe_name_for_sid,
@@ -97,10 +95,10 @@ def test_pipe_name_is_the_sid_hash() -> None:
 def test_destination_never_overwrites(tmp_path: Path) -> None:
     source = tmp_path / "shot.jpg"
     source.write_bytes(b"jpeg")
-    taken = tmp_path / "shot.enlarged-2x.avif"
+    taken = tmp_path / "shot.enlarged-2x.webp"
     taken.write_bytes(b"old")
     dest = enlarged_destination(source, 2)
-    assert dest.name == "shot.enlarged-2x-2.avif"
+    assert dest.name == "shot.enlarged-2x-2.webp"
     assert dest != source
     assert dest != taken
     assert not dest.exists()
@@ -123,9 +121,7 @@ def test_gpu_none_hides_and_warn_stays() -> None:
     assert action_enabled(None) is False
     assert action_enabled(hidden) is False
     assert action_enabled(warned) is True
-    assert install_offered(None) is True
-    assert install_offered(hidden) is False
-    assert install_offered(ready) is False
+    assert action_tooltip(None) == "Enlarge is not installed."
     assert hello_supported(
         {"type": "hello", "server": "enlarge", "protocols": [1]}
     )
@@ -177,7 +173,7 @@ def test_capabilities_json_reports_no_gpu(monkeypatch: pytest.MonkeyPatch) -> No
     assert data["gpu"]["status"] == "none"
     assert data["gpu"]["reason"] == "no_nvidia"
     assert data["gpu"]["name"] is None
-    assert data["default_output_format"] == "avif"
+    assert data["default_output_format"] == "webp"
     assert "protocol_min" not in data
     dat2 = next(item for item in data["models"] if item["id"] == "nomos2-dat2")
     assert dat2["installed"] is False
@@ -344,7 +340,7 @@ def test_enlarge_uses_the_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert "--dry-run" not in launched[0]
     assert seen[0] == "accepted"
     assert "done" in seen
-    assert result.format == "avif"
+    assert result.format == "webp"
     assert result.width == 4
     assert result.height == 4
     assert result.output.is_file()
@@ -576,7 +572,7 @@ def test_window_hides_enlarge_without_a_gpu(
         window.shutdown()
 
 
-def test_missing_enlarge_offers_install(tmp_path: Path) -> None:
+def test_missing_enlarge_disables_the_action_without_an_offer(tmp_path: Path) -> None:
     _app()
     source = tmp_path / "dot.png"
     _png(source)
@@ -585,11 +581,9 @@ def test_missing_enlarge_offers_install(tmp_path: Path) -> None:
         button = window.findChild(QPushButton, "quick-enlarge")
         assert button is not None
         assert button.isEnabled() is False
-        install = window.findChild(QPushButton, "install-enlarge")
-        assert install is not None
-        assert install.text() == "Install Enlarge"
+        assert button.toolTip() == ""
+        assert window.findChild(QPushButton, "install-enlarge") is None
         assert window.status_text() == "Enlarge is not installed."
-        assert ENLARGE_RELEASES_URL.endswith("/voxprint-enlarge/releases")
     finally:
         window.shutdown()
 
@@ -797,7 +791,7 @@ def test_long_side_uses_the_model_scale(tmp_path: Path, monkeypatch: pytest.Monk
     done = json.loads(proc.stdout.splitlines()[-1])
     assert done["width"] == 6
     assert done["height"] == 6
-    assert Path(done["output"]).name == "dot.enlarged-4x.avif"
+    assert Path(done["output"]).name == "dot.enlarged-4x.webp"
 
 
 def test_tools_host_enlarge_needs_an_image(capsys: pytest.CaptureFixture[str]) -> None:
@@ -845,6 +839,6 @@ def test_multi_frame_file_is_sent_as_a_still(
     monkeypatch.chdir(tmp_path)
     still = still_for_enlarge(Path("clip.gif"), 0)
     assert still.is_absolute()
-    assert still.suffix == ".png"
+    assert still.suffix == ".webp"
     assert still.is_file()
     assert QImageReader(str(still)).imageCount() <= 1

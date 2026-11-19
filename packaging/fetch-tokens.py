@@ -29,8 +29,10 @@ def _download_tree(remote: str, commit: str, destination: Path) -> None:
         if entry.get("type") != "file" or not str(entry.get("name", "")).endswith(".json"):
             continue
         target = destination / entry["name"]
-        if target.name in {"lucent.json", "ru.json"}:
+        if target.name == "lucent.json":
             continue
+        if remote.endswith("locales") and target.name != "en.json":
+            continue  # English-only UI
         target.write_bytes(_bytes(f"{REPO}/{commit}/{remote}/{entry['name']}"))
         print(f"wrote {target.relative_to(ROOT)}")
 

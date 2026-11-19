@@ -116,11 +116,8 @@ Row rowFor(Text id) {
 }  // namespace
 
 void setLanguage(const QString &code) {
-    const QString lower = code.trimmed().toLower().left(2);
-    if (lower == QStringLiteral("de") || lower == QStringLiteral("uk") || lower == QStringLiteral("lv")) {
-        gLanguage = lower;
-        return;
-    }
+    // Lucent ships English only: any request keeps the interface on English.
+    Q_UNUSED(code);
     gLanguage = QStringLiteral("en");
 }
 

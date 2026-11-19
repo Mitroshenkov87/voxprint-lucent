@@ -73,7 +73,6 @@ private:
     void fitWindow();
     void openTools(bool enlarge = false);
     void launchHost(const QStringList &tail);
-    void cycleLanguage();
     void ensureChrome();
     void refreshFolder();
     void offerSplash(const QImage &image);

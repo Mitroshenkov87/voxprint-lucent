@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(voxprint-lucent VERSION 0.1.0 LANGUAGES CXX)
+project(voxprint-lucent VERSION 0.8.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,7 +17,7 @@ string(JSON LUCENT_BUILD_NUMBER ERROR_VARIABLE LUCENT_NUMBER_ERROR GET "${LUCENT
 if(LUCENT_NUMBER_ERROR)
     set(LUCENT_BUILD_NUMBER "${LUCENT_BUILD_OFFSET}")
 endif()
-set(LUCENT_VERSION "0.1.0-rc8")
+set(LUCENT_VERSION "0.8.0")
 configure_file(src/lucent_build.h.in "${CMAKE_CURRENT_BINARY_DIR}/lucent_build.h" @ONLY)
 
 qt_add_executable(voxprint-lucent
@@ -130,7 +130,8 @@ endif()
 
 if(WIN32)
     target_sources(voxprint-lucent PRIVATE lucent.rc)
-    target_link_libraries(voxprint-lucent PRIVATE shlwapi dxgi)
+    target_compile_definitions(voxprint-lucent PRIVATE NOMINMAX)
+    target_link_libraries(voxprint-lucent PRIVATE shlwapi dxgi shell32)
     add_executable(voxprint-lucent-cli src/cli_stub_win.cpp)
     target_link_libraries(voxprint-lucent-cli PRIVATE shell32)
     if(MSVC)

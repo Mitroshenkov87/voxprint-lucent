@@ -18,13 +18,11 @@ from typing import Any
 
 from voxprint_lucent.discovery import AppInstall, find_app, probe_capabilities
 from voxprint_lucent.enlarge_protocol import (
-    ENLARGE_RELEASES_URL,
     PROTOCOL,
     Capabilities,
     ProtocolError,
     action_enabled,
     action_tooltip,
-    install_offered,
     loads,
     output_format_name,
     parse_capabilities,
@@ -75,14 +73,6 @@ class EnlargeClient:
         """Return whether Enlarge can accept a job on this machine."""
         return action_enabled(self.probe())
 
-    def install_offered(self) -> bool:
-        """Return whether the UI should offer to install Enlarge."""
-        return install_offered(self.probe())
-
-    def releases_url(self) -> str:
-        """Return the page where the user can download Enlarge."""
-        return ENLARGE_RELEASES_URL
-
     def tooltip(self) -> str:
         """Return the Enlarge action's tooltip for the current machine."""
         return action_tooltip(self.probe())
@@ -97,7 +87,7 @@ class EnlargeClient:
         quality: int | None = None,
         quality_tier: str = "fast",
         model: str | None = None,
-        format_name: str = "avif",
+        format_name: str = "webp",
         output: Path | None = None,
         lossless: bool = False,
         lock_timeout: float | None = None,

@@ -190,15 +190,8 @@ Json objectFromOverrides(const std::map<std::string, std::vector<std::string>> &
 }
 
 QString activeLanguage() {
-    const QByteArray env = qgetenv("LUCENT_LANG");
-    if (!env.isEmpty()) {
-        return QString::fromUtf8(env).left(2).toLower();
-    }
-    const Json suite = readDocument(suiteSettingsPath());
-    const Json *language = suite.field("ui_language");
-    if (language != nullptr && language->kind == Json::Kind::String && !language->text.empty()) {
-        return qs(language->text).left(2).toLower();
-    }
+    // Lucent ships English only. LUCENT_LANG and the suite ui_language are
+    // deliberately ignored here.
     return QStringLiteral("en");
 }
 
@@ -610,9 +603,6 @@ struct Chrome::Impl {
     QByteArray jobBuffer;
     QString jobOutput;
     bool jobCancel = false;
-    bool installJob = false;
-    QString installPath;
-    QString installPartial;
     QLabel *cropEmpty = nullptr;
     QWidget *cropGrid = nullptr;
     QTimer *stateTimer = nullptr;
@@ -636,7 +626,6 @@ struct Chrome::Impl {
     QSpinBox *slideshow = nullptr;
     QCheckBox *thumbs = nullptr;
     QCheckBox *welcome = nullptr;
-    QComboBox *language = nullptr;
     std::vector<std::pair<QString, QLabel *>> expertLabels;
     std::vector<std::pair<QString, QPushButton *>> expertButtons;
     ResizeSpec resize;
@@ -744,7 +733,7 @@ void Chrome::loadPresets() {
         impl_->state.values["viewer.hdr"] = Json::fromString("auto");
     }
     if (impl_->state.values.count("export.format") == 0) {
-        impl_->state.values["export.format"] = Json::fromString("avif");
+        impl_->state.values["export.format"] = Json::fromString("webp");
     }
     if (impl_->state.values.count("export.quality") == 0) {
         impl_->state.values["export.quality"] = Json::fromInt(60);
@@ -980,7 +969,6 @@ void Chrome::buildExpert() {
     impl_->slideshow->setValue(std::max(1, QSettings().value(QStringLiteral("slideshow/ms"), 3000).toInt() / 1000));
     impl_->thumbs = new QCheckBox(page);
     impl_->welcome = new QCheckBox(page);
-    impl_->language = new FieldCombo(page);
     impl_->resizeUnit = new FieldCombo(page);
     impl_->resizeWidth = new ShrinkSpin(page);
     impl_->resizeHeight = new ShrinkSpin(page);
@@ -1061,7 +1049,6 @@ void Chrome::buildExpert() {
     namedRow("lucent.expert.slideshow", impl_->slideshow);
     page->addItem(new CheckLine(impl_->thumbs, caption("lucent.expert.thumbnails"), page));
     page->addItem(new CheckLine(impl_->welcome, caption("lucent.expert.welcome"), page));
-    namedRow("lucent.expert.language", impl_->language);
 
     QObject::connect(previous, &QPushButton::clicked, impl_->host, [this] {
         if (impl_->cb.stepFrame) {
@@ -1178,22 +1165,6 @@ void Chrome::buildExpert() {
         if (on && !was) {
             QSettings().setValue(QStringLiteral("welcome/emptyCount"), welcomeCountAfterReenable());
         }
-    });
-    QObject::connect(impl_->language, &QComboBox::currentIndexChanged, impl_->host, [this](int index) {
-        if (impl_->applying) {
-            return;
-        }
-        const QString code = impl_->language->itemData(index).toString();
-        std::map<std::string, Json> own;
-        own.emplace("ui_language", Json::fromString(ss(code)));
-        std::string error;
-        writeOwnKeys(suiteSettingsPath(), own, error);
-        setCatalogLanguage(code);
-        setLanguage(code);
-        if (impl_->cb.language) {
-            impl_->cb.language(code);
-        }
-        retranslate();
     });
 }
 
@@ -1354,9 +1325,9 @@ void Chrome::refreshExpert() {
     impl_->hdr->addItem(label(QStringLiteral("lucent.hdr.sdr")), QStringLiteral("sdr"));
     impl_->hdr->addItem(label(QStringLiteral("lucent.hdr.off")), QStringLiteral("off"));
     impl_->format->clear();
+    impl_->format->addItem(label(QStringLiteral("lucent.format.webp")), QStringLiteral("webp"));
     impl_->format->addItem(label(QStringLiteral("lucent.format.avif")), QStringLiteral("avif"));
     impl_->format->addItem(label(QStringLiteral("lucent.format.jxl")), QStringLiteral("jxl"));
-    impl_->format->addItem(label(QStringLiteral("lucent.format.webp")), QStringLiteral("webp"));
     impl_->pictures->clear();
     impl_->pictures->addItem(label(QStringLiteral("lucent.expert.photo")), QStringLiteral("photo"));
     impl_->pictures->addItem(label(QStringLiteral("lucent.expert.art")), QStringLiteral("art"));
@@ -1364,11 +1335,6 @@ void Chrome::refreshExpert() {
     for (int degrees : {0, 90, 180, 270}) {
         impl_->rotate->addItem(QString::number(degrees), degrees);
     }
-    impl_->language->clear();
-    impl_->language->addItem(QStringLiteral("English"), QStringLiteral("en"));
-    impl_->language->addItem(QStringLiteral("Deutsch"), QStringLiteral("de"));
-    impl_->language->addItem(QStringLiteral("Українська"), QStringLiteral("uk"));
-    impl_->language->addItem(QStringLiteral("Latviešu"), QStringLiteral("lv"));
     impl_->resizeUnit->clear();
     impl_->resizeUnit->addItem(label(QStringLiteral("lucent.resize.pixels")));
     impl_->resizeUnit->addItem(label(QStringLiteral("lucent.resize.by_percent")));
@@ -1377,7 +1343,7 @@ void Chrome::refreshExpert() {
     impl_->resizeSample->addItem(label(QStringLiteral("lucent.resize.nearest")));
     select(impl_->colour, jsonText(objectFromValues(impl_->state.values), "viewer.colour", QStringLiteral("srgb")));
     select(impl_->hdr, jsonText(objectFromValues(impl_->state.values), "viewer.hdr", QStringLiteral("auto")));
-    select(impl_->format, jsonText(objectFromValues(impl_->state.values), "export.format", QStringLiteral("avif")));
+    select(impl_->format, jsonText(objectFromValues(impl_->state.values), "export.format", QStringLiteral("webp")));
     const auto found = impl_->state.values.find("enlarge.preset");
     QString pictures;
     if (found != impl_->state.values.end() && found->second.kind == Json::Kind::String) {
@@ -1392,7 +1358,6 @@ void Chrome::refreshExpert() {
     if (quality != impl_->state.values.end() && quality->second.isNumber()) {
         impl_->quality->setValue(static_cast<int>(std::lround(quality->second.asNumber())));
     }
-    select(impl_->language, catalogLanguage());
     const int rotationIndex = impl_->rotate->findData(impl_->rotation);
     if (rotationIndex >= 0) {
         impl_->rotate->setCurrentIndex(rotationIndex);
@@ -1426,7 +1391,7 @@ void Chrome::choosePicture(const QString &id) {
 
 void Chrome::chooseEnhance() {
     if (enlargeCliCommand().isEmpty()) {
-        offerEnlargeInstall();
+        // Enlarge is an optional suite app. Without it the action does nothing.
         refreshChips();
         return;
     }
@@ -1709,7 +1674,7 @@ QString Chrome::exportSuffix() const {
             return suffix;
         }
     }
-    return QStringLiteral("avif");
+    return QStringLiteral("webp");
 }
 
 int Chrome::exportQuality() const {
@@ -1721,7 +1686,7 @@ int Chrome::exportQuality() const {
 }
 
 void Chrome::startJob() {
-    if (impl_->installJob || (impl_->job != nullptr && impl_->job->state() != QProcess::NotRunning)) {
+    if (impl_->job != nullptr && impl_->job->state() != QProcess::NotRunning) {
         return;
     }
     QStringList command = enlargeCliCommand();
@@ -1779,16 +1744,6 @@ void Chrome::readJob() {
         impl_->jobBuffer = impl_->jobBuffer.mid(newline + 1);
         const QJsonObject object = QJsonDocument::fromJson(line).object();
         const QString type = object.value(QStringLiteral("type")).toString();
-        if (type == QStringLiteral("meta") || type == QStringLiteral("done")) {
-            const QString path = object.value(QStringLiteral("path")).toString();
-            if (!path.isEmpty()) {
-                impl_->installPath = path;
-            }
-            const QString partial = object.value(QStringLiteral("partial")).toString();
-            if (!partial.isEmpty()) {
-                impl_->installPartial = partial;
-            }
-        }
         if (type != QStringLiteral("progress")) {
             continue;
         }
@@ -1817,27 +1772,6 @@ void Chrome::readJob() {
 void Chrome::finishJob(int code) {
     const bool cancelled = impl_->jobCancel;
     impl_->jobCancel = false;
-    if (impl_->installJob) {
-        impl_->installJob = false;
-        const QString path = impl_->installPath;
-        const QString partial = impl_->installPartial;
-        impl_->installPath.clear();
-        impl_->installPartial.clear();
-        if (cancelled || code != 0) {
-            if (!partial.isEmpty()) {
-                QFile::remove(partial);
-            }
-            if (!cancelled) {
-                QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
-            }
-        } else if (QFileInfo::exists(path)) {
-            QDesktopServices::openUrl(QUrl::fromLocalFile(path));
-        } else {
-            QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
-        }
-        relayout();
-        return;
-    }
     if (cancelled || code != 0 || !QFileInfo::exists(impl_->jobOutput)) {
         if (cancelled || code != 0) {
             QFile::remove(impl_->jobOutput);
@@ -1855,86 +1789,6 @@ void Chrome::cancelJob() {
     if (impl_->job != nullptr) {
         impl_->job->kill();
     }
-}
-
-void Chrome::offerEnlargeInstall() {
-    qint64 bytes = enlargeListedBytes();
-    if (bytes <= 0) {
-        QProcess probe;
-        if (startToolsHost(probe, {QStringLiteral("--enlarge-size")})) {
-            probe.start();
-            if (!probe.waitForFinished(8000)) {
-                probe.kill();
-                probe.waitForFinished(1000);
-            }
-            bool ok = false;
-            const qint64 reported = QString::fromUtf8(probe.readAllStandardOutput()).trimmed().toLongLong(&ok);
-            if (ok && reported > 0) {
-                bytes = reported;
-            }
-        }
-    }
-    QDialog dialog(impl_->host);
-    dialog.setWindowTitle(label(QStringLiteral("lucent.enlarge.install")));
-    dialog.setMinimumWidth(420);
-    auto *layout = new QVBoxLayout(&dialog);
-    auto *prompt = new QLabel(label(QStringLiteral("lucent.enlarge.install_prompt")), &dialog);
-    prompt->setWordWrap(true);
-    layout->addWidget(prompt);
-    if (bytes > 0) {
-        layout->addWidget(new QLabel(formatDataSize(bytes), &dialog));
-    }
-    auto *buttons = new QHBoxLayout;
-    buttons->addStretch(1);
-    auto *install = new QPushButton(label(QStringLiteral("lucent.enlarge.install")), &dialog);
-    auto *cancel = new QPushButton(label(QStringLiteral("mdl.cancel")), &dialog);
-    buttons->addWidget(install);
-    buttons->addWidget(cancel);
-    layout->addLayout(buttons);
-    QObject::connect(install, &QPushButton::clicked, &dialog, &QDialog::accept);
-    QObject::connect(cancel, &QPushButton::clicked, &dialog, &QDialog::reject);
-    install->setDefault(true);
-    const QByteArray mode = qgetenv("LUCENT_SCREENSHOT");
-    if (mode == "enlarge" || mode == "enlarge-confirm") {
-        dialog.show();
-        dialog.raise();
-        QTimer::singleShot(200, &dialog, [&dialog] { saveGrab(&dialog, QStringLiteral("enlarge-confirm")); });
-        QEventLoop loop;
-        QTimer::singleShot(800, &loop, &QEventLoop::quit);
-        loop.exec();
-        return;
-    }
-    if (dialog.exec() == QDialog::Accepted) {
-        startInstall();
-    }
-}
-
-void Chrome::startInstall() {
-    if (impl_->job != nullptr && impl_->job->state() != QProcess::NotRunning) {
-        return;
-    }
-    if (impl_->job == nullptr) {
-        impl_->job = new QProcess(impl_->host);
-        QObject::connect(impl_->job, &QProcess::readyReadStandardOutput, impl_->host, [this] { readJob(); });
-        QObject::connect(impl_->job, &QProcess::finished, impl_->host, [this](int code, QProcess::ExitStatus) { finishJob(code); });
-    }
-    if (!startToolsHost(*impl_->job, {QStringLiteral("--install-enlarge")})) {
-        QDesktopServices::openUrl(QUrl(enlargeReleasesUrl()));
-        return;
-    }
-    impl_->installJob = true;
-    impl_->jobCancel = false;
-    impl_->jobBuffer.clear();
-    impl_->installPath.clear();
-    impl_->installPartial.clear();
-    impl_->progress->setRange(0, 0);
-    impl_->progressText->setText(stageSentence(QStringLiteral("download")));
-    impl_->compare->hide();
-    impl_->job->start();
-    if (!impl_->job->waitForStarted(3000)) {
-        impl_->job->kill();
-    }
-    relayout();
 }
 
 void Chrome::openZoomMenu() {
@@ -2407,8 +2261,6 @@ void Chrome::prepareShots() {
         impl_->shotExpert = true;
         relayout();
         QTimer::singleShot(400, impl_->host, [this] { saveGrab(impl_->host, QStringLiteral("expert")); });
-    } else if (mode == "enlarge" || mode == "enlarge-confirm") {
-        QTimer::singleShot(400, impl_->host, [this] { offerEnlargeInstall(); });
     }
 }
 

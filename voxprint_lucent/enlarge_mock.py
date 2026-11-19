@@ -86,7 +86,7 @@ def capabilities() -> dict[str, Any]:
         "max_scale": 4,
         "input_formats": ["avif", "bmp", "jpeg", "jxl", "png", "tiff", "webp"],
         "output_formats": ["avif", "jxl", "webp", "jpeg"],
-        "default_output_format": "avif",
+        "default_output_format": "webp",
     }
 
 
@@ -134,7 +134,7 @@ def build_job(
     if isinstance(chosen, str):
         code, text, retryable = _model_error(chosen)
         return [_error(message, code, text, retryable)], False
-    format_name = request.get("format") or "avif"
+    format_name = request.get("format") or "webp"
     if not isinstance(format_name, str):
         return [_error(message, "unsupported_format", "format must be a name.", False)], False
     try:
@@ -242,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", "--out", default="")
     parser.add_argument("--scale", type=int, default=None)
     parser.add_argument("--long-side", type=int, default=None)
-    parser.add_argument("--format", default="avif")
+    parser.add_argument("--format", default="webp")
     parser.add_argument("--lossless", action="store_true")
     parser.add_argument("--quality", default=None)
     parser.add_argument("--quality-tier", dest="quality_tier", default=None)

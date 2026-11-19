@@ -10,29 +10,41 @@ from pathlib import Path
 from voxprint_lucent.suite_state import app_settings_path
 from voxprint_lucent.viewer_shell import SURFACE_ID
 
-PIN = "e47f3dccf84f04102b11c5eab87fdaa16de1655b"
-TAG = "v0.6.4"
-PR = 38
-DEPENDENCY = (
-    "voxprint-common[ui] @ https://github.com/Mitroshenkov87/voxprint-common/releases/download/"
-    "v0.6.4/voxprint_common-0.6.4-py3-none-any.whl"
-)
+PIN = "ab7f1a04095cd998a590963649be69e4ee11a246"
+TAG = "v0.8.0"
+DEPENDENCY = "voxprint-common[ui] @ git+https://github.com/Mitroshenkov87/voxprint-common@v0.8.0"
 
 
 def test_helper_depends_on_the_pinned_ui_extra() -> None:
-    assert DEPENDENCY in Path("pyproject.toml").read_text(encoding="utf-8")
+    text = Path("pyproject.toml").read_text(encoding="utf-8")
+    assert DEPENDENCY in text
+    assert "releases/download" not in text
+    assert ".whl" not in text
+
+
+def test_vendored_shell_data_matches_the_installed_pin() -> None:
+    import voxprint_common
+
+    ui = Path(voxprint_common.__file__).parent / "ui"
+    assert Path("share/tokens.json").read_bytes() == (ui / "tokens.json").read_bytes()
+    assert Path("share/locales/en.json").read_bytes() == (ui / "locales" / "en.json").read_bytes()
+    for preset in sorted((ui / "presets").glob("*.json")):
+        assert (Path("share/presets") / preset.name).read_bytes() == preset.read_bytes()
 
 
 def test_cpp_reads_tokens_and_locales_from_the_pinned_paths() -> None:
     pin = json.loads(Path("share/voxprint-common.pin.json").read_text(encoding="utf-8"))
     assert pin["commit"] == PIN
     assert pin["tag"] == TAG
-    assert pin["pr"] == PR
+    assert pin["source"] == f"git+https://github.com/Mitroshenkov87/voxprint-common@{TAG}"
     assert pin["paths"]["tokens"] == "src/voxprint_common/ui/tokens.json"
     assert pin["paths"]["locales"] == "src/voxprint_common/ui/locales"
     assert Path("share/tokens.json").is_file()
-    for code in ("en", "de", "uk", "lv"):
-        assert (Path("share/locales") / f"{code}.json").is_file()
+    assert (Path("share/locales") / "en.json").is_file()
+    assert (Path("share/locales") / "lucent" / "en.json").is_file()
+    for code in ("de", "uk", "lv", "ru"):
+        assert not (Path("share/locales") / f"{code}.json").exists()
+        assert not (Path("share/locales") / "lucent" / f"{code}.json").exists()
     assert not (Path("share/locales") / "ru.json").exists()
     assert not (Path("share/locales") / "lucent" / "ru.json").exists()
     header = Path("cpp/src/shell_logic.h").read_text(encoding="utf-8")

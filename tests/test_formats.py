@@ -1,4 +1,4 @@
-"""Output format policy: AVIF default, JPEG XL and WebP options, no PNG."""
+"""Output format policy: WebP default, JPEG XL and AVIF options, no PNG."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from voxprint_lucent.formats import (
     CodecMissing,
     OutputFormat,
     PngRejected,
+    choose_output_format,
     copy_destination,
     encode_raster,
     parse_output_format,
@@ -21,8 +22,8 @@ from voxprint_lucent.formats import (
 )
 
 
-def test_default_is_avif() -> None:
-    assert DEFAULT_OUTPUT_FORMAT is OutputFormat.AVIF
+def test_default_is_webp() -> None:
+    assert DEFAULT_OUTPUT_FORMAT is OutputFormat.WEBP
     assert OutputFormat.AVIF in MODERN_OUTPUT_FORMATS
     assert OutputFormat.JXL in MODERN_OUTPUT_FORMATS
     assert OutputFormat.WEBP in MODERN_OUTPUT_FORMATS
@@ -48,17 +49,17 @@ def test_copy_destination_does_not_overwrite_source(tmp_path: Path) -> None:
     source = tmp_path / "photo.jpeg"
     source.write_bytes(b"jpeg")
     dest = copy_destination(source)
-    assert dest.name == "photo.avif"
+    assert dest.name == "photo.webp"
     assert dest != source
-    dest.write_bytes(b"avif")
+    dest.write_bytes(b"webp")
     again = copy_destination(source)
-    assert again.name == "photo-2.avif"
+    assert again.name == "photo-2.webp"
 
 
-def test_copy_of_avif_uses_a_distinct_name(tmp_path: Path) -> None:
-    source = tmp_path / "photo.avif"
-    source.write_bytes(b"avif")
-    assert copy_destination(source).name == "photo.copy.avif"
+def test_copy_of_webp_uses_a_distinct_name(tmp_path: Path) -> None:
+    source = tmp_path / "photo.webp"
+    source.write_bytes(b"webp")
+    assert copy_destination(source).name == "photo.copy.webp"
 
 
 def test_heic_needs_the_system_codec() -> None:
@@ -85,9 +86,17 @@ def test_modern_round_trip_dimensions(tmp_path: Path) -> None:
         assert decoded.shape[1] == 6
 
 
-def test_default_write_is_avif(tmp_path: Path) -> None:
+def test_default_write_is_webp(tmp_path: Path) -> None:
     pixels = np.full((2, 2, 3), 128, dtype=np.uint8)
-    dest = tmp_path / "copy.avif"
+    dest = tmp_path / "copy.webp"
     written = write_raster(pixels, dest)
-    assert written.suffix == ".avif"
+    assert written.suffix == ".webp"
     assert dest.stat().st_size > 0
+
+
+def test_oversized_webp_falls_back_to_jpeg() -> None:
+    assert choose_output_format(16383, 100, OutputFormat.WEBP) is OutputFormat.WEBP
+    assert choose_output_format(16384, 100, OutputFormat.WEBP) is OutputFormat.JPEG
+    assert choose_output_format(100, 16384, OutputFormat.WEBP) is OutputFormat.JPEG
+    assert choose_output_format(20000, 20000, OutputFormat.AVIF) is OutputFormat.AVIF
+    assert choose_output_format(20000, 20000, OutputFormat.JPEG) is OutputFormat.JPEG

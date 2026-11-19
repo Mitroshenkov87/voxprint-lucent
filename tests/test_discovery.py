@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
+
+import pytest
 
 from voxprint_lucent.discovery import find_app
 
@@ -17,6 +20,7 @@ def _isolate(monkeypatch, root: Path) -> None:
     monkeypatch.setenv("XDG_DATA_DIRS", str(empty))
     monkeypatch.setenv("PATH", str(empty))
     monkeypatch.delenv("LUCENT_ENLARGE_EXE", raising=False)
+    monkeypatch.delenv("VOXPRINT_SUITE_ROOT", raising=False)
 
 
 def test_manifest_apps_exe(tmp_path: Path, monkeypatch) -> None:
@@ -88,3 +92,33 @@ def test_absent_enlarge_is_not_installed(tmp_path: Path, monkeypatch) -> None:
     (tmp_path / "home").mkdir()
     assert find_app("Enlarge", "enlarge") is None
     assert os.environ["VOXPRINT_HOME"] == str(tmp_path / "home")
+
+
+def test_suite_root_layout_finds_enlarge(tmp_path: Path, monkeypatch) -> None:
+    if sys.platform == "win32":
+        pytest.skip("linux layout")
+    _isolate(monkeypatch, tmp_path)
+    exe = tmp_path / "suite" / "enlarge" / "voxprint-enlarge"
+    exe.parent.mkdir(parents=True)
+    exe.write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setenv("VOXPRINT_SUITE_ROOT", str(tmp_path / "suite"))
+    found = find_app("Enlarge", "enlarge")
+    assert found is not None
+    assert found.command == [str(exe.resolve())]
+    assert found.ipc_base == "voxprint-enlarge"
+
+
+def test_suite_root_layout_wins_over_the_per_user_path(tmp_path: Path, monkeypatch) -> None:
+    if sys.platform == "win32":
+        pytest.skip("linux layout")
+    _isolate(monkeypatch, tmp_path)
+    per_machine = tmp_path / "suite" / "enlarge" / "voxprint-enlarge"
+    per_machine.parent.mkdir(parents=True)
+    per_machine.write_text("#!/bin/sh\n", encoding="utf-8")
+    per_user = tmp_path / "home" / "enlarge" / "voxprint-enlarge"
+    per_user.parent.mkdir(parents=True)
+    per_user.write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setenv("VOXPRINT_SUITE_ROOT", str(tmp_path / "suite"))
+    found = find_app("Enlarge", "enlarge")
+    assert found is not None
+    assert found.command == [str(per_machine.resolve())]

@@ -6,8 +6,8 @@
 .DESCRIPTION
     Used by GitHub Actions on windows-latest. Produces dist\lucent-m0-windows.zip
     with the C++/Qt 6.12 viewer, windeployqt runtime, KImageFormats AVIF and
-    JPEG XL plugins (HEIF off, no libde265/x265), embeddable Python 3.15.2 plus
-    PySide6-Essentials, the comparison viewer, 12 MP test images, Run-M0.ps1,
+    JPEG XL plugins (HEIF off, no libde265/x265), embeddable Python 3.14 plus
+    PySide6-Essentials and voxprint-common (git tag pin), the comparison viewer, 12 MP test images, Run-M0.ps1,
     and Run-Checks.ps1 with the hard image set.
 #>
 [CmdletBinding()]
@@ -22,7 +22,11 @@ $QtRoot = 'C:\Qt'
 $Stage = Join-Path $Repo 'dist\m0-harness'
 $Zip = Join-Path $Repo 'dist\lucent-m0-windows.zip'
 $Work = Join-Path $Repo 'dist\m0-work'
-$PythonVersion = '3.15.2'
+$PythonVersion = '3.14.10'
+# voxprint-common comes from the git tag pinned in pyproject.toml (no release wheel).
+$CommonMatch = Select-String -LiteralPath (Join-Path $Repo 'pyproject.toml') -Pattern '"voxprint-common\[ui\] @ (git\+[^"]+)"'
+if (-not $CommonMatch) { throw 'voxprint-common git pin not found in pyproject.toml' }
+$CommonReq = 'voxprint-common @ ' + $CommonMatch.Matches[0].Groups[1].Value
 
 function Invoke-Native {
     param([scriptblock]$Command)
@@ -115,7 +119,26 @@ Write-Host 'Installing libavif (dav1d decoder), libjxl, and pkgconf'
 # The vcpkg libavif port has no default codec. Without dav1d, kimg_avif loads
 # and then refuses every file because avifCodecName(CAN_DECODE) is null.
 $env:VCPKG_DEFAULT_TRIPLET = 'x64-windows'
-Invoke-Native { & (Join-Path $env:VCPKG_ROOT 'vcpkg.exe') install 'libavif[dav1d]' libjxl pkgconf --triplet x64-windows }
+# MSVC 14.52 (runner image 20261116) no longer skips the undefined
+# __has_include_next() in dav1d 1.5.4's compat/msvc/stdatomic.h. A forced
+# include defines it as 0 for C sources only; this overlay triplet is otherwise
+# the stock x64-windows triplet.
+$Overlay = Join-Path $Work 'vcpkg-triplets'
+New-Item -ItemType Directory -Force -Path $Overlay | Out-Null
+$Compat = (Join-Path $Overlay 'has_include_next.h') -replace '\\', '/'
+Set-Content -LiteralPath $Compat -Encoding ascii -Value @(
+    '#ifndef __has_include_next',
+    '#define __has_include_next(x) 0',
+    '#endif'
+)
+Set-Content -LiteralPath (Join-Path $Overlay 'x64-windows.cmake') -Encoding ascii -Value @(
+    'set(VCPKG_TARGET_ARCHITECTURE x64)',
+    'set(VCPKG_CRT_LINKAGE dynamic)',
+    'set(VCPKG_LIBRARY_LINKAGE dynamic)',
+    "set(VCPKG_C_FLAGS `"/FI$Compat`")",
+    'set(VCPKG_CXX_FLAGS "")'
+)
+Invoke-Native { & (Join-Path $env:VCPKG_ROOT 'vcpkg.exe') install 'libavif[dav1d]' libjxl pkgconf --triplet x64-windows "--overlay-triplets=$Overlay" }
 $VcpkgInstalled = Join-Path $env:VCPKG_ROOT 'installed\x64-windows'
 $dav1d = @(Get-ChildItem (Join-Path $VcpkgInstalled 'bin') -Filter '*dav1d*.dll' -ErrorAction SilentlyContinue)
 if (-not $dav1d) {
@@ -210,15 +233,24 @@ $PyDir = Join-Path $Stage 'python'
 Expand-Archive -Path $PyZip -DestinationPath $PyDir -Force
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 @(
-    'python315.zip',
+    'python314.zip',
     '.',
     'Lib\site-packages',
     'import site'
 ) | Set-Content -LiteralPath $Pth.FullName -Encoding ASCII
 Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile (Join-Path $Work 'get-pip.py')
 Invoke-Native { & (Join-Path $PyDir 'python.exe') (Join-Path $Work 'get-pip.py') }
+# The embeddable runtime's ._pth fixes sys.path, so pip's isolated build env
+# cannot import hatchling there. Build the voxprint-common wheel from the git pin
+# with the runner's Python 3.14, then install that wheel into the runtime.
+$Wheels = Join-Path $Work 'wheels'
+if (Test-Path $Wheels) { Remove-Item -Recurse -Force $Wheels }
+Invoke-Native { python -m pip wheel --disable-pip-version-check --no-deps -w $Wheels $CommonReq }
+$CommonWheel = Get-ChildItem $Wheels -Filter 'voxprint_common-*.whl' | Select-Object -First 1
+if (-not $CommonWheel) { throw 'voxprint-common wheel was not built from the git pin' }
+$CommonExtras = if ($CommonReq -match '\[(?<x>[^\]]+)\]') { "[$($Matches.x)]" } else { '' }
 Invoke-Native {
-    & (Join-Path $PyDir 'python.exe') -m pip install --disable-pip-version-check 'PySide6-Essentials==6.12.0' 'imagecodecs==2026.10.10' 'numpy>=2.3'
+    & (Join-Path $PyDir 'python.exe') -m pip install --disable-pip-version-check "$($CommonWheel.FullName)$CommonExtras" 'PySide6-Essentials==6.12.0' 'imagecodecs==2026.10.10' 'numpy>=2.3'
 }
 
 Write-Host 'Copying the PySide6 comparison tree'
@@ -242,7 +274,7 @@ Copy-Item (Join-Path $Repo 'scripts\vm_test.ps1') (Join-Path $Stage 'vm_test.ps1
 # PYTHONPATH is ignored. Paths in that file are relative to the python folder.
 $Pth = Get-ChildItem $PyDir -Filter 'python*._pth' | Select-Object -First 1
 @(
-    'python315.zip',
+    'python314.zip',
     '.',
     '..\app',
     'Lib\site-packages',
@@ -315,6 +347,7 @@ try {
     "kimageformats=v6.31.0",
     "extra-cmake-modules=v6.31.0",
     "python=$PythonVersion",
+    "voxprint-common=$CommonReq",
     "pyside6-essentials=6.12.0",
     "imagecodecs=2026.10.10",
     "vcpkg=$vcpkgRev",

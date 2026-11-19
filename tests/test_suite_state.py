@@ -62,3 +62,14 @@ def test_reserved_suite_key_is_refused(tmp_path: Path, monkeypatch: pytest.Monke
     monkeypatch.setenv("VOXPRINT_HOME", str(tmp_path))
     with pytest.raises(ValueError, match="reserved key"):
         write_own_keys(suite_settings_path(), {"safety.minor": False})
+
+
+def test_tools_language_is_english_even_when_the_suite_prefers_german(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("VOXPRINT_HOME", str(tmp_path))
+    monkeypatch.setenv("LUCENT_LANG", "de")
+    write_own_keys(suite_settings_path(), {"ui_language": "de"})
+    from voxprint_lucent import tools_text
+
+    assert tools_text.language() == "en"

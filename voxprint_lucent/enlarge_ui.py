@@ -1,7 +1,7 @@
 """Enlarge actions inside the tools process.
 
 The action stays visible. It is disabled when Enlarge is missing or reports no
-usable GPU. A missing install offers an Install Enlarge button.
+usable GPU. A missing install only shows "Enlarge is not installed.".
 """
 
 from __future__ import annotations
@@ -11,18 +11,16 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QImageReader
+from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QImageReader
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from voxprint_lucent.enlarge_client import EnlargeClient, EnlargeError, EnlargeResult
 from voxprint_lucent.enlarge_compare import CompareWindow
 from voxprint_lucent.enlarge_protocol import (
-    ENLARGE_RELEASES_URL,
     Capabilities,
     action_enabled,
     action_tooltip,
-    install_offered,
 )
 from voxprint_lucent.theme import build_stylesheet
 
@@ -34,10 +32,11 @@ def frame_count(path: Path) -> int:
 
 
 def still_for_enlarge(path: Path, frame_index: int = 0) -> Path:
-    """Absolute still for Enlarge. A multi-frame file is written as one PNG frame.
+    """Absolute still for Enlarge. A multi-frame file is written as one WebP frame.
 
-    Enlarge rejects a stack of frames. The current frame is written as a PNG
-    under the temp directory, and that file is what the hand-off sends.
+    Enlarge rejects a stack of frames. The current frame is written as a
+    lossless WebP under the temp directory, and that file is what the
+    hand-off sends.
     """
     source = path.resolve()
     if frame_count(source) <= 1:
@@ -52,8 +51,8 @@ def still_for_enlarge(path: Path, frame_index: int = 0) -> Path:
         raise EnlargeError("io_error", "Could not read the current frame.", False)
     folder = Path(tempfile.gettempdir()) / "voxprint-lucent"
     folder.mkdir(parents=True, exist_ok=True)
-    dest = folder / f"{source.stem}-frame-{index + 1}.png"
-    if not image.save(str(dest), "PNG"):
+    dest = folder / f"{source.stem}-frame-{index + 1}.webp"
+    if not image.save(str(dest), "WEBP", 100):
         raise EnlargeError("io_error", "Could not save the current frame as a still.", False)
     return dest.resolve()
 
@@ -122,12 +121,6 @@ class EnlargeWindow(QWidget):
         row.addWidget(self._quick)
         row.addWidget(self._open)
         row.addWidget(self._cancel)
-        self._install: QPushButton | None = None
-        if not self._client.command:
-            self._install = QPushButton("Install Enlarge")
-            self._install.setObjectName("install-enlarge")
-            self._install.clicked.connect(self.open_releases)
-            row.addWidget(self._install)
         layout.addLayout(row)
         self._mark_red()
         self.resize(560, 180)
@@ -207,12 +200,6 @@ class EnlargeWindow(QWidget):
         if self._frames > 1 and enabled:
             status = f"{status} Sending frame {self._frame_index + 1} of {self._frames} as a still."
         self._status.setText(status)
-        if install_offered(parsed) and self._install is None and not self._client.command:
-            install = QPushButton("Install Enlarge")
-            install.setObjectName("install-enlarge")
-            install.clicked.connect(self.open_releases)
-            self.layout().itemAt(2).layout().addWidget(install)
-            self._install = install
 
     def status_text(self) -> str:
         """Return the status line currently shown."""
@@ -239,11 +226,6 @@ class EnlargeWindow(QWidget):
         self._gate = False
         self._quick.setEnabled(False)
         self._open.setEnabled(False)
-
-    @staticmethod
-    def open_releases() -> None:
-        """Open the Enlarge releases page in the browser."""
-        QDesktopServices.openUrl(QUrl(ENLARGE_RELEASES_URL))
 
     def shutdown(self) -> None:
         """Stop the probe thread and a local Enlarge process this window started."""

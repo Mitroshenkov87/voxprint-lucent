@@ -131,125 +131,6 @@ bool hasFlag(int argc, char **argv, const char *flag) {
     return false;
 }
 
-QString enlargeReleasesUrl() {
-    return QStringLiteral("https://github.com/Mitroshenkov87/voxprint-enlarge/releases");
-}
-
-namespace {
-
-qint64 positiveBytes(const QJsonValue &value) {
-    if (!value.isDouble()) {
-        return 0;
-    }
-    const double number = value.toDouble();
-    if (!(number > 0.0) || number > 9000000000000.0) {
-        return 0;
-    }
-    return static_cast<qint64>(number);
-}
-
-qint64 objectBytes(const QJsonObject &object) {
-    const QString keys[] = {QStringLiteral("bytes"), QStringLiteral("size"), QStringLiteral("download_bytes"),
-                            QStringLiteral("size_bytes")};
-    for (const QString &key : keys) {
-        const qint64 found = positiveBytes(object.value(key));
-        if (found > 0) {
-            return found;
-        }
-    }
-    return 0;
-}
-
-qint64 modelArrayBytes(const QJsonArray &models) {
-    for (const QJsonValue &item : models) {
-        if (!item.isObject()) {
-            continue;
-        }
-        const QJsonObject object = item.toObject();
-        const QString id = object.value(QStringLiteral("id")).toString();
-        if (id == QStringLiteral("enlarge") || id == QStringLiteral("voxprint-enlarge")) {
-            const qint64 found = objectBytes(object);
-            if (found > 0) {
-                return found;
-            }
-        }
-    }
-    return 0;
-}
-
-qint64 mdlBytes(const QJsonValue &root) {
-    if (root.isArray()) {
-        return modelArrayBytes(root.toArray());
-    }
-    if (!root.isObject()) {
-        return 0;
-    }
-    const QJsonObject object = root.toObject();
-    if (object.value(QStringLiteral("id")).toString() == QStringLiteral("enlarge")) {
-        const qint64 found = objectBytes(object);
-        if (found > 0) {
-            return found;
-        }
-    }
-    const QJsonValue enlarge = object.value(QStringLiteral("enlarge"));
-    if (enlarge.isObject()) {
-        const qint64 found = objectBytes(enlarge.toObject());
-        if (found > 0) {
-            return found;
-        }
-    }
-    return modelArrayBytes(object.value(QStringLiteral("models")).toArray());
-}
-
-qint64 manifestBytes(const QJsonObject &root) {
-    const QJsonObject apps = root.value(QStringLiteral("apps")).toObject();
-    const QJsonValue enlarge = apps.value(QStringLiteral("enlarge"));
-    if (enlarge.isObject()) {
-        const qint64 found = objectBytes(enlarge.toObject());
-        if (found > 0) {
-            return found;
-        }
-    }
-    const QJsonObject components = root.value(QStringLiteral("components")).toObject();
-    for (auto it = components.constBegin(); it != components.constEnd(); ++it) {
-        const QJsonObject component = it.value().toObject();
-        bool holds = it.key() == QStringLiteral("enlarge");
-        const QJsonArray holders = component.value(QStringLiteral("holders")).toArray();
-        for (const QJsonValue &holder : holders) {
-            if (holder.toString() == QStringLiteral("enlarge")) {
-                holds = true;
-            }
-        }
-        if (!holds) {
-            continue;
-        }
-        const qint64 found = objectBytes(component);
-        if (found > 0) {
-            return found;
-        }
-    }
-    return 0;
-}
-
-qint64 bytesInFile(const QString &path, bool manifest) {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        return 0;
-    }
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
-    if (manifest) {
-        return document.isObject() ? manifestBytes(document.object()) : 0;
-    }
-    if (document.isObject()) {
-        return mdlBytes(document.object());
-    }
-    if (document.isArray()) {
-        return mdlBytes(document.array());
-    }
-    return 0;
-}
-
-}  // namespace
 
 bool startToolsHost(QProcess &process, const QStringList &tail) {
     const QString appDir = QCoreApplication::applicationDirPath();
@@ -547,23 +428,6 @@ QJsonValue dedupeCapabilityModels(const QJsonValue &value) {
 
 }  // namespace
 
-qint64 enlargeListedBytes() {
-    const QString home = voxprintHome();
-    const qint64 manifest = bytesInFile(QDir(home).filePath(QStringLiteral("shared/manifest.json")), true);
-    if (manifest > 0) {
-        return manifest;
-    }
-    const QStringList catalogs = {QStringLiteral("shared/mdl.json"), QStringLiteral("mdl/catalog.json"),
-                                  QStringLiteral("mdl/index.json")};
-    for (const QString &relative : catalogs) {
-        const qint64 found = bytesInFile(QDir(home).filePath(relative), false);
-        if (found > 0) {
-            return found;
-        }
-    }
-    return 0;
-}
-
 QStringList enlargeCliCommand() {
     const QString raw = qEnvironmentVariable("LUCENT_ENLARGE_EXE").trimmed();
     if (!raw.isEmpty()) {
@@ -631,7 +495,6 @@ int runDryRun(int argc, char **argv) {
     int exitCode = missing ? 3 : 0;
     if (command.isEmpty()) {
         enlarge.insert(QStringLiteral("installed"), false);
-        enlarge.insert(QStringLiteral("install_url"), enlargeReleasesUrl());
     } else {
         enlarge.insert(QStringLiteral("installed"), true);
         const CliResult caps = runCli(command, {QStringLiteral("--capabilities"), QStringLiteral("--json")});
@@ -649,7 +512,7 @@ int runDryRun(int argc, char **argv) {
                 command,
                 {QStringLiteral("--input"), image, QStringLiteral("--scale"), QStringLiteral("2"),
                  QStringLiteral("--preset"), QStringLiteral("photo"), QStringLiteral("--quality-tier"),
-                 QStringLiteral("fast"), QStringLiteral("--format"), QStringLiteral("avif"),
+                 QStringLiteral("fast"), QStringLiteral("--format"), QStringLiteral("webp"),
                  QStringLiteral("--json-progress"), QStringLiteral("--dry-run")});
             enlarge.insert(QStringLiteral("job_exit"), job.code);
             enlarge.insert(QStringLiteral("lines"), parseLines(job.stdoutBytes));
