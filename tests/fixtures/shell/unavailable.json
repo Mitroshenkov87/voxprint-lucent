@@ -1,0 +1,26 @@
+{
+  "schema": "voxprint-presets/1",
+  "groups": [
+    {
+      "id": "output",
+      "label_key": "simple.output",
+      "default": "standard",
+      "options": [
+        {
+          "id": "standard",
+          "label_key": "simple.output.standard",
+          "values": {"shell.output": "standard"}
+        },
+        {
+          "id": "4k",
+          "label_key": "simple.output.4k",
+          "available": false,
+          "reason_key": "simple.output.4k.reason",
+          "action_label_key": "simple.output.install",
+          "action_id": "install.enlarge",
+          "values": {"shell.output": "4k"}
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "package": "voxprint-common",
+  "tag": "v0.6.4",
+  "pr": 38,
+  "ref": "v0.6.4 (Malkhut)",
+  "commit": "e47f3dccf84f04102b11c5eab87fdaa16de1655b",
+  "wheel_sha256": "1b7abcc99530d6f155b4be41fba26f3f27b8b54789d49282b936430c53a4314b",
+  "paths": {
+    "tokens": "src/voxprint_common/ui/tokens.json",
+    "locales": "src/voxprint_common/ui/locales",
+    "presets": "src/voxprint_common/ui/presets"
+  }
+}

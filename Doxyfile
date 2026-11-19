@@ -1,0 +1,48 @@
+# Documentation gate for the C++ viewer. Public headers only.
+# WARN_AS_ERROR fails the job when a public member has no Doxygen comment.
+
+PROJECT_NAME           = "Voxprint AI Lucent"
+PROJECT_BRIEF          = "C++ image viewer"
+OUTPUT_DIRECTORY       = build/doxygen
+INPUT                  = cpp/src
+FILE_PATTERNS          = *.h
+RECURSIVE              = NO
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_PRIV_VIRTUAL   = NO
+EXTRACT_STATIC         = NO
+EXTRACT_LOCAL_CLASSES  = NO
+EXTRACT_ANON_NSPACES   = NO
+HIDE_UNDOC_MEMBERS     = NO
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = NO
+WARN_AS_ERROR          = YES
+WARN_LOGFILE           = build/doxygen/warnings.txt
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_XML           = NO
+HAVE_DOT               = NO
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+SOURCE_BROWSER         = NO
+VERBATIM_HEADERS       = NO
+ALPHABETICAL_INDEX     = NO
+SEARCHENGINE           = YES
+QUIET                  = YES
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+MULTILINE_CPP_IS_BRIEF = YES
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = "Q_OBJECT=" \
+                         "Q_SIGNALS=public" \
+                         "signals=public" \
+                         "Q_SLOTS=" \
+                         "slots=" \
+                         "Q_EMIT=" \
+                         "emit=" \
+                         "Q_INVOKABLE="
+EXCLUDE_PATTERNS       = */build/*
+STRIP_FROM_PATH        = cpp/src

@@ -1,0 +1,6 @@
+{
+  "shell.steps": 1,
+  "shell.guidance": 1.0,
+  "shell.sampler": "none",
+  "shell.note": "kept"
+}

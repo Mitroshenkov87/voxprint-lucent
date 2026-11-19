@@ -1,0 +1,22 @@
+{
+  "schema": "voxprint-presets/1",
+  "groups": [
+    {
+      "id": "image",
+      "label_key": "setting.group.image",
+      "default": "off",
+      "options": [
+        {
+          "id": "off",
+          "label_key": "simple.quality.fast",
+          "values": {"image.adult_content": "off"}
+        },
+        {
+          "id": "on",
+          "label_key": "simple.quality.best",
+          "values": {"image.adult_content": "on"}
+        }
+      ]
+    }
+  ]
+}

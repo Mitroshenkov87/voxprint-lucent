@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "values": {"shell.steps": 28, "shell.guidance": 7.0, "shell.sampler": "euler", "shell.note": "kept"},
+  "chosen": {"quality": "balanced"},
+  "overrides": {"quality": ["shell.steps"]}
+}

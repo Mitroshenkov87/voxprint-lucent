@@ -1,0 +1,16 @@
+name: Feature
+description: A change you want in a later version
+title: ""
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: What should Lucent do
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it helps
+    validations:
+      required: true
