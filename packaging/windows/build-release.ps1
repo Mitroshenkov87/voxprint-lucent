@@ -65,7 +65,7 @@ $Msi = Join-Path $Out "voxprint-lucent-setup-$VersionName-win-x64.msi"
 $PayloadArg = ((Resolve-Path $Payload).Path) -replace '\\', '/'
 Push-Location $PSScriptRoot
 try {
-    & wix extension add -g WixToolset.Util.wixext/7.0.1
+    & wix extension add -acceptEula wix7 -g WixToolset.Util.wixext/7.0.1
     & wix build -acceptEula wix7 -arch x64 -ext WixToolset.Util.wixext -d "Payload=$PayloadArg" -d "LucentVersion=$VersionName" -d "LucentBuild=$Build" -d "MsiVersion=$MsiVersion" .\Package.release.wxs -o $Msi
 } finally {
     Pop-Location
